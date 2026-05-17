@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Onara — websites for small businesses, in 90 seconds</title>
+<link rel="stylesheet" href="proto.css" />
+</head>
+<body>
+<div id="root"></div>
+
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+<script type="text/babel" src="icons.jsx"></script>
+<script type="text/babel" src="shell.jsx"></script>
+<script type="text/babel" src="p-sitemocks.jsx"></script>
+<script type="text/babel" src="p-landing.jsx"></script>
+<script type="text/babel" src="p-auth.jsx"></script>
+<script type="text/babel" src="p-build.jsx"></script>
+<script type="text/babel" src="p-generate.jsx"></script>
+<script type="text/babel" src="p-dash.jsx"></script>
+<script type="text/babel" src="p-extras.jsx"></script>
+<script type="text/babel" src="p-screens.jsx"></script>
+<script type="text/babel" src="p-more.jsx"></script>
+
+<script type="text/babel" data-presets="env,react">
+const { useState } = React;
+
+const App = () => {
+  const [route, setRoute] = useState({ name: 'landing', params: {} });
+  const [user] = useState({
+    email: 'rosa@bloomflorist.com',
+    name: 'Rosa Mendez',
+    plan: 'Pro Trial',
+    is_trial: true,
+    trial_days_left: 11,
+  });
+
+  const go = (name, params = {}) => {
+    setRoute({ name, params });
+    window.scrollTo(0, 0);
+  };
+
+  // Map route name to component
+  const ROUTES = {
+    landing: <Landing go={go}/>,
+    pricing: <Pricing go={go} user={user}/>,
+    signup: <Auth go={go} mode="signup"/>,
+    login: <Auth go={go} mode="login"/>,
+    dashboard: <Dashboard go={go} user={user}/>,
+    sites: <Sites go={go} user={user}/>,
+    'site-detail': <SiteDetail go={go} params={route.params} user={user}/>,
+    account: <Account go={go} user={user}/>,
+    build: <BuildFlow go={go} initialQ={route.params?.initialQ || ''} user={user}/>,
+    generating: <Generating go={go} params={route.params} user={user}/>,
+    result: <Result go={go} params={route.params} user={user}/>,
+    domain: <DomainConnect go={go} user={user}/>,
+    welcome: <Welcome go={go} user={user}/>,
+    suspended: <Suspended go={go}/>,
+    'public-site': <PublicSite go={go}/>,
+    'mobile-preview': <MobilePreview go={go} user={user}/>,
+    leads: <Leads go={go} user={user}/>,
+    notifications: <Notifications go={go} user={user}/>,
+    help: <Help go={go} user={user}/>,
+    team: <Team go={go} user={user}/>,
+    upgrade: <Upgrade go={go} user={user}/>,
+    changelog: <Changelog go={go} user={user}/>,
+    'not-found': <NotFound go={go}/>,
+  };
+
+  return ROUTES[route.name] || <Landing go={go}/>;
+};
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>

@@ -1,0 +1,51 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo '--- SESSION START ---' && echo 'Loading TASKS.md...' && cat Onara_Vault/TASKS.md || true && echo '' && echo 'Loading code-map...' && cat Onara_Vault/wiki/_code-map.md || true"
+          }
+        ]
+      }
+    ],
+
+    "PreToolUse": [
+      {
+        "matcher": "Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo 'RULES: Must follow wiki/_code-map.md + PROJECT_CONTEXT.md + TASKS.md before writing code'"
+          }
+        ]
+      }
+    ],
+
+    "PostToolUse": [
+      {
+        "matcher": "Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo 'ACTION REQUIRED: Update TASKS.md + logs/code-changes.md if code was modified'"
+          }
+        ]
+      }
+    ],
+
+    "SessionEnd": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo '--- SESSION END ---' && echo 'ACTION REQUIRED: Update TASKS.md + logs/code-changes.md' && echo 'ACTION REQUIRED: logs/code-changes.md must be updated manually or via script'"
+          }
+        ]
+      }
+    ]
+  }
+}

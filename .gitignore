@@ -1,0 +1,14 @@
+# Local editor / agent state
+.claude/settings.local.json
+**/.claude/settings.local.json
+
+# Generated data and runtime state
+Onara_Vault/output/
+Onara_Vault/ruvector.db
+
+# Uploaded/imported assets
+Onara_Design/uploads/
+Onara_Vault/Onara_Design/uploads/
+
+# Sensitive or local-only files
+Onara_Vault/raw/onara-credentials.md

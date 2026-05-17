@@ -1,0 +1,224 @@
+{
+  "main": {
+    "id": "f2ffec4a33f1a069",
+    "type": "split",
+    "children": [
+      {
+        "id": "0fbdd3ab2fbbf9d7",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "de4a1b08c70ed4a5",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "wiki/decisions/_index.md",
+                "mode": "source",
+                "source": false
+              },
+              "icon": "lucide-file",
+              "title": "_index"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "vertical"
+  },
+  "left": {
+    "id": "8baf35e178538cef",
+    "type": "split",
+    "children": [
+      {
+        "id": "ec392aba79c229fb",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "46cf217297e8f263",
+            "type": "leaf",
+            "state": {
+              "type": "file-explorer",
+              "state": {
+                "sortOrder": "alphabetical",
+                "autoReveal": false
+              },
+              "icon": "lucide-folder-closed",
+              "title": "Files"
+            }
+          },
+          {
+            "id": "a948800a693d1690",
+            "type": "leaf",
+            "state": {
+              "type": "search",
+              "state": {
+                "query": "",
+                "matchingCase": false,
+                "explainSearch": false,
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical"
+              },
+              "icon": "lucide-search",
+              "title": "Search"
+            }
+          },
+          {
+            "id": "eae42b18d4be1c1d",
+            "type": "leaf",
+            "state": {
+              "type": "bookmarks",
+              "state": {},
+              "icon": "lucide-bookmark",
+              "title": "Bookmarks"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 300
+  },
+  "right": {
+    "id": "e0c24abd4d1c375a",
+    "type": "split",
+    "children": [
+      {
+        "id": "027bfcb151dbc0e1",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "2ed1c96f44357fac",
+            "type": "leaf",
+            "state": {
+              "type": "backlink",
+              "state": {
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical",
+                "showSearch": false,
+                "searchQuery": "",
+                "backlinkCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-coming-in",
+              "title": "Backlinks"
+            }
+          },
+          {
+            "id": "a92ff567fb761397",
+            "type": "leaf",
+            "state": {
+              "type": "outgoing-link",
+              "state": {
+                "linksCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-going-out",
+              "title": "Outgoing links"
+            }
+          },
+          {
+            "id": "6a429960b92a9d3b",
+            "type": "leaf",
+            "state": {
+              "type": "tag",
+              "state": {
+                "sortOrder": "frequency",
+                "useHierarchy": true,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-tags",
+              "title": "Tags"
+            }
+          },
+          {
+            "id": "12d0a26e2d66818b",
+            "type": "leaf",
+            "state": {
+              "type": "all-properties",
+              "state": {
+                "sortOrder": "frequency",
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-archive",
+              "title": "All properties"
+            }
+          },
+          {
+            "id": "dfa2732e98289d64",
+            "type": "leaf",
+            "state": {
+              "type": "outline",
+              "state": {
+                "followCursor": false,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-list",
+              "title": "Outline"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 300,
+    "collapsed": true
+  },
+  "left-ribbon": {
+    "hiddenItems": {
+      "switcher:Open quick switcher": false,
+      "graph:Open graph view": false,
+      "canvas:Create new canvas": false,
+      "daily-notes:Open today's daily note": false,
+      "templates:Insert template": false,
+      "command-palette:Open command palette": false,
+      "bases:Create new base": false,
+      "obsidian-local-images-plus:Local Images Plus  0.16.4\r\nLocalize attachments (plugin folder)": false
+    }
+  },
+  "active": "de4a1b08c70ed4a5",
+  "lastOpenFiles": [
+    "wiki/decisions/adr-006.md",
+    "wiki/decisions/adr-005.md",
+    "wiki/decisions/adr-004.md",
+    "wiki/decisions/adr-003.md",
+    "wiki/decisions/adr-002.md",
+    "wiki/decisions/adr-001.md",
+    "wiki/legal/privacy-policy.md",
+    "wiki/research/competitors.md",
+    "wiki/research/facebook-groups.md",
+    "wiki/research/gbp-search-process.md",
+    "wiki/research/_index.md",
+    "wiki/_structure-guide.md",
+    "CLAUDE.md",
+    "CONTEXT_INDEX.md",
+    "CONTEXT_LOCK.md",
+    "PROJECT_CONTEXT.md",
+    "TASKS.md",
+    "wiki/testing/test-strategy.md",
+    "wiki/testing/e2e-tests.md",
+    "wiki/integrations/stripe.md",
+    "wiki/_master-index.md.tmp.122081.432a98d15d1a",
+    "wiki/_master-index.md.tmp.122081.09e860bcaa50",
+    "wiki/architecture/rate-limiting.md",
+    "wiki/architecture/rate-limiting.md.tmp.122081.823a6fca9762",
+    "raw/Onara_Entity_and_Cap_Table.docx",
+    "raw/Onara_Distribution_Playbook.docx",
+    "raw/Onara_Deployment_Runbook.docx",
+    "raw/Onara_Customer_Onboarding_Checklist.docx",
+    "raw/Onara_Contractor_IP_Agreement.docx",
+    "raw/Onara_Competitive_Analysis.docx",
+    "raw/Onara_API_Reference.docx",
+    "raw/onara-credentials.md",
+    "wiki/dev/phase1-github-setup.md",
+    "wiki/features/contractor-features.md",
+    "raw/02_database_schema.md",
+    "wiki/_coding-rules.md",
+    "Untitled.canvas"
+  ]
+}
