@@ -64,22 +64,22 @@ Execution rule:
 
 ### Phase 5 — Database
 
-- [ ] Design and implement Supabase schema (users, projects, revisions tables)
-- [ ] Define all column types and indexes
-- [ ] Write and run migration scripts
+- [x] Design and implement Supabase schema (users, projects, revisions tables)
+- [x] Define all column types and indexes
+- [x] Write and run migration scripts
 
 ### Phase 6 — Database (Security)
 
-- [ ] Implement RLS policies for all tables
-- [ ] Set up auth trigger (on new user signup)
-- [ ] Write Supabase edge functions: revision reset, trial downgrade, Stripe webhook handler
-- [ ] Configure pg_cron for daily trial check
+- [x] Implement RLS policies for all tables
+- [x] Set up auth trigger (on new user signup)
+- [x] Write Supabase edge functions: revision reset, trial downgrade, Stripe webhook handler
+- [x] Configure pg_cron for daily trial check
 
 ### Phase 7 — Auth & Google Places
 
-- [ ] Configure Google OAuth in Supabase
-- [ ] Add test users to OAuth consent screen
-- [ ] Build and test Google OAuth sign-in flow
+- [x] Configure Google OAuth in Supabase
+- [x] Add test users to OAuth consent screen
+- [x] Build and test Google OAuth sign-in flow
 
 ### Phase 8 — Google Places Route
 
