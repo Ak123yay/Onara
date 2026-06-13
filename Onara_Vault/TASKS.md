@@ -53,7 +53,7 @@ Execution rule:
 - [x] Pull and verify current Ollama models: `qwen3.5:9b` primary and `gemma4:e4b` fallback
 - [x] Confirm Node.js installed (`v22.22.1`)
 - [x] Confirm Python 3.11+ installed (`Python 3.14.4`)
-- [ ] Install pnpm
+- [x] Install pnpm
 - [ ] Set up Cloudflare Tunnel (cloudflared)
 - [ ] Create .env file with all keys from phases 1–2
 
