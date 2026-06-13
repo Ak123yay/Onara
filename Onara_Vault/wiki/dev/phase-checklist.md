@@ -41,7 +41,7 @@ Current actionable phase.
 - [ ] Create `.env` files with all keys from Phases 1–2
 
 ## Phase 4 — Server Environment
-- [ ] Set up FastAPI + Ollama on the same mini PC or DigitalOcean Droplet after Phase 3 works locally
+- [ ] Set up FastAPI + cloudflared + PM2 on the mini PC or DigitalOcean Droplet after Phase 3 works locally; keep Ollama on the main PC over LAN
 - [ ] Configure PM2 for FastAPI auto-restart on crash
 
 ## Phase 5 — Database Schema

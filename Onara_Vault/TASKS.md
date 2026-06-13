@@ -54,12 +54,12 @@ Execution rule:
 - [x] Confirm Node.js installed (`v22.22.1`)
 - [x] Confirm Python 3.11+ installed (`Python 3.14.4`)
 - [x] Install pnpm
-- [ ] Set up Cloudflare Tunnel (cloudflared)
-- [ ] Create .env file with all keys from phases 1–2
+- [x] Set up Cloudflare Tunnel (cloudflared)
+- [x] Create .env file with all keys from phases 1–2
 
 ### Phase 4 — Dev Environment (Mini PC / Server)
 
-- [ ] Set up identical environment on mini PC or DigitalOcean Droplet
+- [x] Set up mini PC/server environment (FastAPI + cloudflared + PM2; Ollama stays on main PC over LAN)
 - [ ] Configure PM2 for FastAPI auto-restart
 
 ### Phase 5 — Database

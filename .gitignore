@@ -13,3 +13,6 @@ Onara_Vault/Onara_Design/uploads/
 # Sensitive or local-only files
 Onara_Vault/raw/onara-credentials.md
 Onara_Vault/raw/onara_credentials.txt
+Onara_Code/app/.env.local
+Onara_Code/pipeline/.env
+*.pem

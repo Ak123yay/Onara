@@ -73,9 +73,9 @@ cloudflared --version
 
 Only do this after Phase 3 works locally.
 
-Recommended server path: run **FastAPI and Ollama on the same mini PC or DigitalOcean Droplet**. Install Python 3.11+, Ollama, `cloudflared`, and PM2 there. Node.js/pnpm are only required on the server if you also plan to build or run the Next.js app there.
+Recommended server path for this workspace: run **FastAPI, `cloudflared`, and PM2 on the mini PC or DigitalOcean Droplet**. Keep Ollama on the main PC and set `OLLAMA_BASE_URL` on the server to the main PC's private LAN URL. Node.js/pnpm are only required on the server if you also plan to build or run the Next.js app there.
 
-Do not run FastAPI on the mini PC with `OLLAMA_BASE_URL=http://localhost:11434` unless Ollama is also running on the mini PC. If Ollama stays on the model PC, `OLLAMA_BASE_URL` must be the model PC's private LAN URL, and the firewall must only allow the mini PC.
+Do not run FastAPI on the mini PC with `OLLAMA_BASE_URL=http://localhost:11434` because Ollama is not running there. Use the model PC's private LAN URL instead, and keep firewall access restricted to the private network.
 
 ---
 
@@ -108,7 +108,7 @@ SUPABASE_SERVICE_ROLE_KEY=eyJ...
 PIPELINE_API_SECRET=your-shared-secret-min-32-chars
 APP_URL=http://localhost:3000
 NVIDIA_NIM_API_KEY=nvapi-...
-OLLAMA_BASE_URL=http://localhost:11434
+OLLAMA_BASE_URL=http://192.168.1.89:11434
 OLLAMA_PRIMARY_MODEL=qwen3.5:9b
 OLLAMA_FALLBACK_MODEL=gemma4:e4b
 CLOUDFLARE_ACCOUNT_ID=xxx
