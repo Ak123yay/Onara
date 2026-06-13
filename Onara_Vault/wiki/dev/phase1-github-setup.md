@@ -129,5 +129,5 @@ Paste into `Onara_Code/config/.env.template` as `COPILOT_GITHUB_TOKEN`.
 
 - `wiki/integrations/github.md` — GitHub App setup (Phase 1 Tasks 3–4)
 - `wiki/dev/setup.md` — full local env setup sequence
-- `wiki/architecture/env-vars.md` — all 45 env vars
+- `wiki/architecture/env-vars.md` — environment variable reference
 - `Onara_Code/config/.env.template` — paste collected values here

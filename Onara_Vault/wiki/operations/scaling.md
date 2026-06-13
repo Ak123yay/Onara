@@ -9,7 +9,7 @@ Thresholds and execution steps for each scaling decision. Everything below is po
 | Bottleneck | Current capacity | Break point |
 |-----------|-----------------|-------------|
 | Concurrent pipeline jobs | 1–2 (single FastAPI server) | Avg wait time > 5 min |
-| Ollama (qwen3:8b) | 1 request at a time | When 2+ jobs run concurrently |
+| Ollama (qwen3.5:9b) | 1 request at a time | When 2+ jobs run concurrently |
 | NVIDIA NIM (free) | 40 RPM / 1000 RPD | When pipeline fails with 429 > 5×/day |
 | Supabase (free) | 500 MB DB, 50K MAU | At ~500 active users |
 | Cloudflare Pages | Unlimited sites, unlimited bandwidth | No known limit |
@@ -40,8 +40,8 @@ Thresholds and execution steps for each scaling decision. Everything below is po
 **Why now**: Ollama is CPU-bound. A second server doubles throughput without code changes.
 
 **Steps**:
-1. Provision second DigitalOcean Droplet: `$24/month 4 GB RAM` (same spec as primary)
-2. Install identical stack: Python, FastAPI, Ollama, qwen3:8b, llama3.3:8b
+1. Provision a second server with enough RAM for FastAPI + Ollama (16 GB minimum; 24 GB recommended)
+2. Install identical stack: Python, FastAPI, Ollama, qwen3.5:9b, gemma4:e4b
 3. Add simple round-robin load balancing in Next.js:
    ```typescript
    const servers = [process.env.PIPELINE_SERVER_1, process.env.PIPELINE_SERVER_2]
@@ -49,7 +49,7 @@ Thresholds and execution steps for each scaling decision. Everything below is po
    ```
 4. BullMQ must be in place first — both servers must share the same Redis queue
 
-**Cost**: +$24/month
+**Cost**: depends on selected server size
 
 ---
 
@@ -98,7 +98,7 @@ Thresholds and execution steps for each scaling decision. Everything below is po
 
 **Signal**: P95 pipeline time consistently > 120 seconds
 
-**Why**: CPU-only inference on qwen3:8b takes 5–15s per agent. With a GPU, this drops to 0.5–2s, cutting pipeline time by 5–10×.
+**Why**: CPU-only inference on qwen3.5:9b takes 5–15s per agent. With a GPU, this drops to 0.5–2s, cutting pipeline time by 5–10×.
 
 **Options**:
 - **Runpod** GPU instance: RTX 3090 at ~$0.30/hour → stop when not in use
@@ -119,7 +119,7 @@ Thresholds and execution steps for each scaling decision. Everything below is po
 If moving from local PC + Cloudflare Tunnel to a permanent cloud server:
 
 ```bash
-# 1. Provision Droplet: Ubuntu 22.04, 4 GB RAM, $24/month
+# 1. Provision server: Ubuntu 22.04, 16 GB minimum; 24 GB recommended
 # 2. SSH in
 ssh root@your-droplet-ip
 
@@ -129,8 +129,8 @@ pip install uvicorn fastapi chromadb sentence-transformers
 
 # 4. Install Ollama
 curl -fsSL https://ollama.com/install.sh | sh
-ollama pull qwen3:8b
-ollama pull llama3.3:8b
+ollama pull qwen3.5:9b
+ollama pull gemma4:e4b
 
 # 5. Install PM2
 npm install -g pm2
@@ -145,7 +145,7 @@ apt install -y certbot python3-certbot-nginx
 certbot --nginx -d pipeline.onara.tech
 ```
 
-**Cost**: $24/month replaces Cloudflare Tunnel (free) but gives a stable URL and eliminates dependency on your PC's uptime.
+**Cost**: depends on server size. A permanent server replaces the temporary Cloudflare Tunnel workflow with a stable URL and removes dependency on your PC's uptime.
 
 ---
 

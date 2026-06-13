@@ -32,11 +32,12 @@ Every table in the Supabase database has RLS enabled. Users can only read/write 
 
 | Table | RLS Policy |
 |-------|-----------|
-| `user_profiles` | `user_id = auth.uid()` |
-| `user_sites` | `user_id = auth.uid()` |
-| `generation_jobs` | `user_id = auth.uid()` |
+| `users` | `id = auth.uid()` |
+| `projects` | `user_id = auth.uid()` |
+| `pipeline_jobs` | `user_id = auth.uid()` |
 | `revisions` | `user_id = auth.uid()` |
-| `subscriptions` | `user_id = auth.uid()` |
+| `pipeline_errors` | `user_id = auth.uid()` |
+| `gbp_sync_log` | project owner via `projects.user_id = auth.uid()` |
 
 - Service role key (`SUPABASE_SERVICE_ROLE_KEY`) bypasses RLS — used only in server-side Next.js routes and Edge Functions, never exposed to browser
 - Anon key (`NEXT_PUBLIC_SUPABASE_ANON_KEY`) is client-safe — RLS enforces all restrictions
@@ -44,11 +45,11 @@ Every table in the Supabase database has RLS enabled. Users can only read/write 
 ### Plan-Based Feature Gating
 
 - Checked in Next.js API routes before calling FastAPI
-- Plan tier read from `subscriptions` table via service role
+- Plan tier read from `public.users` via service role
 - Gates:
-  - Site limit: Starter 3, Pro unlimited
+  - Site limit: Free 1 preview site, Starter 1 live site, Pro 3 live sites
   - Code download: `FEATURE_CODE_DOWNLOAD` flag + Pro check
-  - Agent 6 model: Free/Starter → `kimi-k2.6`; Pro → Claude Sonnet or user-provided GPT key
+  - Agent 6 model: Free/Trial → NIM `kimi-k2.6`; Starter → GitHub Copilot SDK; Pro → user-provided Claude/OpenAI key
 
 ---
 

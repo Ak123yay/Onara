@@ -61,8 +61,11 @@ Run these in Supabase SQL editor for operational visibility.
 ```sql
 SELECT job_id, user_id, status, created_at,
        now() - created_at AS age
-FROM generation_jobs
-WHERE status = 'processing'
+FROM (
+  SELECT id AS job_id, user_id, status, started_at AS created_at
+  FROM pipeline_jobs
+) j
+WHERE status = 'running'
   AND created_at < now() - interval '10 minutes'
 ORDER BY created_at;
 ```
@@ -74,8 +77,8 @@ SELECT
   status,
   count(*) AS count,
   round(count(*) * 100.0 / sum(count(*)) OVER (), 1) AS pct
-FROM generation_jobs
-WHERE created_at > now() - interval '7 days'
+FROM pipeline_jobs
+WHERE COALESCE(completed_at, started_at, queued_at) > now() - interval '7 days'
 GROUP BY status
 ORDER BY count DESC;
 ```
@@ -85,38 +88,38 @@ ORDER BY count DESC;
 ```sql
 -- New signups this week
 SELECT count(*) AS new_users
-FROM user_profiles
+FROM users
 WHERE created_at > now() - interval '7 days';
 
 -- Active trials
 SELECT count(*) AS active_trials
-FROM subscriptions
-WHERE plan = 'trial'
+FROM users
+WHERE is_trial = true
   AND trial_ends_at > now();
 
 -- Trials ending in 3 days (conversion opportunity)
 SELECT count(*) AS expiring_soon
-FROM subscriptions
-WHERE plan = 'trial'
+FROM users
+WHERE is_trial = true
   AND trial_ends_at BETWEEN now() AND now() + interval '3 days';
 
 -- Paid subscribers by plan
 SELECT plan, count(*) AS count
-FROM subscriptions
+FROM users
 WHERE plan IN ('starter', 'pro')
 GROUP BY plan;
 
 -- Sites generated this week
 SELECT count(*) AS sites_generated
-FROM generation_jobs
-WHERE status = 'completed'
+FROM projects
+WHERE status = 'live'
   AND created_at > now() - interval '7 days';
 
 -- MRR estimate
 SELECT
   sum(CASE WHEN plan = 'starter' THEN 12 ELSE 0 END) +
   sum(CASE WHEN plan = 'pro' THEN 29 ELSE 0 END) AS mrr_usd
-FROM subscriptions
+FROM users
 WHERE plan IN ('starter', 'pro');
 ```
 

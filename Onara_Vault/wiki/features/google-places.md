@@ -6,7 +6,7 @@ _How the Google Places API (New) is used to fetch business data for site generat
 
 ## Overview
 
-The Places API is the data source for every site generation. Agent 1 (GBP Fetcher) calls it to pull all available business information: name, address, phone, hours, description, photos, rating, reviews. This raw data is the foundation for all subsequent agents.
+The Places API is the data source for every site generation. The Next.js build flow calls it to pull available business information: name, address, phone, hours, description, photos, rating, and reviews. Agent 1 (Business Analyst) receives that confirmed business data and turns it into site requirements for the rest of the pipeline.
 
 ---
 
@@ -106,4 +106,4 @@ This ensures business owners can still generate a site even if search doesn't fi
 
 - `wiki/architecture/env-vars.md` — `GOOGLE_PLACES_API_KEY` location
 - `wiki/features/api.md` — `/api/places/search` route contract
-- `wiki/ai_agents/agents.md` — Agent 1 (GBP Fetcher) details
+- `wiki/ai_agents/agents.md` — Agent 1 (Business Analyst) details

@@ -6,15 +6,15 @@ _Full copy for onara.tech. Source: `raw/08_landing_page_copy.md`._
 
 ## SEO / Meta
 
-**Title**: `Onara — AI Website Builder for Local Businesses`  
-**Meta description**: `Turn your Google Business Profile into a professional website in 90 seconds. No designer, no code, no hassle. Free 14-day trial.`  
+**Title**: `Onara — AI Website Builder for Local Contractors`  
+**Meta description**: `Turn your Google Business Profile into a professional contractor website in 90 seconds. No designer, no code, no hassle. Free 14-day trial.`  
 **OG image alt**: `Onara — AI website builder`
 
 ---
 
 ## Hero Section
 
-**Headline**: `Your business deserves a website. We build it in 90 seconds.`
+**Headline**: `Your contracting business deserves a website. We build it in 90 seconds.`
 
 **Subheadline**: `We pull your info from Google Maps — your hours, photos, description, reviews — and turn it into a professional website. No design skills needed.`
 
@@ -22,7 +22,7 @@ _Full copy for onara.tech. Source: `raw/08_landing_page_copy.md`._
 **Sub-CTA**: `14-day free trial · No credit card · No code`
 
 **Social proof** (below CTA):  
-`Trusted by 500+ local businesses` *(update as signups grow)*
+`Early access for Washington DC / Northern Virginia contractors`
 
 ---
 
@@ -51,12 +51,12 @@ Icon: Globe
 
 | Feature | Description |
 |---------|-------------|
-| Google Business Profile sync | Pulls your name, address, phone, hours, photos, and description automatically |
+| Google Business Profile import | Pulls your name, address, phone, hours, photos, and description automatically |
 | Professional design | AI picks colors, fonts, and layout based on your business type |
 | SEO-optimized | Structured data, meta tags, and local schema so Google finds you |
 | Mobile-first | Looks perfect on phones — where 70% of local searches happen |
 | Live in 90 seconds | From signup to published site in under 2 minutes |
-| No maintenance | Your site is always current — no updates to manage |
+| Maintenance-light | Request changes from the dashboard instead of editing a website builder |
 
 ---
 
@@ -68,13 +68,13 @@ Icon: Globe
 
 ```
 "I had a website in 2 minutes. My competitor took 3 months to build theirs."
-— Sarah M., Hair Salon Owner
+— Placeholder, HVAC Contractor
 
 "My customers can finally find my hours online without calling me."
 — James T., Plumber
 
 "I didn't know what a website even cost. This is less than my phone bill."
-— Maria L., Bakery Owner
+— Placeholder, Landscaper
 ```
 
 ---
@@ -87,8 +87,8 @@ Icon: Globe
 
 | Plan | Price | Key features |
 |------|-------|-------------|
-| **Starter** | $12/mo or $99/yr | 3 websites · 3 revisions/month · SEO included |
-| **Pro** | $29/mo | Unlimited websites · Unlimited revisions · Code download |
+| **Starter** | $12/mo or $99/yr | 1 live website · 10 revisions/month · SEO included |
+| **Pro** | $29/mo | 3 live websites · Unlimited revisions · Code download |
 
 **Pricing CTA**: `Start free →`  
 **Pricing note**: `Upgrade, downgrade, or cancel anytime.`
@@ -101,13 +101,13 @@ Icon: Globe
 A: No. We handle everything. You type your business name, we build the site.
 
 **Q: What if my information is wrong on the site?**  
-A: Update your Google Business Profile — your site will reflect the latest info. Or request a revision.
+A: Request a revision from your dashboard. Future versions will add Google Business Profile change detection.
 
 **Q: Can I use my own domain?**  
 A: Custom domains coming soon. For now, you get a professional onara.tech subdomain.
 
 **Q: What happens after my trial ends?**  
-A: Your site stays live. To generate new sites or request revisions, choose a plan. No pressure.
+A: Your dashboard preview remains available. Your public URL is hidden unless you upgrade to Starter or Pro.
 
 **Q: Can I cancel anytime?**  
 A: Yes. One click in your account settings. No cancellation fees.
@@ -146,9 +146,9 @@ A: You can still try Onara and compare. Many users replace old Wix/Squarespace s
 | No results | `Can't find your business? Enter your Google Place ID manually` |
 | Generate button | `Build My Website` |
 | Progress screen | `Building your site... This takes about 90 seconds` |
-| Site ready | `Your site is live! 🎉` |
+| Site ready | `Your site is live!` |
 | Upgrade prompt | `Upgrade to keep generating sites` |
-| Revision limit | `You've used your 3 revisions this month` |
+| Revision limit | `You've used your revisions for this billing period` |
 
 ---
 

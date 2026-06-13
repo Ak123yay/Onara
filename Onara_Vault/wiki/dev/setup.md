@@ -42,11 +42,13 @@ Complete setup from zero to a running local environment. Follow phases in order 
 | **Resend** | Create account → verify domain → create API key | `RESEND_API_KEY` |
 | **NVIDIA NIM** | Go to build.nvidia.com → create API key | `NVIDIA_NIM_API_KEY` |
 
-See `wiki/architecture/env-vars.md` for the complete list of all 45 env vars.
+See `wiki/architecture/env-vars.md` for the complete environment variable reference.
 
 ---
 
 ## Phase 3 — PC Dev Environment
+
+Recommended v1 development path: run **Next.js, FastAPI, Ollama, ChromaDB, and `cloudflared` on the same PC** until the pipeline works end to end. This avoids cross-machine `localhost` mistakes.
 
 ```bash
 # Required tools
@@ -54,26 +56,36 @@ node --version     # 20+ required
 python --version   # 3.11+ required
 pnpm --version     # install: npm install -g pnpm
 
-# Install Ollama (macOS)
-brew install ollama
-ollama serve &
-ollama pull qwen3:8b       # primary model — takes ~5 min, ~6 GB
-ollama pull llama3.3:8b    # fallback model — takes ~5 min, ~6 GB
+# Install Ollama, then start it
+ollama serve
+ollama pull qwen3.5:9b       # primary local model
+ollama pull gemma4:e4b       # supervisor + local fallback model
 
-# Install Cloudflare Tunnel
-brew install cloudflared
-# Linux: see wiki/integrations/cloudflare.md
+# Install Cloudflare Tunnel on the same machine that runs FastAPI
+cloudflared --version
 ```
 
-**RAM requirement**: At minimum 16 GB to run both Ollama models simultaneously. Both models stay loaded in RAM while FastAPI is running. If you have 8 GB, run only `qwen3:8b` and use NIM fallback for `llama3.3:8b` tasks.
+**RAM requirement**: 16 GB is the practical minimum for one hot model at a time; 24 GB+ is recommended for reliable local fallback with `qwen3.5:9b` and `gemma4:e4b`. Keep concurrency at 1 until benchmarks prove the machine can handle more.
 
 ---
 
-## Phase 4 — Environment File
+## Phase 4 — Mini PC / Server Environment
+
+Only do this after Phase 3 works locally.
+
+Recommended server path: run **FastAPI and Ollama on the same mini PC or DigitalOcean Droplet**. Install Python 3.11+, Ollama, `cloudflared`, and PM2 there. Node.js/pnpm are only required on the server if you also plan to build or run the Next.js app there.
+
+Do not run FastAPI on the mini PC with `OLLAMA_BASE_URL=http://localhost:11434` unless Ollama is also running on the mini PC. If Ollama stays on the model PC, `OLLAMA_BASE_URL` must be the model PC's private LAN URL, and the firewall must only allow the mini PC.
+
+---
+
+## Environment Files
 
 Create `.env` in the Next.js project root and a separate `.env` in the FastAPI project root.
 
-**Next.js `.env.local`** (see `wiki/architecture/env-vars.md` for all values)
+Do not put real `.env` files in `Onara_Vault/`.
+
+**Next.js `.env.local`** at `Onara_Code/app/.env.local` (see `wiki/architecture/env-vars.md` for all values)
 ```bash
 # Required for local dev
 NEXT_PUBLIC_SUPABASE_URL=https://xxx.supabase.co
@@ -89,13 +101,16 @@ RESEND_FROM_EMAIL=hello@onara.tech
 APP_URL=http://localhost:3000
 ```
 
-**FastAPI `.env`**
+**FastAPI `.env`** at `Onara_Code/pipeline/.env`
 ```bash
 SUPABASE_URL=https://xxx.supabase.co
 SUPABASE_SERVICE_ROLE_KEY=eyJ...
 PIPELINE_API_SECRET=your-shared-secret-min-32-chars
 APP_URL=http://localhost:3000
 NVIDIA_NIM_API_KEY=nvapi-...
+OLLAMA_BASE_URL=http://localhost:11434
+OLLAMA_PRIMARY_MODEL=qwen3.5:9b
+OLLAMA_FALLBACK_MODEL=gemma4:e4b
 CLOUDFLARE_ACCOUNT_ID=xxx
 CLOUDFLARE_API_TOKEN=xxx
 GITHUB_APP_ID=xxx
@@ -108,6 +123,8 @@ COPILOT_GITHUB_TOKEN=github_pat_...
 
 ## Starting the Development Environment
 
+Run these on the same PC for Phase 3.
+
 ```bash
 # Terminal 1 — Ollama (if not already running as a service)
 ollama serve
@@ -117,12 +134,12 @@ cloudflared tunnel --url http://localhost:8000
 # Copy the generated URL → set as PIPELINE_SERVER_URL in Next.js .env
 
 # Terminal 3 — FastAPI
-cd onara-pipeline
+cd Onara_Code/pipeline
 pip install -r requirements.txt
 uvicorn main:app --reload --port 8000
 
 # Terminal 4 — Next.js
-cd onara-app
+cd Onara_Code/app
 pnpm install
 pnpm dev
 # Open http://localhost:3000
@@ -136,7 +153,7 @@ After creating the Supabase project:
 
 1. Run schema migrations — see `wiki/data/migrations.md`
 2. Configure Google OAuth — see `wiki/integrations/google.md`
-3. Set Site URL: `https://localhost:3000` (dev), `https://onara.tech` (prod)
+3. Set Site URL: `http://localhost:3000` (dev), `https://onara.tech` (prod)
 4. Create `site-html` storage bucket (private) — see `wiki/integrations/supabase.md`
 5. Enable pg_cron — requires Pro plan; see `wiki/data/pg-cron-jobs.md` for free-tier alternative
 

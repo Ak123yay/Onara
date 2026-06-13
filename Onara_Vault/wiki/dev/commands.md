@@ -6,17 +6,22 @@ Quick reference for the commands used most often.
 
 ## Starting the Stack
 
+Phase 3 dev assumes one machine runs Next.js, FastAPI, Ollama, and `cloudflared`.
+
 ```bash
 # Start Ollama (if not running as a service)
 ollama serve
 
-# Start Cloudflare Tunnel (new URL on every run — update PIPELINE_SERVER_URL)
+# Start Cloudflare Tunnel on the same machine as FastAPI.
+# New URL on every run — update PIPELINE_SERVER_URL.
 cloudflared tunnel --url http://localhost:8000
 
 # Start FastAPI (from pipeline project root)
+cd Onara_Code/pipeline
 uvicorn main:app --reload --port 8000
 
 # Start Next.js (from app project root)
+cd Onara_Code/app
 pnpm dev
 ```
 
@@ -26,8 +31,8 @@ pnpm dev
 
 ```bash
 ollama list                          # list pulled models
-ollama pull qwen3:8b                 # pull primary model
-ollama pull llama3.3:8b              # pull fallback model
+ollama pull qwen3.5:9b                 # pull primary model
+ollama pull gemma4:e4b              # pull fallback model
 ollama rm model-name                 # remove a model
 curl http://localhost:11434/api/tags  # check running models
 ```
@@ -88,6 +93,7 @@ pip install -r requirements.txt
 uvicorn main:app --reload --port 8000
 
 # Run with PM2 (production)
+cd Onara_Code/pipeline
 pm2 start "uvicorn main:app --port 8000" --name onara-pipeline
 pm2 save
 pm2 startup

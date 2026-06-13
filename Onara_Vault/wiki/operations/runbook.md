@@ -9,19 +9,19 @@ _Daily procedures, incident playbooks, and monitoring setup. Source: `raw/12_ope
 Run every morning before starting development:
 
 1. **UptimeRobot**: Check all monitors green — Next.js app, FastAPI `/health`, Cloudflare Pages test site
-2. **Supabase**: Check `generation_jobs` for any jobs stuck in `processing` for >10 minutes
+2. **Supabase**: Check `pipeline_jobs` for any jobs stuck in `running` for >10 minutes
 3. **Stripe**: Check for any failed payments or disputed charges in Stripe dashboard
 4. **FastAPI logs**: Check for recurring 500 errors or NIM rate limit warnings
 5. **Email delivery**: Check Resend dashboard for any bounced or failed sends
 
 ```sql
 -- Check for stuck jobs (run in Supabase SQL editor)
-SELECT job_id, user_id, status, created_at,
-       now() - created_at AS age
-FROM generation_jobs
-WHERE status = 'processing'
-  AND created_at < now() - interval '10 minutes'
-ORDER BY created_at;
+SELECT id AS job_id, user_id, project_id, status, started_at,
+       now() - started_at AS age
+FROM pipeline_jobs
+WHERE status = 'running'
+  AND started_at < now() - interval '10 minutes'
+ORDER BY started_at;
 ```
 
 ---
@@ -37,9 +37,9 @@ ORDER BY created_at;
 2. Check FastAPI process: `ps aux | grep uvicorn`
 3. If not running: `cd ~/onara && uvicorn main:app --host 0.0.0.0 --port 8000 &`
 4. Check Cloudflare Tunnel status: `cloudflared tunnel list`
-5. Restart tunnel if needed: `cloudflared tunnel run onara-dev`
+5. Restart tunnel if needed: `cloudflared tunnel --url http://localhost:8000`
 6. Verify health: `curl https://{PIPELINE_SERVER_URL}/health`
-7. Update `generation_jobs` stuck in `processing`: set to `failed`
+7. Update `pipeline_jobs` stuck in `running`: set to `failed`
 8. Send manual email to affected users (see email template below)
 
 **Resolution time target**: < 15 minutes
@@ -48,14 +48,14 @@ ORDER BY created_at;
 
 ### 2. Generation Stuck (Individual Job)
 
-**Symptoms**: Single user reports progress bar stopped; SSE events stopped; job still shows `processing`
+**Symptoms**: Single user reports progress bar stopped; SSE events stopped; job still shows `running`
 
 **Steps**:
-1. Find job in Supabase: `SELECT * FROM generation_jobs WHERE job_id = '{jobId}'`
+1. Find job in Supabase: `SELECT * FROM pipeline_jobs WHERE id = '{jobId}'`
 2. Check FastAPI logs for the job ID to identify which agent failed
 3. If Supervisor rejected after 3 retries → job should auto-fail (check job status)
 4. If job is genuinely stuck (no log activity for 5+ minutes):
-   - Manually update: `UPDATE generation_jobs SET status = 'failed' WHERE job_id = '{jobId}'`
+   - Manually update: `UPDATE pipeline_jobs SET status = 'failed' WHERE id = '{jobId}'`
    - Contact user: "Your generation failed — please try again, no charge"
 5. If NIM rate limit caused failure: wait 1 minute and ask user to retry
 
@@ -69,24 +69,24 @@ ORDER BY created_at;
 
 **Steps**:
 1. Check Cloudflare Pages dashboard for failed deployment
-2. Check FastAPI logs for Agent 10 Cloudflare API errors
+2. Check FastAPI logs for deployment-module Cloudflare API errors
 3. Common causes:
    - `CLOUDFLARE_API_TOKEN` expired → rotate in Cloudflare dashboard, update `.env`
-   - Cloudflare Pages project doesn't exist → Agent 10 should create it; check logs
-   - HTML file too large → check Agent 7 output size (should be < 25MB)
+   - Cloudflare Pages project doesn't exist → deployment module should create it; check logs
+   - HTML file too large → check final HTML output size (should be < 25MB)
 4. Manual re-deploy:
    ```bash
    curl -X POST "https://api.cloudflare.com/client/v4/accounts/{id}/pages/projects/{name}/deployments" \
      -H "Authorization: Bearer {token}" \
      -F "file=@index.html"
    ```
-5. Update `generation_jobs` with correct `site_url` once deployed
+5. Update `projects.public_url` with the correct URL once deployed
 
 ---
 
 ### 4. Stripe Webhook Not Processing
 
-**Symptoms**: User upgraded but plan not changed; payment succeeded in Stripe but `subscriptions` table not updated
+**Symptoms**: User upgraded but plan not changed; payment succeeded in Stripe but `users` billing fields not updated
 
 **Steps**:
 1. Check Stripe dashboard → Webhooks → endpoint → recent deliveries
@@ -97,7 +97,7 @@ ORDER BY created_at;
    - Raw body parsing issue → check Next.js route config (`bodyParser: false`)
    - Database error → check Supabase for connection issues
 5. Manual fix: Use Stripe dashboard "Resend" button on failed webhook
-6. If webhook cannot be resent: manually update `subscriptions` table in Supabase
+6. If webhook cannot be resent: manually update the user's `plan`, `subscription_status`, `stripe_customer_id`, and `stripe_subscription_id` fields in Supabase
 
 ---
 
@@ -106,9 +106,9 @@ ORDER BY created_at;
 **Symptoms**: User's site has wrong business name, copy from a different business, or garbled content
 
 **Steps**:
-1. Check `generation_jobs` for the job: inspect `place_id` field
+1. Check `pipeline_jobs` for the job and the linked `projects.google_place_id`
 2. Verify the Google Place ID returned the correct business via Places API
-3. If correct Place ID but wrong content → Agent 2 or Agent 4 hallucination
+3. If correct Place ID but wrong content → Agent 1 analysis or Agent 2 copy issue
 4. Resolution: trigger a free regeneration for the user
    - Mark original job `status = 'failed'`
    - Do NOT count against their site limit

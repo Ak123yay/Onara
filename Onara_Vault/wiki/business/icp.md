@@ -15,21 +15,22 @@ _Who Onara is built for, their pain points, and who it's explicitly not for._
 - Not technical — doesn't know what a CMS is
 - Pays someone else to handle anything digital
 
-**Industries** (in priority order based on Google Places data volume):
-1. Restaurants / cafés / bakeries
-2. Hair salons / barbershops / beauty
-3. Plumbers / electricians / HVAC / contractors
+**Industries** (launch priority):
+1. Plumbers / electricians / HVAC / roofers / landscapers / handymen
+2. Other home-service contractors with strong local-search intent
+3. Auto repair / detailing
 4. Dentists / chiropractors / medical practices
 5. Accountants / bookkeepers / tax preparers
 6. Fitness / gyms / personal trainers
-7. Auto repair / detailing
-8. Real estate agents (individual, not brokerages)
-9. Lawyers (solo practitioners)
-10. Pet groomers / veterinarians
+7. Hair salons / barbershops / beauty
+8. Restaurants / cafés / bakeries
+9. Real estate agents (individual, not brokerages)
+10. Lawyers (solo practitioners)
 
 **Geographic focus** (launch):
-- English-speaking markets: US, UK, Canada, Australia
-- Urban and suburban — higher density of the above business types
+- Washington DC / Northern Virginia first
+- Covers DC proper + Arlington, Alexandria, Fairfax, Loudoun, and Prince William counties
+- Other English-speaking markets are expansion targets after the first metro has real conversion data
 - Rural markets: lower priority (fewer reviews, less GBP data)
 
 ---
@@ -39,7 +40,7 @@ _Who Onara is built for, their pain points, and who it's explicitly not for._
 | Pain Point | How Onara Solves It |
 |-----------|---------------------|
 | "I don't have time to build a website" | 60–120 second generation |
-| "I don't know how to update a website" | No updates needed — site reflects GBP data |
+| "I don't know how to update a website" | Request revisions from the dashboard; post-v1 sync can automate more updates |
 | "Web designers are too expensive ($500–$2000)" | $12/month, no setup fee |
 | "I built a Wix site but it looks bad" | AI-generated, professional design |
 | "My site isn't showing up on Google" | SEO-optimized HTML with structured data |

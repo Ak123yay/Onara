@@ -8,7 +8,7 @@ Each agent entry: model → system prompt → user prompt template → output co
 
 ## Agent 1 — Business Analyst
 
-**Model**: NVIDIA NIM `deepseek-ai/deepseek-v4-flash` | **Fallback**: Ollama `llama3.3:8b`
+**Model**: NVIDIA NIM `deepseek-ai/deepseek-v4-flash` | **Fallback**: Ollama `gemma4:e4b`
 
 **System Prompt**
 ```
@@ -67,7 +67,7 @@ Return this exact JSON structure:
 
 ## Agent 2 — Content Writer
 
-**Model**: Ollama `qwen3:8b` | **Input**: Business data + Agent 1 output
+**Model**: Ollama `qwen3.5:9b` | **Input**: Business data + Agent 1 output
 
 **System Prompt**
 ```
@@ -120,7 +120,7 @@ Return this JSON structure:
 
 ## Agent 3 — Style Agent
 
-**Model**: Ollama `qwen3:8b` | **Input**: Business data + Agent 1 industry type
+**Model**: Ollama `qwen3.5:9b` | **Input**: Business data + Agent 1 industry type
 
 Agents 2 and 3 run in **parallel** — do not sequence them.
 
@@ -171,7 +171,7 @@ Return this JSON structure:
 
 ## Agent 4 — Planner
 
-**Model**: NVIDIA NIM `deepseek-ai/deepseek-v4-pro` | **Fallback**: Ollama `llama3.3:8b`
+**Model**: NVIDIA NIM `deepseek-ai/deepseek-v4-pro` | **Fallback**: Ollama `gemma4:e4b`
 
 **System Prompt**
 ```
@@ -222,7 +222,7 @@ Return this structure:
 
 ## Agent 5 — Prompt Engineer
 
-**Model**: NVIDIA NIM `moonshotai/kimi-k2.6` | **Fallback**: Ollama `llama3.3:8b`
+**Model**: NVIDIA NIM `moonshotai/kimi-k2.6` | **Fallback**: Ollama `gemma4:e4b`
 
 **System Prompt**
 ```
@@ -268,10 +268,11 @@ The generated site must:
 ## Agent 6 — Code Generator
 
 **Model (plan-gated)**:
-- Free / Starter: NVIDIA NIM `moonshotai/kimi-k2.6`
-- Pro: Claude API `claude-sonnet-4-20250514` (or OpenAI if user provides key)
+- Free / Trial: NVIDIA NIM `moonshotai/kimi-k2.6`
+- Starter: GitHub Copilot SDK model selected by user, with NIM fallback
+- Pro: Claude API or OpenAI if user provides key, with NIM fallback
 - Fallback 1: NVIDIA NIM `deepseek-ai/deepseek-v4-flash`
-- Fallback 2: Ollama `qwen3:8b`
+- Fallback 2: Ollama `gemma4:e4b`
 
 **System Prompt**
 ```
@@ -301,7 +302,7 @@ html_content = re.search(pattern, output, re.DOTALL).group(1).strip()
 
 ## Agent 7 — Debugger
 
-**Model**: NVIDIA NIM `moonshotai/kimi-k2.6` | **Fallback**: Ollama `qwen3:8b`
+**Model**: NVIDIA NIM `moonshotai/kimi-k2.6` | **Fallback**: Ollama `gemma4:e4b`
 
 **System Prompt**
 ```
@@ -346,7 +347,7 @@ Also performs RAG lookup: queries ChromaDB for relevant pattern solutions before
 
 ## Agent 8 — SEO Agent
 
-**Model**: Ollama `qwen3:8b`
+**Model**: Ollama `qwen3.5:9b`
 
 **System Prompt**
 ```
@@ -388,7 +389,7 @@ Return the complete updated HTML file.
 
 ## Agent 9 — QA Agent
 
-**Model**: NVIDIA NIM `deepseek-ai/deepseek-v4-pro` | **Fallback**: Ollama `llama3.3:8b`
+**Model**: NVIDIA NIM `deepseek-ai/deepseek-v4-pro` | **Fallback**: Ollama `gemma4:e4b`
 
 **Output**: PASS or blocking issues JSON — does not fix code, only flags for retry.
 
@@ -438,7 +439,7 @@ Return:
 
 ## Agent 10 — Mobile Agent
 
-**Model**: Ollama `qwen3:8b` | **Note**: Always returns full file — never returns "PASS"
+**Model**: Ollama `qwen3.5:9b` | **Note**: Always returns full file — never returns "PASS"
 
 **System Prompt**
 ```
@@ -469,7 +470,7 @@ Fix any failures and return the complete updated file.
 
 ## Supervisor
 
-**Model**: Ollama `llama3.3:8b`
+**Model**: Ollama `gemma4:e4b`
 
 **System Prompt**
 ```

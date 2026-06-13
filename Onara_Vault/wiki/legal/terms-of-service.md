@@ -25,9 +25,10 @@ These limits are defined in the ToS and enforced in code:
 
 | Plan | Site limit | Revision limit | Code download |
 |------|-----------|---------------|---------------|
-| Free / Trial | 3 sites | 3/month | No |
-| Starter | 3 sites | 3/month | No |
-| Pro | Unlimited | Unlimited | Yes |
+| Trial | 3 sites during trial | Unlimited during trial | Yes during trial |
+| Free | 1 preview site | 3/month | No |
+| Starter | 1 live site | 10/month | No |
+| Pro | 3 live sites | Unlimited | Yes |
 
 ---
 
@@ -70,7 +71,7 @@ These limits are defined in the ToS and enforced in code:
 
 | ToS Provision | Engineering Implication |
 |--------------|------------------------|
-| 3-site limit for Starter | Enforced in `/api/generate` with plan check |
+| Plan site limits | Enforced in `/api/generate` and database trigger |
 | 7-day refund | Support must process within 7 days — see billing-ops |
 | 30-day post-cancellation site availability | Sites not deleted from Cloudflare immediately on cancellation |
 | Content ownership | Do not modify or claim generated HTML beyond serving it |

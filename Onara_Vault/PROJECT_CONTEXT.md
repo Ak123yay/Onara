@@ -31,7 +31,7 @@ Pre-launch. Architecture fully defined. Development not yet begun. This repo + w
 ### AI Pipeline Server
 
 - **FastAPI** (Python) — runs on personal PC at launch, migrates to DigitalOcean
-- **Ollama** — local 8B models (qwen3:8b for agents 2, 3, 8, 10)
+- **Ollama** — local under-10B models (`qwen3.5:9b` primary for agents 2, 3, 8, 10; `gemma4:e4b` fallback/supervisor)
 - **NVIDIA NIM** — cloud models via one free nvapi- key
 - Exposed via Cloudflare Tunnel at launch (command: `cloudflared tunnel --url http://localhost:8000`)
 - No timeout pressure — handles the full 10-agent pipeline
@@ -59,17 +59,17 @@ Pre-launch. Architecture fully defined. Development not yet begun. This repo + w
 |Agent|Name|Model|Job|
 |---|---|---|---|
 |1|Analyst|deepseek-ai/deepseek-v4-flash (NIM)|Parse GBP data, extract business facts|
-|2|Content Writer|qwen3:8b (local)|Write all copy for the site|
-|3|Style Agent|qwen3:8b (local)|Choose colors, fonts, layout|
+|2|Content Writer|qwen3.5:9b (local)|Write all copy for the site|
+|3|Style Agent|qwen3.5:9b (local)|Choose colors, fonts, layout|
 |4|Planner|deepseek-ai/deepseek-v4-pro (NIM)|Break site into atomic components|
 |5|Prompt Engineer|moonshotai/kimi-k2.6 (NIM)|Write code-gen prompts per component|
 |6|Code Generator|kimi-k2.6 / plan-gated model picker|Generate HTML/CSS/JS per component|
 |7|Debugger|moonshotai/kimi-k2.6 (NIM)|Fix errors in generated code|
-|8|SEO Agent|qwen3:8b (local)|Write meta tags, structured data|
+|8|SEO Agent|qwen3.5:9b (local)|Write meta tags, structured data|
 |9|QA|deepseek-ai/deepseek-v4-pro (NIM)|Validate output quality|
-|10|Mobile|qwen3:8b (local)|Ensure responsive layout|
+|10|Mobile|qwen3.5:9b (local)|Ensure responsive layout|
 
-Agents 2 and 3 run in **parallel** — this is non-negotiable for hitting 60s. Supervisor + all cloud fallbacks: llama3.3:8b (local)
+Agents 2 and 3 run in **parallel** — this is non-negotiable for hitting 60s. Supervisor + all cloud fallbacks: gemma4:e4b (local)
 
 ### Agent 6 Model Picker (Plan-Gated)
 
@@ -82,7 +82,7 @@ Agents 2 and 3 run in **parallel** — this is non-negotiable for hitting 60s. S
 ## Pricing Tiers
 
 - **Free:** 1 site, 3 revisions/month, dashboard preview only, Onara branding
-- **Starter — $12/mo:** 1 site, 10 revisions/month, live public URL, custom domain
+- **Starter — $12/mo:** 1 site, 10 revisions/month, live public URL
 - **Pro — $29/mo:** 3 sites, unlimited revisions, code download, priority queue
 - **Reverse Trial:** Every new signup gets 14 days full Pro free (no CC required)
 
@@ -104,4 +104,4 @@ Agents 2 and 3 run in **parallel** — this is non-negotiable for hitting 60s. S
 1. Launch to local service contractors in one metro area
 2. Hit first 50 paying users via cold outbound (Google Maps no-website leads)
 3. Prove 60-second generation and live URL flow end-to-end
-4. Build retention hooks: Google hours sync, review badge, seasonal SEO refresh
+4. Build launch retention hooks: lead SMS and review badge refresh; keep Google sync and seasonal SEO for post-v1

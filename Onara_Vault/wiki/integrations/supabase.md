@@ -6,7 +6,7 @@ _Project setup, auth providers, storage buckets, pg_cron, and connection strings
 
 ## What Onara Uses Supabase For
 
-- **PostgreSQL database**: all 7 tables (users, sites, jobs, subscriptions, revisions, etc.)
+- **PostgreSQL database**: users, projects, pipeline jobs, revisions, errors, GBP sync logs, and Stripe event records
 - **Auth**: Google OAuth + email/password sign-in
 - **Storage**: HTML archives of every generated site
 - **Edge Functions**: (future) server-side logic close to DB

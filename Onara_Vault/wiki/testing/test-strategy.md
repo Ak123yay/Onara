@@ -18,13 +18,13 @@ _Step verification checklists, Agent 9 QA gate, and pre-launch manual QA. Source
 - [ ] GitHub App: commit to `onara-sites` via App credentials works
 - [ ] Supabase: connect via anon key and service role key
 - [ ] Google Places API: curl Text Search returns a business
-- [ ] Stripe: Free / Starter ($12) / Pro ($29) products created
+- [ ] Stripe: Free placeholder, Starter monthly ($12), Starter annual ($99), and Pro monthly ($29) prices created
 - [ ] Resend: test email delivered from `hello@onara.tech`
 
 ### Phase 3–4 — Dev Environment
 - [ ] Node 18+, Python 3.11+, pnpm installed
-- [ ] `ollama run qwen3:8b "Say hello"` → responds
-- [ ] `ollama run llama3.3:8b "Say hello"` → responds
+- [ ] `ollama run qwen3.5:9b "Say hello"` → responds
+- [ ] `ollama run gemma4:e4b "Say hello"` → responds
 - [ ] Cloudflare Tunnel: `curl {TUNNEL_URL}/health` → 200
 
 ### Phase 5–6 — Database

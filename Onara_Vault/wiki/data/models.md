@@ -35,14 +35,14 @@ Extended profile on top of `auth.users`. Auto-created by `on_auth_user_created` 
 | `email` | TEXT UNIQUE | |
 | `full_name` | TEXT | From Google OAuth |
 | `avatar_url` | TEXT | From Google OAuth |
-| `plan` | plan_type | Default: `free` |
+| `plan` | plan_type | Default: `free`; signup trigger sets `pro` during reverse trial |
 | `stripe_customer_id` | TEXT UNIQUE | |
 | `stripe_subscription_id` | TEXT UNIQUE | |
 | `subscription_status` | TEXT | `active`, `past_due`, `canceled`, etc. |
 | `is_trial` | BOOLEAN | True during 14-day reverse trial |
 | `trial_ends_at` | TIMESTAMPTZ | NOW() + 14 days on signup |
 | `revisions_used` | INT | Consumed this billing period |
-| `revisions_limit` | INT | 3 (free) / 10 (starter) / -1 (pro = unlimited) |
+| `revisions_limit` | INT | 3 (free) / 10 (starter) / -1 (trial/pro = unlimited) |
 | `revisions_reset_at` | TIMESTAMPTZ | Next reset date |
 | `show_url` | BOOLEAN | False for free plan after trial expires |
 | `onboarding_complete` | BOOLEAN | First build flow completed |
@@ -89,7 +89,7 @@ One row per generated website.
 **Plan limits** (enforced by `check_project_limit` trigger on INSERT):
 - Free: 1 project
 - Starter: 1 project
-- Pro: 3 projects
+- Trial / Pro: 3 projects
 
 ---
 

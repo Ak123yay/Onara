@@ -15,11 +15,11 @@ Onara is a three-layer system: a Next.js frontend/API layer, a Python FastAPI pi
 [Next.js — Vercel]          ← App frontend + API proxy
      │  (REST + SSE)
      ▼
-[FastAPI — Mini PC / DigitalOcean + Cloudflare Tunnel]
+[FastAPI — PC, Mini PC, or DigitalOcean + Cloudflare Tunnel]
      │  (10-agent pipeline)
      ├── NVIDIA NIM API     ← Cloud AI (Agents 1, 4, 5, 6, 7, 9)
-     ├── Ollama (local PC)  ← Local AI fallback + Agents 2, 3, 8, 10, Supervisor
-     └── ChromaDB (local)   ← RAG vector store
+     ├── Ollama             ← Local AI fallback + Agents 2, 3, 8, 10, Supervisor
+     └── ChromaDB           ← RAG vector store
      │
      ▼
 [Deployment Layer]
@@ -53,7 +53,7 @@ Onara is a three-layer system: a Next.js frontend/API layer, a Python FastAPI pi
 
 ---
 
-## Layer 2 — FastAPI Pipeline Server (Mini PC → DigitalOcean)
+## Layer 2 — FastAPI Pipeline Server (PC → Mini PC → DigitalOcean)
 
 **Exposed via**: Cloudflare Tunnel (dev) or DigitalOcean Droplet (prod)
 
@@ -83,13 +83,29 @@ Onara is a three-layer system: a Next.js frontend/API layer, a Python FastAPI pi
 
 ---
 
-## Dev Environment Split
+## Dev Environment Topology
+
+Rule: FastAPI must be able to reach Ollama through `OLLAMA_BASE_URL`.
+
+The simplest development setup is **one machine**:
 
 | Machine | Runs |
 |---------|------|
-| PC (Windows) | Ollama local models (`qwen3:8b`, `llama3.3:8b`), accessible at `http://localhost:11434` |
-| Mini PC | FastAPI pipeline server, ChromaDB, Cloudflare Tunnel (`cloudflared`), PM2 |
+| PC | Next.js, FastAPI, Ollama, ChromaDB, Cloudflare Tunnel |
+
+Use this until the app and pipeline work end to end. In this setup:
+- `OLLAMA_BASE_URL=http://localhost:11434`
+- `PIPELINE_SERVER_URL=https://<cloudflare-tunnel>.trycloudflare.com`
+- `cloudflared` runs on the same machine as FastAPI because it exposes `localhost:8000`
+
+The later server setup is:
+
+| Machine | Runs |
+|---------|------|
+| Mini PC / DigitalOcean | FastAPI, Ollama, ChromaDB, Cloudflare Tunnel or public HTTPS endpoint, PM2 |
 | Vercel (cloud) | Next.js app |
+
+If Ollama remains on a separate PC while FastAPI runs on a mini PC, do not use `localhost`. Set `OLLAMA_BASE_URL` to the model PC's LAN URL and firewall it to the mini PC only. This is less reliable and is not the recommended v1 path.
 
 ---
 
@@ -98,17 +114,17 @@ Onara is a three-layer system: a Next.js frontend/API layer, a Python FastAPI pi
 | Agent | Model | Provider |
 |-------|-------|---------|
 | Agent 1 — Analyst | `deepseek-ai/deepseek-v4-flash` | NVIDIA NIM |
-| Agent 2 — Content Writer | `qwen3:8b` | Local Ollama |
-| Agent 3 — Style Agent | `qwen3:8b` | Local Ollama |
+| Agent 2 — Content Writer | `qwen3.5:9b` | Local Ollama |
+| Agent 3 — Style Agent | `qwen3.5:9b` | Local Ollama |
 | Agent 4 — Planner | `deepseek-ai/deepseek-v4-pro` | NVIDIA NIM |
 | Agent 5 — Prompt Engineer | `moonshotai/kimi-k2.6` | NVIDIA NIM |
-| Agent 6 — Code Generator | `moonshotai/kimi-k2.6` (Free/Starter) or Claude/GPT (Pro) | NVIDIA NIM / Direct APIs |
+| Agent 6 — Code Generator | NIM (Free/Trial), Copilot SDK (Starter), Claude/OpenAI user key (Pro) | Plan-gated |
 | Agent 7 — Debugger | `moonshotai/kimi-k2.6` | NVIDIA NIM |
-| Agent 8 — SEO Agent | `qwen3:8b` | Local Ollama |
+| Agent 8 — SEO Agent | `qwen3.5:9b` | Local Ollama |
 | Agent 9 — QA Agent | `deepseek-ai/deepseek-v4-pro` | NVIDIA NIM |
-| Agent 10 — Mobile Agent | `qwen3:8b` | Local Ollama |
-| Supervisor | `llama3.3:8b` | Local Ollama |
-| Cloud fallback (all agents) | `llama3.3:8b` | Local Ollama |
+| Agent 10 — Mobile Agent | `qwen3.5:9b` | Local Ollama |
+| Supervisor | `gemma4:e4b` | Local Ollama |
+| Local fallback (NIM agents) | `gemma4:e4b` | Local Ollama |
 
 ---
 
@@ -151,6 +167,7 @@ Onara is a three-layer system: a Next.js frontend/API layer, a Python FastAPI pi
 | Trigger | Action |
 |---------|--------|
 | Avg queue wait > 5 min | Add BullMQ + Redis queue |
-| Mini PC reliability issues | Migrate FastAPI to DigitalOcean Droplet |
+| PC uptime becomes a blocker | Move FastAPI + Ollama to mini PC |
+| Mini PC reliability issues | Move FastAPI + Ollama to DigitalOcean Droplet |
 | Need second pipeline worker | Add second Droplet + load balance |
 | Agent 6 quality issues | Upgrade to GPT-5.4 or Claude Opus (Pro plan users) |

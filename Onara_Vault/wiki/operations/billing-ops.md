@@ -10,7 +10,7 @@ _Manual procedures for refunds, plan changes, trial extensions, and account dele
 2. Click "Refund" → select full or partial refund amount
 3. Add reason in Stripe (internal note)
 4. Stripe processes refund (3–5 business days to customer)
-5. **Do not** update `subscriptions` table for refunds — Stripe webhook will fire `customer.subscription.deleted` and downgrade automatically if applicable
+5. **Do not** manually change `users.plan` for ordinary refunds unless the Stripe webhook fails; let Stripe webhook events drive plan state
 6. Send manual email to customer confirming refund
 
 **When to refund**:
@@ -26,24 +26,33 @@ When a customer needs a plan change that Stripe webhook won't handle (e.g., comp
 
 ```sql
 -- Upgrade to Pro
-UPDATE subscriptions
+UPDATE users
 SET plan = 'pro',
+    is_trial = false,
+    revisions_limit = -1,
+    show_url = true,
     updated_at = now()
-WHERE user_id = '{userId}';
+WHERE id = '{userId}';
 
 -- Downgrade to Starter
-UPDATE subscriptions
+UPDATE users
 SET plan = 'starter',
+    is_trial = false,
+    revisions_limit = 10,
+    show_url = true,
     updated_at = now()
-WHERE user_id = '{userId}';
+WHERE id = '{userId}';
 
 -- Revert to free (after cancellation)
-UPDATE subscriptions
+UPDATE users
 SET plan = 'free',
+    is_trial = false,
+    revisions_limit = 3,
+    show_url = false,
     stripe_subscription_id = NULL,
-    current_period_end = NULL,
+    subscription_status = 'canceled',
     updated_at = now()
-WHERE user_id = '{userId}';
+WHERE id = '{userId}';
 ```
 
 **Note**: Manual plan changes don't affect Stripe billing — if you upgrade a customer for free, do NOT change their Stripe subscription; only update Supabase.
@@ -56,11 +65,11 @@ When a customer requests more time to evaluate:
 
 ```sql
 -- Extend trial by 7 days
-UPDATE subscriptions
+UPDATE users
 SET trial_ends_at = trial_ends_at + interval '7 days',
     updated_at = now()
-WHERE user_id = '{userId}'
-  AND plan = 'trial';
+WHERE id = '{userId}'
+  AND is_trial = true;
 ```
 
 **Policy**: One extension per customer, max 7 days.
@@ -86,17 +95,12 @@ The Onara Team
 When a customer was unable to use their revisions due to a bug or service issue:
 
 ```sql
--- Delete failed revisions from this month to reset count
-DELETE FROM revisions
-WHERE user_id = '{userId}'
-  AND created_at >= date_trunc('month', now())
-  AND status = 'failed';
-
--- If resetting all (compensatory): delete all this month's revisions
--- Requires manual judgment; confirm with user before deleting completed revisions
-DELETE FROM revisions
-WHERE user_id = '{userId}'
-  AND created_at >= date_trunc('month', now());
+-- Reset usage counter without deleting revision history
+UPDATE users
+SET revisions_used = 0,
+    revisions_reset_at = date_trunc('month', now()) + interval '1 month',
+    updated_at = now()
+WHERE id = '{userId}';
 ```
 
 ---
@@ -112,10 +116,10 @@ When a customer requests full account deletion:
 
 ```sql
 DELETE FROM revisions WHERE user_id = '{userId}';
-DELETE FROM generation_jobs WHERE user_id = '{userId}';
-DELETE FROM user_sites WHERE user_id = '{userId}';
-DELETE FROM subscriptions WHERE user_id = '{userId}';
-DELETE FROM user_profiles WHERE user_id = '{userId}';
+DELETE FROM pipeline_errors WHERE user_id = '{userId}';
+DELETE FROM pipeline_jobs WHERE user_id = '{userId}';
+DELETE FROM projects WHERE user_id = '{userId}';
+DELETE FROM users WHERE id = '{userId}';
 ```
 
 **Step 3: Delete Supabase Auth user**
@@ -146,19 +150,19 @@ Quick lookup in Supabase SQL editor:
 
 ```sql
 SELECT
-  up.email,
-  up.full_name,
-  s.plan,
-  s.trial_ends_at,
-  s.current_period_end,
-  s.stripe_customer_id,
-  count(gj.id) AS total_sites_generated
-FROM user_profiles up
-LEFT JOIN subscriptions s ON s.user_id = up.id
-LEFT JOIN generation_jobs gj ON gj.user_id = up.id AND gj.status = 'completed'
-WHERE up.email = 'customer@example.com'
-GROUP BY up.email, up.full_name, s.plan, s.trial_ends_at,
-         s.current_period_end, s.stripe_customer_id;
+  u.email,
+  u.full_name,
+  u.plan,
+  u.is_trial,
+  u.trial_ends_at,
+  u.subscription_status,
+  u.stripe_customer_id,
+  count(p.id) FILTER (WHERE p.status = 'live') AS live_projects
+FROM users u
+LEFT JOIN projects p ON p.user_id = u.id
+WHERE u.email = 'customer@example.com'
+GROUP BY u.email, u.full_name, u.plan, u.is_trial, u.trial_ends_at,
+         u.subscription_status, u.stripe_customer_id;
 ```
 
 ---

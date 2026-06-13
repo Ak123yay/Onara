@@ -8,17 +8,17 @@ _Which models power each agent, why, fallback logic, and plan-gated model routin
 
 | Agent | Primary Model | Provider | Fallback | Notes |
 |-------|--------------|----------|---------|-------|
-| Agent 1 — GBP Fetcher | Google Places API | Google | None | API call, not LLM |
-| Agent 2 — Content Writer | qwen3:8b | Ollama (local) | qwen3.5:9b (Ollama) | Local only |
-| Agent 3 — Style Picker | qwen3:8b | Ollama (local) | qwen3.5:9b (Ollama) | Runs parallel with Agent 2 |
-| Agent 4 — Brand Voice | meta/llama-3.3-70b-instruct | NVIDIA NIM | qwen3.5:9b (Ollama) | Cloud; free NIM tier |
-| Agent 5 — SEO Specialist | meta/llama-3.3-70b-instruct | NVIDIA NIM | qwen3.5:9b (Ollama) | Cloud; free NIM tier |
-| Agent 6 — Layout Selector | **Plan-gated** (see below) | — | qwen3.5:9b (Ollama) | Model varies by plan |
-| Agent 7 — HTML Generator | meta/llama-3.3-70b-instruct | NVIDIA NIM | qwen3.5:9b (Ollama) | Largest output; most tokens |
-| Agent 8 — Asset Optimizer | qwen3:8b | Ollama (local) | qwen3.5:9b (Ollama) | Local only |
-| Agent 9 — QA Gate | meta/llama-3.3-70b-instruct | NVIDIA NIM | qwen3.5:9b (Ollama) | Must pass 10 checks |
-| Agent 10 — Deployment | None | — | — | Pure API calls |
-| Supervisor | qwen3.5:9b | Ollama (local) | qwen3:8b (Ollama) | Validates between steps |
+| Agent 1 — Business Analyst | deepseek-ai/deepseek-v4-flash | NVIDIA NIM | gemma4:e4b (Ollama) | Turns GBP data into site requirements |
+| Agent 2 — Content Writer | qwen3.5:9b | Ollama (local) | gemma4:e4b (Ollama) | Runs parallel with Agent 3 |
+| Agent 3 — Style Agent | qwen3.5:9b | Ollama (local) | gemma4:e4b (Ollama) | Produces design tokens |
+| Agent 4 — Planner | deepseek-ai/deepseek-v4-pro | NVIDIA NIM | gemma4:e4b (Ollama) | Creates component blueprint |
+| Agent 5 — Prompt Engineer | moonshotai/kimi-k2.6 | NVIDIA NIM | gemma4:e4b (Ollama) | Builds Agent 6 prompt |
+| Agent 6 — Code Generator | Plan-gated | NVIDIA NIM / direct API | deepseek-ai/deepseek-v4-flash, then gemma4:e4b | Generates complete index.html |
+| Agent 7 — Debugger | moonshotai/kimi-k2.6 | NVIDIA NIM | gemma4:e4b (Ollama) | Fixes complete HTML or returns PASS |
+| Agent 8 — SEO Agent | qwen3.5:9b | Ollama (local) | gemma4:e4b (Ollama) | Injects title, meta, OG, JSON-LD |
+| Agent 9 — QA Agent | deepseek-ai/deepseek-v4-pro | NVIDIA NIM | gemma4:e4b (Ollama) | PASS/FAIL quality gate |
+| Agent 10 — Mobile Agent | qwen3.5:9b | Ollama (local) | gemma4:e4b (Ollama) | Produces mobile-optimized full HTML |
+| Supervisor | gemma4:e4b | Ollama (local) | qwen3.5:9b (Ollama) | Validates between steps; fallback uses primary local model only if Gemma fails |
 
 ---
 
@@ -28,51 +28,53 @@ _Which models power each agent, why, fallback logic, and plan-gated model routin
 
 - **Endpoint**: `https://integrate.api.nvidia.com/v1` (`NVIDIA_NIM_BASE_URL`)
 - **Auth**: `nvapi-...` key (`NVIDIA_NIM_API_KEY`)
-- **Models used**: `meta/llama-3.3-70b-instruct`
+- **Models used**: `deepseek-ai/deepseek-v4-flash`, `deepseek-ai/deepseek-v4-pro`, `moonshotai/kimi-k2.6`
 - **Rate limit**: Free NIM tier — 40 RPM, 1000 RPD
 - **Context window**: 128K tokens
-- **When used**: Agents 4, 5, 7, 9 (higher-quality reasoning tasks)
+- **When used**: Agents 1, 4, 5, 6, 7, 9
 - **Cost**: Free (NIM free tier covers all expected v1 traffic)
-- **Fallback**: If NIM returns 429/503 → fallback to Ollama `qwen3:8b`
+- **Fallback**: If NIM returns 429/503, use the agent-specific Ollama fallback from the table above
 
 ### Ollama (Local)
 
-- **Primary model**: `qwen3:8b` (`OLLAMA_PRIMARY_MODEL`) — Agents 2, 3, 8; best under-8B instruction model
-- **Supervisor / fallback model**: `qwen3.5:9b` (`OLLAMA_FALLBACK_MODEL`) — Supervisor + all NIM fallbacks; IFBench 76.5 (beats GPT-5.2 at 75.4)
-- **Endpoint**: `http://localhost:11434` (dev) or DigitalOcean Droplet IP (prod)
-- **Context window**: ~8K tokens (qwen3:8b), ~8K tokens (qwen3.5:9b)
-- **When used**: Agents 2, 3, 8 on qwen3:8b; Supervisor + NIM fallback on qwen3.5:9b
-- **Cost**: $0 — running on dev machine or same DO droplet as FastAPI
-- **Fallback chain**: NIM → qwen3.5:9b → job fails with meaningful error; qwen3:8b → qwen3.5:9b → fail
+- **Primary model**: `qwen3.5:9b` (`OLLAMA_PRIMARY_MODEL`) — Agents 2, 3, 8, and 10
+- **Fallback / supervisor model**: `gemma4:e4b` (`OLLAMA_FALLBACK_MODEL`) — Supervisor and local fallback for cloud-primary agents
+- **Reason for refresh**: User-directed June 2026 model update. Ollama lists `qwen3.5:9b` as a current 9.65B local model, and `gemma4:e4b` as an 8B Apache-licensed model suited for reasoning, coding, and agentic fallback work.
+- **Endpoint**: `http://localhost:11434` when FastAPI and Ollama run on the same host
+- **Context window**: depends on local Ollama model configuration
+- **When used**: local agents, supervisor checks, and cloud fallback
+- **Cost**: $0 when running on the dev PC, mini PC, or same server as FastAPI
+- **Fallback chain**: Primary cloud model -> agent-specific Ollama fallback -> job fails with a meaningful error
 
 ---
 
 ## Agent 6 — Plan-Gated Model Routing
 
-Agent 6 (Layout Selector) uses different models based on the user's subscription plan:
+Agent 6 (Code Generator) uses different models based on the user's subscription plan:
 
 | Plan | Model | Provider | Rationale |
 |------|-------|----------|-----------|
-| Free / Trial | kimi-k2.6 | Kimi API | Free tier; good layout reasoning |
-| Starter | kimi-k2.6 | Kimi API | Same as free |
-| Pro | claude-sonnet-4-X | Anthropic | Better layout quality for paying users |
-| Pro (user-provided key) | GPT-4o | OpenAI | User supplies their own OpenAI key |
+| Free / Trial | moonshotai/kimi-k2.6 | NVIDIA NIM | Default code generation, no user key needed |
+| Starter | GitHub Copilot SDK selectable models | Copilot SDK | Student-plan models such as gpt-5.2-codex, gpt-4.1, gpt-4o |
+| Starter fallback | moonshotai/kimi-k2.6 | NVIDIA NIM | Used when Copilot SDK is unavailable or rate-limited |
+| Pro | Claude or OpenAI model | User-provided API key | Better code quality for paying users; key stored encrypted |
+| Pro fallback | moonshotai/kimi-k2.6 | NVIDIA NIM | Used when user key is missing, invalid, or rate-limited |
 
-- Plan read from `subscriptions` table before pipeline start
+- Plan read from `users.plan` and `users.is_trial` before pipeline start
 - Model selection passed into job config; Agent 6 reads from job config
 
 ---
 
 ## Fallback Logic
 
-All agents follow the same fallback pattern:
+Cloud-primary agents follow this fallback pattern. Local-primary agents call Ollama first and fail with the same structured error shape if both local attempts fail.
 
 ```python
 async def call_llm(prompt, primary_model, fallback_model):
     try:
-        return await call_nim(prompt, primary_model)
+        return await call_primary_provider(prompt, primary_model)
     except (RateLimitError, ServiceUnavailableError):
-        log.warning(f"NIM unavailable, falling back to {fallback_model}")
+        log.warning(f"Primary provider unavailable, falling back to {fallback_model}")
         return await call_ollama(prompt, fallback_model)
     except OllamaError:
         raise AgentError(f"Both primary and fallback models failed")
@@ -85,14 +87,15 @@ async def call_llm(prompt, primary_model, fallback_model):
 
 ## Why Two Providers
 
-**NVIDIA NIM** for quality-critical agents (4, 5, 7, 9):
-- 70B parameter model produces better copywriting, SEO tags, and HTML structure
+**NVIDIA NIM** for quality-critical agents (1, 4, 5, 6, 7, 9):
+- Larger cloud models produce better planning, prompting, code generation, debugging, and QA
 - Free tier eliminates cost at v1 scale
 
-**Ollama locally** for speed-critical agents (2, 3, 8, Supervisor):
-- Sub-second latency (no network hop)
+**Ollama locally** for speed-critical agents (2, 3, 8, 10, Supervisor):
+- No network hop
 - Free
 - Agents 2+3 run in parallel — local execution avoids NIM rate limit contention
+- `qwen3.5:9b` is the local primary; `gemma4:e4b` is the independent under-10B fallback
 
 See `wiki/decisions/adr-001.md` for why LangChain was excluded despite multi-model routing.
 

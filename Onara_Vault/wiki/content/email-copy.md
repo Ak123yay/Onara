@@ -8,19 +8,19 @@ _All 8 transactional email templates. Source: `raw/07_email_copy.md`._
 
 | Variable | Source | Example |
 |----------|--------|---------|
-| `{{first_name}}` | `user_profiles.full_name` (first word) | `Sarah` |
-| `{{business_name}}` | `user_sites.business_name` | `Main Street Salon` |
-| `{{site_url}}` | `generation_jobs.site_url` | `https://onara-abc123.pages.dev` |
-| `{{trial_end_date}}` | `subscriptions.trial_ends_at` | `May 28, 2026` |
-| `{{plan_name}}` | `subscriptions.plan` | `Starter` |
-| `{{amount}}` | `subscriptions.amount` | `$12.00` |
-| `{{next_billing_date}}` | `subscriptions.current_period_end` | `June 14, 2026` |
+| `{{first_name}}` | `users.full_name` (first word) | `Sarah` |
+| `{{business_name}}` | `projects.business_name` | `Main Street Salon` |
+| `{{site_url}}` | `projects.public_url` | `https://onara-abc123.pages.dev` |
+| `{{trial_end_date}}` | `users.trial_ends_at` | `May 28, 2026` |
+| `{{plan_name}}` | `users.plan` | `Starter` |
+| `{{amount}}` | Stripe invoice amount | `$12.00` |
+| `{{next_billing_date}}` | Stripe subscription period end | `June 14, 2026` |
 
 ---
 
 ## Email 1: Welcome + Site Live
 
-**Trigger**: After Agent 10 completes first site generation  
+**Trigger**: After deployment completes first site generation  
 **From**: `hello@onara.tech`  
 **Subject**: `Your {{business_name}} website is live 🎉`
 
@@ -57,15 +57,15 @@ Hi {{first_name}},
 
 Your free trial ends on {{trial_end_date}}.
 
-After that, you'll keep your site — but you'll need a plan to generate new ones or request revisions.
+After that, your dashboard preview stays available, but your public URL is hidden unless you choose a paid plan.
 
 [Choose a Plan →]
 
-Starter — $12/month
-Everything you need: 3 sites, 3 revisions/month
+Starter — $12/month or $99/year
+Everything you need: 1 live site, 10 revisions/month
 
 Pro — $29/month
-Unlimited sites, unlimited revisions, code download
+3 live sites, unlimited revisions, code download
 
 Still have questions? Reply to this email.
 
@@ -84,11 +84,11 @@ Hi {{first_name}},
 
 Your trial ends tomorrow.
 
-Your site stays live regardless — but to generate new sites or request revisions, you'll need a plan.
+Your dashboard preview stays available regardless. To keep the public URL live, generate more sites, or request paid-plan revisions, choose a plan.
 
 [Pick a Plan →]
 
-Starter — $12/month · Pro — $29/month
+Starter — $12/month or $99/year · Pro — $29/month
 
 No credit card was needed to start. Takes 2 minutes to upgrade.
 
@@ -105,16 +105,16 @@ The Onara Team
 ```
 Hi {{first_name}},
 
-Your 14-day trial has ended. Your site at {{site_url}} is still live.
+Your 14-day trial has ended. Your dashboard preview is still available, but your public URL is now hidden on the free plan.
 
 What changed:
-- ✗ Generating new sites (upgrade to unlock)
-- ✗ Requesting revisions (upgrade to unlock)
-- ✓ Your existing site stays live
+- Public URL hidden on the free plan
+- 1 preview site remains in your dashboard
+- 3 free revisions/month remain available
 
 [Upgrade Now →]
 
-Starter — $12/month  |  Pro — $29/month
+Starter — $12/month or $99/year  |  Pro — $29/month
 
 The Onara Team
 ```

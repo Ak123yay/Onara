@@ -40,12 +40,20 @@ CREATE TRIGGER projects_updated_at
 CREATE OR REPLACE FUNCTION handle_new_user()
 RETURNS TRIGGER LANGUAGE plpgsql SECURITY DEFINER AS $$
 BEGIN
-  INSERT INTO public.users (id, email, full_name, avatar_url)
+  INSERT INTO public.users (
+    id, email, full_name, avatar_url,
+    plan, is_trial, trial_ends_at, revisions_limit, show_url
+  )
   VALUES (
     NEW.id,
     NEW.email,
     NEW.raw_user_meta_data->>'full_name',
-    NEW.raw_user_meta_data->>'avatar_url'
+    NEW.raw_user_meta_data->>'avatar_url',
+    'pro',
+    TRUE,
+    NOW() + INTERVAL '14 days',
+    -1,
+    TRUE
   );
   RETURN NEW;
 END;
@@ -59,7 +67,7 @@ CREATE TRIGGER on_auth_user_created
 **Notes**:
 - `SECURITY DEFINER` runs the function as the function owner (postgres), bypassing the RLS INSERT restriction on `public.users`.
 - `full_name` and `avatar_url` come from Google OAuth metadata automatically.
-- Default column values (`plan = 'free'`, `is_trial = TRUE`, `trial_ends_at = NOW() + 14 days`, `revisions_limit = 3`) are set by the table definition — this function only needs to supply the identity fields.
+- The trigger explicitly starts every new user on the 14-day Pro reverse trial: `plan='pro'`, `is_trial=TRUE`, `revisions_limit=-1`, `show_url=TRUE`.
 
 ---
 
@@ -76,22 +84,27 @@ DECLARE
   current_count INT;
   max_allowed   INT;
   user_plan     plan_type;
+  user_is_trial BOOLEAN;
 BEGIN
-  SELECT plan INTO user_plan FROM public.users WHERE id = NEW.user_id;
+  SELECT plan, is_trial
+  INTO user_plan, user_is_trial
+  FROM public.users
+  WHERE id = NEW.user_id;
 
   current_count := (
     SELECT COUNT(*) FROM public.projects
     WHERE user_id = NEW.user_id AND status != 'failed'
   );
 
-  max_allowed := CASE user_plan
-    WHEN 'free'    THEN 1
-    WHEN 'starter' THEN 1
-    WHEN 'pro'     THEN 3
+  max_allowed := CASE
+    WHEN user_is_trial THEN 3
+    WHEN user_plan = 'free' THEN 1
+    WHEN user_plan = 'starter' THEN 1
+    WHEN user_plan = 'pro' THEN 3
     ELSE 1
   END;
 
-  IF current_count >= max_allowed THEN
+  IF max_allowed != -1 AND current_count >= max_allowed THEN
     RAISE EXCEPTION 'Project limit reached for plan %', user_plan;
   END IF;
 
@@ -109,7 +122,7 @@ CREATE TRIGGER check_project_limit
 |------|-------------|
 | free | 1 |
 | starter | 1 |
-| pro | 3 |
+| trial or pro | 3 |
 
 **Note**: `status != 'failed'` — failed projects don't count against the limit. This allows retry without needing to delete the failed record first.
 

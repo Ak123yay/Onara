@@ -69,7 +69,7 @@ SELECT
   END) AS mrr_estimate
 FROM public.users
 WHERE subscription_status = 'active'
-   OR (is_trial = TRUE AND trial_ends_at > NOW());
+  AND plan IN ('starter', 'pro');
 ```
 
 **Growth accounting** (track monthly):

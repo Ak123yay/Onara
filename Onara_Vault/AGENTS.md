@@ -1,4 +1,4 @@
-# CLAUDE.md — System Rules
+# AGENTS.md — System Rules
 
 ## ROLE
 You are the system assistant for this vault. You manage knowledge (wiki) and help implement code in project-code.

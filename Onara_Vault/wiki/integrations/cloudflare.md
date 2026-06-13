@@ -8,7 +8,7 @@ _Cloudflare Pages setup, Direct Upload API, account config, and Tunnel for dev._
 
 - **Live hosting** for all user-generated sites via Pages Direct Upload API
 - Each user gets a unique Pages project → live URL: `{project}.pages.dev`
-- Cloudflare Tunnel (dev): exposes local FastAPI to internet so Next.js can reach it
+- Cloudflare Tunnel (dev): exposes the FastAPI host so Next.js can reach it
 
 ---
 
@@ -62,18 +62,16 @@ Example: user `abc12345-...` → `onara-abc12345` → `https://onara-abc12345.pa
 
 ## Cloudflare Tunnel (Development)
 
+Run `cloudflared` on the same machine that runs FastAPI.
+
 ```bash
-# Authenticate once
-cloudflared tunnel login
-
-# Create tunnel (once)
-cloudflared tunnel create onara-dev
-
-# Run (exposes localhost:8000 publicly)
-cloudflared tunnel run --url http://localhost:8000 onara-dev
+# Quick dev tunnel; URL changes each run
+cloudflared tunnel --url http://localhost:8000
 ```
 
 The HTTPS URL Cloudflare assigns → set as `PIPELINE_SERVER_URL` in Next.js `.env.local`.
+
+Use a named tunnel later only if you need a stable development URL. For v1 local development, the quick tunnel is enough.
 
 ---
 
@@ -83,7 +81,7 @@ The HTTPS URL Cloudflare assigns → set as `PIPELINE_SERVER_URL` in Next.js `.e
 |-------|-------|-----|
 | 403 on deployment | Token missing `Pages:Edit` | Recreate token with correct permission |
 | 404 after deploy | Cloudflare propagation | Wait 30–60 seconds |
-| Tunnel disconnects | Network drop | Re-run `cloudflared tunnel run` |
+| Tunnel disconnects | Network drop | Re-run `cloudflared tunnel --url http://localhost:8000` |
 
 ---
 

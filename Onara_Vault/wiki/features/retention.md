@@ -1,19 +1,19 @@
 # Retention Features
 
-Post-launch mechanisms that keep users engaged and their sites valuable over time. These are v1.5+ features — not required for launch.
+Mechanisms that keep users engaged and their sites valuable over time. For v1, keep this small: lead SMS notifications and weekly review badge refresh. GBP polling, seasonal pages, and custom domains remain post-v1 scope.
 
 ---
 
 ## Feature 1 — Google Business Profile Sync
 
-**Target version**: v2.5 for auto-deploy; v1 for change-detection email only (see decision log 2026-05-15)  
+**Target version**: v2.5 for change-detection email; auto-deploy later  
 **Feature flag**: `FEATURE_GBP_SYNC`
 
-**What it does**: Polls the Google Places API every 24 hours for each live project. If the business has updated their hours, phone number, or address on Google, Onara detects the change and either auto-deploys an update or notifies the user.
+**What it does**: Polls the Google Places API every 24 hours for each live project. If the business has updated their hours, phone number, or address on Google, Onara detects the change and notifies the user. No v1 work should implement Places polling for change detection.
 
 **Database table**: `gbp_sync_log` (see `wiki/data/models.md`)
 
-**Detection flow**:
+**Detection flow (post-v1)**:
 1. pg_cron job runs daily — queries Google Places API for each project's `google_place_id`
 2. Compares response to stored `business_hours`, `business_phone`, `business_address` in `projects`
 3. If any field differs → write row to `gbp_sync_log` with `field_changed`, `old_value`, `new_value`
@@ -22,8 +22,8 @@ Post-launch mechanisms that keep users engaged and their sites valuable over tim
 
 **Why this is a moat**: No competitor rebuilds the site when Google data changes. Users who link their site to Onara get a site that stays current automatically — a recurring reason to stay subscribed.
 
-**v2 scope**: Notification only (email to user). User clicks to approve update.  
-**v2.5 scope**: Auto-deploy for hours/phone changes (low-risk fields). Still notify, but deploy without approval.
+**v2.5 scope**: Notification only (email to user). User clicks to approve update.  
+**Later scope**: Auto-deploy for hours/phone changes (low-risk fields). Still notify, but deploy without approval.
 
 ---
 
@@ -76,7 +76,7 @@ Post-launch mechanisms that keep users engaged and their sites valuable over tim
 
 ## Feature 5 — Custom Domain
 
-**Target version**: v2+  
+**Target version**: v3  
 **Feature flag**: `FEATURE_CUSTOM_DOMAIN`  
 **Plan**: Starter and above
 
@@ -105,4 +105,5 @@ Cloudflare returns the DNS records the user needs to point at their domain regis
 | Month 3 churn rate | < 10% | Site still working = stay subscribed |
 | Revision usage (paid users) | > 1/month | Usage = retention |
 | "Site live" open rate (email) | > 60% | First value moment email |
-| GBP sync notification CTR | > 40% | "Your site needs an update" is high intent |
+| Lead SMS delivery time | < 30 seconds | Immediate proof that the site is generating leads |
+| Reviews badge refresh success | > 95% | Fresh proof without requiring user effort |

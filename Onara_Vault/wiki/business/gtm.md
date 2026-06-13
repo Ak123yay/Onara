@@ -40,9 +40,9 @@ See `wiki/content/outbound-scripts.md` for exact message templates.
 ## Second Channel — Contractor Facebook Groups
 
 **Groups to target**: Local trade/contractor groups in the target metro. Examples:
-- "Austin Contractors Network"
-- "Nashville Home Improvement Pros"
-- Local HVAC or plumbing association groups
+- "DC / Northern Virginia Contractors"
+- "Northern Virginia Home Services Pros"
+- Local HVAC, plumbing, electrical, roofing, landscaping, or handyman association groups
 
 **Strategy**:
 1. Join as a member, read for 30 min to understand the culture
@@ -117,6 +117,6 @@ See `wiki/business/distribution.md` for full channel detail.
 
 3. **Trust signals upfront**: "No credit card. 14-day full access. Cancel any time." Address the Wix/GoDaddy trauma directly.
 
-4. **Specificity beats generic**: "A site for plumbers in Austin" beats "a site for small businesses." Be hyper-specific to the vertical.
+4. **Specificity beats generic**: "A site for plumbers in Arlington" beats "a site for small businesses." Be hyper-specific to the vertical.
 
 5. **Social proof as soon as possible**: Even 3 testimonials from local contractors change everything. Prioritize getting real users, not perfect users.

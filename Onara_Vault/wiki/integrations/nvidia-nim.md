@@ -6,13 +6,15 @@ _Free NIM API key, model access, rate limits, and fallback behavior._
 
 ## What Onara Uses NVIDIA NIM For
 
-Agents 4, 5, 7, and 9 use NVIDIA NIM for higher-quality language model inference:
-- Agent 4 — Brand Voice (copy tone adjustment)
-- Agent 5 — SEO Specialist (meta tags, structured data)
-- Agent 7 — HTML Generator (full site HTML)
-- Agent 9 — QA Gate (10-check validation)
+Agents 1, 4, 5, 6, 7, and 9 use NVIDIA NIM or NIM-compatible routing for higher-quality language model inference:
+- Agent 1 — Business Analyst
+- Agent 4 — Planner
+- Agent 5 — Prompt Engineer
+- Agent 6 — Code Generator (Free/Trial routing, plus fallback for paid tiers)
+- Agent 7 — Debugger
+- Agent 9 — QA Agent
 
-NIM provides access to large models (70B+) for free, making it ideal for v1 where cost must be near zero.
+NIM provides cloud model access for v1 while keeping the local machine focused on Ollama fallback and speed-critical agents.
 
 ---
 
@@ -32,7 +34,7 @@ NIM provides access to large models (70B+) for free, making it ideal for v1 wher
 1. Go to **build.nvidia.com**
 2. Sign in or create an NVIDIA developer account
 3. Navigate to "NIM APIs" or "API Catalog"
-4. Select `meta/llama-3.3-70b-instruct`
+4. Select one of the models used in `wiki/ai_agents/models.md`
 5. Click "Get API Key" → copy the `nvapi-...` key
 6. Paste into FastAPI `.env` as `NVIDIA_NIM_API_KEY`
 
@@ -40,11 +42,13 @@ The key grants access to all NIM-hosted models under the free tier.
 
 ---
 
-## Model Used
+## Models Used
 
 | Model | NIM ID | Use in Onara |
 |-------|--------|-------------|
-| Meta LLaMA 3.3 70B Instruct | `meta/llama-3.3-70b-instruct` | Agents 4, 5, 7, 9 |
+| DeepSeek V4 Flash | `deepseek-ai/deepseek-v4-flash` | Agent 1 and Agent 6 fallback |
+| DeepSeek V4 Pro | `deepseek-ai/deepseek-v4-pro` | Agents 4 and 9 |
+| Kimi K2.6 | `moonshotai/kimi-k2.6` | Agents 5, 6, and 7 |
 
 ---
 
@@ -57,9 +61,9 @@ The key grants access to all NIM-hosted models under the free tier.
 | Tokens per minute | ~100,000 |
 | Context window | 128K tokens |
 
-**At v1 scale** (3 concurrent jobs max, 4 NIM agents per job):
-- Max NIM calls per minute: 3 jobs × 4 agents = 12 calls → well under 40 RPM
-- Max NIM calls per day: ~50 jobs × 4 agents = 200 calls → well under 1,000 RPD
+**At local v1 dev scale** (1 concurrent job max, up to 6 cloud-primary agents per job):
+- Max NIM calls per minute: 1 job x 6 agents = 6 calls before retries
+- Max NIM calls per day: ~50 jobs x 6 agents = 300 calls before retries
 
 ---
 
@@ -74,7 +78,7 @@ response = await httpx.post(
     f"{NVIDIA_NIM_BASE_URL}/chat/completions",
     headers={"Authorization": f"Bearer {NVIDIA_NIM_API_KEY}"},
     json={
-        "model": "meta/llama-3.3-70b-instruct",
+        "model": model_id,
         "messages": [{"role": "user", "content": prompt}],
         "max_tokens": 4096,
         "temperature": 0.7
@@ -88,7 +92,7 @@ response = await httpx.post(
 
 When NIM returns `429 Too Many Requests`:
 1. FastAPI logs the rate limit event
-2. Falls back to Ollama `qwen3:8b` for the current agent
+2. Falls back to the agent-specific Ollama model from `wiki/ai_agents/models.md`
 3. Job continues with fallback model output
 4. Logged as warning (not error) — output quality may vary
 

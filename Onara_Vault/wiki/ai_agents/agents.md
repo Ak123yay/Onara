@@ -15,7 +15,7 @@ _All 10 agents: model, job, input, output, retry logic. Source: raw/03_agent_pro
 | | |
 |---|---|
 | **Model** | `deepseek-ai/deepseek-v4-flash` (NVIDIA NIM) |
-| **Fallback** | `llama3.3:8b` (Ollama local) |
+| **Fallback** | `gemma4:e4b` (Ollama local) |
 | **Input** | Google Business Profile data |
 | **Output** | Structured JSON site requirements |
 
@@ -29,7 +29,7 @@ Output fields: `industryType`, `primaryCta`, `ctaType`, `mustHaveSections`, `opt
 
 | | |
 |---|---|
-| **Model** | `qwen3:8b` (Ollama local) |
+| **Model** | `qwen3.5:9b` (Ollama local) |
 | **Runs parallel with** | Agent 3 |
 | **Input** | Business data + Agent 1 output |
 | **Output** | All site text content (JSON) |
@@ -44,7 +44,7 @@ Output sections: `hero`, `about`, `services[]`, `social_proof`, `contact`, `foot
 
 | | |
 |---|---|
-| **Model** | `qwen3:8b` (Ollama local) |
+| **Model** | `qwen3.5:9b` (Ollama local) |
 | **Runs parallel with** | Agent 2 |
 | **Input** | Business data + Agent 1 `industryType` |
 | **Output** | Complete design system tokens (JSON) |
@@ -64,7 +64,7 @@ Output sections: `colors`, `typography`, `spacing`, `style_notes`
 | | |
 |---|---|
 | **Model** | `deepseek-ai/deepseek-v4-pro` (NVIDIA NIM) |
-| **Fallback** | `llama3.3:8b` (Ollama local) |
+| **Fallback** | `gemma4:e4b` (Ollama local) |
 | **Input** | Agents 1, 2, and 3 outputs |
 | **Output** | HTML/CSS component blueprint (JSON) |
 
@@ -79,7 +79,7 @@ Output fields: `components[]`, `css_variables`, `component_order[]`, `special_no
 | | |
 |---|---|
 | **Model** | `moonshotai/kimi-k2.6` (NVIDIA NIM) |
-| **Fallback** | `llama3.3:8b` (Ollama local) |
+| **Fallback** | `gemma4:e4b` (Ollama local) |
 | **Input** | Agent 4 blueprint |
 | **Output** | Optimized code generation prompt (plain string) |
 
@@ -91,10 +91,11 @@ Converts the blueprint into the most effective single prompt for Agent 6. Output
 
 | | |
 |---|---|
-| **Model (Free/Starter)** | `moonshotai/kimi-k2.6` (NVIDIA NIM) |
-| **Model (Pro)** | `claude-sonnet-4-20250514` or GPT (user-provided key) |
+| **Model (Free/Trial)** | `moonshotai/kimi-k2.6` (NVIDIA NIM) |
+| **Model (Starter)** | GitHub Copilot SDK selectable model, with NIM fallback |
+| **Model (Pro)** | Claude or OpenAI model (user-provided key), with NIM fallback |
 | **Fallback 1** | `deepseek-ai/deepseek-v4-flash` (NVIDIA NIM) |
-| **Fallback 2** | `qwen3:8b` (Ollama local) |
+| **Fallback 2** | `gemma4:e4b` (Ollama local) |
 | **Input** | Agent 5 prompt |
 | **Output** | Complete `index.html` |
 
@@ -114,7 +115,7 @@ html = re.search(pattern, output, re.DOTALL).group(1).strip()
 | | |
 |---|---|
 | **Model** | `moonshotai/kimi-k2.6` (NVIDIA NIM) |
-| **Fallback** | `qwen3:8b` (Ollama local) |
+| **Fallback** | `gemma4:e4b` (Ollama local) |
 | **Input** | HTML from Agent 6 + validation error list |
 | **Output** | Fixed HTML (wrapped in markers) or string `"PASS"` |
 
@@ -126,7 +127,7 @@ Fixes: unclosed tags, missing alt text, color contrast failures, broken CSS, JS 
 
 | | |
 |---|---|
-| **Model** | `qwen3:8b` (Ollama local) |
+| **Model** | `qwen3.5:9b` (Ollama local) |
 | **Input** | Debugged HTML + business data + target keyword |
 | **Output** | HTML with SEO elements injected |
 
@@ -139,7 +140,7 @@ Injects: `<title>` replacement, meta description (150–160 chars), Open Graph t
 | | |
 |---|---|
 | **Model** | `deepseek-ai/deepseek-v4-pro` (NVIDIA NIM) |
-| **Fallback** | `llama3.3:8b` (Ollama local) |
+| **Fallback** | `gemma4:e4b` (Ollama local) |
 | **Input** | HTML after SEO injection |
 | **Output** | JSON verdict: `PASS` or `FAIL` + blocking issues |
 
@@ -155,7 +156,7 @@ Quality gate with 10 checks (see `testing/test-strategy.md`). On FAIL → pipeli
 
 | | |
 |---|---|
-| **Model** | `qwen3:8b` (Ollama local) |
+| **Model** | `qwen3.5:9b` (Ollama local) |
 | **Input** | QA-passed HTML |
 | **Output** | Mobile-optimized HTML (always full file — never returns PASS) |
 
@@ -167,7 +168,7 @@ Ensures: 44px touch targets, 16px body font, prominent hero phone CTA, hamburger
 
 | | |
 |---|---|
-| **Model** | `llama3.3:8b` (Ollama local) |
+| **Model** | `gemma4:e4b` (Ollama local) |
 | **Role** | Pipeline monitor — not a numbered agent |
 
 Validates each agent's output, accepts/retries/fails, writes to blackboard, escalates to fallback models after 2 failed retries.

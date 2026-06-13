@@ -7,18 +7,26 @@ _Claude checks this before writing or modifying any file. All code lives within 
 ## Repository Layout
 
 ```
-onara/                          ← main app repo (deploys to Vercel)
-onara-sites/                    ← generated user sites repo (private, GitHub App only)
-  sites/
-    {projectId}/                ← one folder per user site
+Onara_Vault/                    ← knowledge, tasks, logs, design reference copy
+Onara_Design/                   ← standalone frontend/design reference; copy visually when building UI
+Onara_Code/                     ← implementation workspace
+  app/                          ← planned Next.js app (deploys to Vercel)
+  pipeline/                     ← planned FastAPI pipeline server
+  supabase/                     ← planned Supabase migrations + edge functions
+  config/.env.template          ← local key template; no real secrets
+
+onara-sites                     ← private GitHub repo, not required as a local top-level folder
+  sites/{projectId}/            ← generated user site backup path written by GitHub App
 ```
+
+Do not create implementation files in `Onara_Vault/wiki/`. Wiki files define architecture and execution guidance only.
 
 ---
 
-## Frontend (Next.js — onara/)
+## Frontend (Next.js — Onara_Code/app/)
 
 ```
-onara/
+Onara_Code/app/
   app/
     page.tsx                    → landing page (niche-specific, pricing, social proof)
     layout.tsx                  → root layout + Tailwind config
@@ -52,10 +60,10 @@ onara/
 
 ---
 
-## Backend API Routes (Next.js — onara/app/api/)
+## Backend API Routes (Next.js — Onara_Code/app/app/api/)
 
 ```
-app/api/
+Onara_Code/app/app/api/
   auth/
     callback/route.ts           → Google OAuth callback handler
   places/
@@ -73,10 +81,10 @@ app/api/
 
 ---
 
-## FastAPI Pipeline Server (Python — pipeline/)
+## FastAPI Pipeline Server (Python — Onara_Code/pipeline/)
 
 ```
-pipeline/
+Onara_Code/pipeline/
   main.py                       → FastAPI app, /generate endpoint, /health endpoint
   queue.py                      → in-memory job queue with deduplication
   blackboard.py                 → shared state object passed between agents
@@ -114,7 +122,7 @@ pipeline/
 ## Supabase (Edge Functions — supabase/functions/)
 
 ```
-supabase/
+Onara_Code/supabase/
   functions/
     stripe-webhook/             → process Stripe subscription events
     reset-revisions/            → monthly revision counter reset
@@ -130,12 +138,15 @@ supabase/
 ## Shared / Config
 
 ```
-onara/
+Onara_Code/app/
   .env.local                    → all secrets (never committed)
   .env.example                  → template with key names, no values
 
-pipeline/
+Onara_Code/pipeline/
   .env                          → pipeline server secrets (never committed)
+
+Onara_Code/config/
+  .env.template                  → combined setup template; no real secrets
 ```
 
 ---
@@ -153,11 +164,11 @@ pipeline/
 | STRIPE_SECRET_KEY             | /api/stripe/*                     |
 | STRIPE_WEBHOOK_SECRET         | /api/stripe/webhook               |
 | PIPELINE_SERVER_URL           | /api/pipeline/*                   |
-| GITHUB_APP_ID                 | pipeline/deployment/github.py     |
-| GITHUB_APP_PRIVATE_KEY        | pipeline/deployment/github.py     |
-| GITHUB_APP_INSTALLATION_ID    | pipeline/deployment/github.py     |
-| COPILOT_GITHUB_TOKEN          | pipeline/ai_client/copilot.py     |
-| NVIDIA_NIM_API_KEY            | pipeline/ai_client/nim.py         |
-| CLOUDFLARE_ACCOUNT_ID         | pipeline/deployment/cloudflare.py |
-| CLOUDFLARE_API_TOKEN          | pipeline/deployment/cloudflare.py |
+| GITHUB_APP_ID                 | Onara_Code/pipeline/deployment/github.py     |
+| GITHUB_APP_PRIVATE_KEY        | Onara_Code/pipeline/deployment/github.py     |
+| GITHUB_APP_INSTALLATION_ID    | Onara_Code/pipeline/deployment/github.py     |
+| COPILOT_GITHUB_TOKEN          | Onara_Code/pipeline/ai_client/copilot.py     |
+| NVIDIA_NIM_API_KEY            | Onara_Code/pipeline/ai_client/nim.py         |
+| CLOUDFLARE_ACCOUNT_ID         | Onara_Code/pipeline/deployment/cloudflare.py |
+| CLOUDFLARE_API_TOKEN          | Onara_Code/pipeline/deployment/cloudflare.py |
 | RESEND_API_KEY                | Supabase edge functions           |

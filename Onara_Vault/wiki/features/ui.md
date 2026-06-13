@@ -2,15 +2,24 @@
 
 _Design system, build flow UX, and dashboard UX._
 
-Source: `raw/styles.jsx`, `raw/08_landing_page_copy.md`
+Source of truth for frontend look and layout: `Onara_Design/` and `Onara_Vault/Onara_Design/`.
+
+Ignore older raw styling notes when they conflict with `Onara_Design`. The Next.js frontend should closely match the design reference files.
 
 ---
 
 ## Design System — Onara App Theme
 
-The Onara app (dashboard + marketing) uses a **paper aesthetic**: warm off-white backgrounds, charcoal ink, terracotta accent.
+The Onara app (dashboard + marketing) follows the visual system in `Onara_Design/`. Use those files as the implementation reference for layout, spacing, typography, components, and screen composition.
 
-**Config file**: `tailwind.config.js` (populated from `raw/styles.jsx`)
+Primary design reference files:
+- `Onara_Design/p-landing.jsx` — landing page
+- `Onara_Design/p-auth.jsx` — auth screens
+- `Onara_Design/p-dash.jsx` — dashboard
+- `Onara_Design/p-build.jsx` — build flow
+- `Onara_Design/p-generate.jsx` — generation/progress UI
+- `Onara_Design/p-sitemocks.jsx` — generated site references
+- `Onara_Design/proto.css` — CSS reference
 
 ### Color Tokens
 
@@ -98,4 +107,4 @@ Sharp, low-radius aesthetic. Default: `4px`, cards: `6px`, pills: `9999px`
 
 ## Note on User-Generated Site Palettes
 
-The design system in `styles.jsx` is for the ONARA APP UI only. Generated user sites use industry-specific palettes defined in `pipeline/agents/style_palettes.py` and set dynamically by Agent 3 (Style Agent).
+The app design system is for the Onara product UI only. Generated user sites use industry-specific palettes selected by Agent 3 (Style Agent) and implemented in `Onara_Code/pipeline/agents/`.

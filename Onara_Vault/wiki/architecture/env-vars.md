@@ -1,6 +1,6 @@
 # Environment Variables — Onara
 
-_All 45 variables. Source: raw/01_env_template.env. `[NEXT]` = Next.js `.env.local` | `[FAST]` = FastAPI `.env` | `[BOTH]` = both._
+_Environment variable reference. `[NEXT]` = Next.js `.env.local` | `[FAST]` = FastAPI `.env` | `[BOTH]` = both._
 
 ---
 
@@ -21,7 +21,7 @@ _All 45 variables. Source: raw/01_env_template.env. `[NEXT]` = Next.js `.env.loc
 
 | Variable | Target | Description |
 |----------|--------|-------------|
-| `GOOGLE_PLACES_API_KEY` | FAST | Places API (New) key — restricted to Places API only |
+| `GOOGLE_PLACES_API_KEY` | NEXT | Places API (New) key — server-side API route only; never `NEXT_PUBLIC_*` |
 | `GOOGLE_OAUTH_CLIENT_ID` | NEXT | OAuth Client ID from Google Cloud Console |
 | `GOOGLE_OAUTH_CLIENT_SECRET` | NEXT | OAuth Client Secret |
 
@@ -47,16 +47,17 @@ _All 45 variables. Source: raw/01_env_template.env. `[NEXT]` = Next.js `.env.loc
 
 ---
 
-## Stripe (6 vars)
+## Stripe (7 vars)
 
 | Variable | Target | Description |
 |----------|--------|-------------|
 | `STRIPE_SECRET_KEY` | NEXT | Secret key — server-side only |
 | `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` | NEXT | Publishable key — safe for browser |
 | `STRIPE_WEBHOOK_SECRET` | NEXT | Webhook signing secret (`whsec_...`) |
-| `STRIPE_PRICE_STARTER_MONTHLY` | NEXT | Price ID for Starter $12/month |
-| `STRIPE_PRICE_PRO_MONTHLY` | NEXT | Price ID for Pro $29/month |
-| `STRIPE_PRICE_STARTER_ANNUAL` | NEXT | Price ID for Starter $99/year |
+| `STRIPE_FREE_PRICE_ID` | NEXT | Free product/price ID placeholder if used by Stripe logic |
+| `STRIPE_STARTER_PRICE_ID` | NEXT | Price ID for Starter $12/month |
+| `STRIPE_STARTER_ANNUAL_PRICE_ID` | NEXT | Price ID for Starter $99/year |
+| `STRIPE_PRO_PRICE_ID` | NEXT | Price ID for Pro $29/month |
 
 ---
 
@@ -83,9 +84,9 @@ _All 45 variables. Source: raw/01_env_template.env. `[NEXT]` = Next.js `.env.loc
 
 | Variable | Target | Description |
 |----------|--------|-------------|
-| `OLLAMA_BASE_URL` | FAST | `http://localhost:11434` (dev) or DigitalOcean IP (prod) |
-| `OLLAMA_PRIMARY_MODEL` | FAST | `qwen3:8b` — Agents 2, 3, 8 |
-| `OLLAMA_FALLBACK_MODEL` | FAST | `qwen3.5:9b` — Supervisor + all NIM cloud fallbacks |
+| `OLLAMA_BASE_URL` | FAST | `http://localhost:11434` when FastAPI and Ollama run on the same host |
+| `OLLAMA_PRIMARY_MODEL` | FAST | `qwen3.5:9b` — Agents 2, 3, 8, 10 |
+| `OLLAMA_FALLBACK_MODEL` | FAST | `gemma4:e4b` — Supervisor + most NIM cloud fallbacks |
 
 ---
 
@@ -96,7 +97,7 @@ _All 45 variables. Source: raw/01_env_template.env. `[NEXT]` = Next.js `.env.loc
 | `PIPELINE_SERVER_URL` | NEXT | Cloudflare Tunnel URL (dev) or DO Droplet IP (prod) |
 | `PIPELINE_PORT` | FAST | `8000` |
 | `PIPELINE_API_SECRET` | BOTH | 32-char shared secret: `openssl rand -hex 32` |
-| `PIPELINE_MAX_CONCURRENCY` | FAST | `3` — max concurrent jobs before queue |
+| `PIPELINE_MAX_CONCURRENCY` | FAST | `1` for local Ollama dev; raise after load testing on server |
 | `PIPELINE_JOB_TIMEOUT` | FAST | `300` — hard timeout per job in seconds |
 
 ---
@@ -133,7 +134,7 @@ _All 45 variables. Source: raw/01_env_template.env. `[NEXT]` = Next.js `.env.loc
 | Variable | Target | Default | Description |
 |----------|--------|---------|-------------|
 | `FEATURE_CODE_DOWNLOAD` | NEXT | `true` | Enable Pro code download |
-| `FEATURE_ANNUAL_PLAN` | NEXT | `true` | Show annual Starter option |
+| `FEATURE_ANNUAL_PLAN` | NEXT | `true` | Show Starter annual billing option |
 | `FEATURE_GBP_SYNC` | FAST | `false` | Enable GBP polling (v2.5) |
 
 ---

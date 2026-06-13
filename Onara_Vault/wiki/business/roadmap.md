@@ -17,9 +17,11 @@ _Version milestones, feature scope, and release criteria._
 - GitHub commit (backup)
 - Supabase storage (HTML archive)
 - Resend transactional emails (8 templates)
-- Stripe billing (Starter $12, Pro $29, 14-day reverse trial)
+- Stripe billing (Starter $12/month or $99/year, Pro $29/month, 14-day reverse trial)
 - Dashboard: site list, preview, revision request form
 - Manual revision handling
+- Lead SMS notification on contact form submit
+- Weekly Google reviews badge refresh
 - UptimeRobot + PostHog monitoring
 
 **Release criteria**:
@@ -65,7 +67,6 @@ _Version milestones, feature scope, and release criteria._
 **Features**:
 - Automated revision pipeline (FastAPI endpoint)
 - Partial agent re-runs (only regenerate changed sections)
-- Custom domain support (Cloudflare API)
 - Site analytics embed on generated sites
 - Improved QA Gate (10 → 15 checks)
 - Multiple layout templates per business type
@@ -73,7 +74,7 @@ _Version milestones, feature scope, and release criteria._
 **Release criteria**:
 - [ ] 50+ active paying subscribers
 - [ ] Automated revision round-trip < 90 seconds
-- [ ] Custom domain setup < 5 minutes for end user
+- [ ] Site analytics visible in dashboard
 
 ---
 
@@ -104,6 +105,7 @@ _Version milestones, feature scope, and release criteria._
 - White-label option
 - Team/agency accounts
 - Multi-location businesses (one site per location)
+- Custom domain support (Cloudflare API)
 - Marketplace: installable page sections (menu, booking, testimonials)
 - Enterprise plan ($99+/month)
 

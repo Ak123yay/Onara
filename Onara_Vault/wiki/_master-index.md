@@ -12,6 +12,7 @@ _Claude keeps this file updated after every compile. You review it; you do not e
 | `wiki/_code-map.md` | ✅ initialized | Maps every feature/concept to code folder paths and env vars |
 | `wiki/_coding-rules.md` | ✅ initialized | Coding constraints, architecture rules, security rules |
 | `wiki/_decision-log.md` | ✅ initialized | Running log of decisions made during development |
+| `wiki/onara_credentials.md` | ✅ initialized | No-secret credentials checklist and env placement guide |
 
 ---
 
@@ -24,7 +25,7 @@ _Claude keeps this file updated after every compile. You review it; you do not e
 | `wiki/architecture/modules.md` | ✅ initialized | Module interaction map: frontend ↔ API ↔ pipeline ↔ Supabase |
 | `wiki/architecture/deployment-pipeline.md` | ✅ initialized | 10-step deploy flow, concurrency config, error handling, CI/CD |
 | `wiki/architecture/security.md` | ✅ initialized | Auth JWT, pipeline secret, RLS per table, Stripe HMAC, CORS |
-| `wiki/architecture/env-vars.md` | ✅ initialized | All 45 env vars by service with usage context |
+| `wiki/architecture/env-vars.md` | ✅ initialized | Environment variables by service with usage context |
 | `wiki/architecture/api-reference.md` | ✅ initialized | Full API contract: all endpoints, request/response shapes, error codes, SSE |
 | `wiki/architecture/rate-limiting.md` | ✅ initialized | Three-layer rate limiting: FastAPI slowapi, Next.js middleware, frontend 429 handling |
 

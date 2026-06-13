@@ -26,7 +26,7 @@ Job received by FastAPI
 │                  │
 [AGENT 2]       [AGENT 3]
 Content Writer  Style Agent
-qwen3:8b        qwen3:8b
+qwen3.5:9b        qwen3.5:9b
     │                │
     └───────┬─────────┘
             ▼
@@ -42,14 +42,14 @@ qwen3:8b        qwen3:8b
 [AGENT 7 — Debugger]         kimi-k2.6 (NIM)
     │ → blackboard.debugged_code
     ▼
-[AGENT 8 — SEO Agent]        qwen3:8b (Ollama)
+[AGENT 8 — SEO Agent]        qwen3.5:9b (Ollama)
     │ → blackboard.seo_code
     ▼
 [AGENT 9 — QA Agent]         deepseek-v4-pro (NIM)
     │ FAIL → retry from Agent 6 (max 2)
     │ PASS → blackboard.qa_result
     ▼
-[AGENT 10 — Mobile Agent]    qwen3:8b (Ollama)
+[AGENT 10 — Mobile Agent]    qwen3.5:9b (Ollama)
     │ → blackboard.final_html
     ▼
 [DEPLOYMENT]
@@ -107,7 +107,7 @@ Heartbeat every 30s prevents proxy timeouts. Reconnect: 2s wait → reconnect �
 
 ## Queue
 
-In-memory, deduplication by `project_id`. Max concurrency via `PIPELINE_MAX_CONCURRENCY` (default: 3). v1.5: BullMQ + Redis when avg wait > 5 minutes.
+In-memory, deduplication by `project_id`. Max concurrency via `PIPELINE_MAX_CONCURRENCY` (default: 1 for local Ollama development; raise only after server load testing). v1.5: BullMQ + Redis when avg wait > 5 minutes.
 
 ---
 

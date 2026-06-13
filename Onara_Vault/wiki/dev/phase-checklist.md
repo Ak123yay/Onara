@@ -5,34 +5,43 @@ Each phase maps to a section of TASKS.md. Phases are ordered by dependency — d
 ---
 
 ## Phase 0 — Strategy
-- [ ] Fill out ICP document (business type, geography, size, pain point, WTP)
-- [ ] Identify 50+ GBP listings without websites in target metro area
-- [ ] Join 5–10 contractor Facebook groups; read for 30 min minimum
-- [ ] Write niche-specific features list (emergency banner, service area, license number, reviews badge)
-- [ ] Decide which 2–3 retention mechanisms go into v1
-- [ ] Commit to target metro area for launch
+- [x] Fill out ICP document (business type, geography, size, pain point, WTP)
+- [x] Identify 50+ GBP listings without websites in target metro area
+- [x] Join 5–10 contractor Facebook groups; read for 30 min minimum
+- [x] Write niche-specific features list (emergency banner, service area, license number, reviews badge)
+- [x] Decide which 2–3 retention mechanisms go into v1
+- [x] Commit to target metro area for launch
 
 ## Phase 1 — GitHub Accounts
-- [ ] Create GitHub App (Onara Deployer): Contents R/W + Metadata R-only
-- [ ] Create `onara-sites` repo (private)
-- [ ] Generate Copilot fine-grained PAT (Copilot Requests: R/W)
+- [x] Create GitHub account and submit GitHub Education verification
+- [x] Generate Copilot fine-grained PAT (Copilot read-only)
+- [x] Create GitHub App (Onara Deployer): Contents R/W + Metadata R-only
+- [x] Create `onara-sites` repo (private)
 
 ## Phase 2 — Service Accounts
-- [ ] Create Supabase project
-- [ ] Create Google Cloud project (onara-prod): enable Places API (New), create restricted key
-- [ ] Configure Google OAuth consent screen + create OAuth 2.0 client ID
-- [ ] Create Cloudflare account + configure Pages
-- [ ] Create Stripe account + create products (Free, Starter $12, Pro $29)
-- [ ] Create Resend account + verify sending domain
-- [ ] Install Ollama on PC: pull qwen3:8b and llama3.3:8b
+- [x] Create Google Cloud project (onara-prod): enable Places API (New), create restricted key
+- [x] Configure Google OAuth consent screen + create OAuth 2.0 client ID
+- [x] Create Supabase project
+- [x] Create Cloudflare account + configure Pages
+- [x] Create Resend account + verify sending domain
+- [x] Create Stripe account + create products (Free, Starter $12/mo, Pro $29/mo)
+- [x] Create Stripe webhook endpoint placeholder and save signing secret
+- [x] Install Ollama on PC
+- [x] Fill monthly Stripe price IDs into credentials
+- [ ] Stripe live mode payout setup (deferred to launch; does not block dev)
 
 ## Phase 3 — Dev Environment (PC)
-- [ ] Install Node.js 20+, Python 3.11+, pnpm
-- [ ] Set up Cloudflare Tunnel (`cloudflared`)
+Current actionable phase.
+
+- [x] Pull and verify current Ollama models: `qwen3.5:9b` primary and `gemma4:e4b` fallback
+- [x] Confirm Node.js installed (`v22.22.1`)
+- [x] Confirm Python 3.11+ installed (`Python 3.14.4`)
+- [ ] Install pnpm
+- [ ] Set up Cloudflare Tunnel (`cloudflared`) on the same host as FastAPI
 - [ ] Create `.env` files with all keys from Phases 1–2
 
 ## Phase 4 — Server Environment
-- [ ] Set up identical environment on mini PC or DigitalOcean Droplet ($24/month 4 GB)
+- [ ] Set up FastAPI + Ollama on the same mini PC or DigitalOcean Droplet after Phase 3 works locally
 - [ ] Configure PM2 for FastAPI auto-restart on crash
 
 ## Phase 5 — Database Schema
@@ -58,7 +67,7 @@ Each phase maps to a section of TASKS.md. Phases are ordered by dependency — d
 ## Phase 9 — Design System
 - [ ] Define Tailwind tokens (contractor vertical palette)
 - [ ] Build base components: Button, Card, Input, Badge
-- [ ] Migrate `raw/styles.jsx` to `onara-app/src/components/`
+- [ ] Migrate design reference from `Onara_Design/` into `Onara_Code/app/components/`
 
 ## Phase 10 — Landing Page
 - [ ] Build niche-specific landing page (contractors copy from `wiki/content/landing-page.md`)
@@ -105,8 +114,8 @@ Each phase maps to a section of TASKS.md. Phases are ordered by dependency — d
 
 ## Phase 18 — Agents 1–3
 - [ ] Agent 1: Business Analyst (deepseek-v4-flash → JSON spec)
-- [ ] Agent 2: Content Writer (qwen3:8b → copy JSON) — parallel
-- [ ] Agent 3: Style Agent (qwen3:8b → design tokens) — parallel with Agent 2
+- [ ] Agent 2: Content Writer (qwen3.5:9b → copy JSON) — parallel
+- [ ] Agent 3: Style Agent (qwen3.5:9b → design tokens) — parallel with Agent 2
 - [ ] Supervisor validation between each step
 
 ## Phase 19 — Agents 4–5
@@ -121,9 +130,9 @@ Each phase maps to a section of TASKS.md. Phases are ordered by dependency — d
 
 ## Phase 21 — Agents 7–10
 - [ ] Agent 7: Debugger (kimi-k2.6 → fixed HTML or PASS)
-- [ ] Agent 8: SEO Agent (qwen3:8b → SEO-injected HTML)
+- [ ] Agent 8: SEO Agent (qwen3.5:9b → SEO-injected HTML)
 - [ ] Agent 9: QA (deepseek-v4-pro → PASS or blocking issues JSON)
-- [ ] Agent 10: Mobile (qwen3:8b → mobile-optimized HTML)
+- [ ] Agent 10: Mobile (qwen3.5:9b → mobile-optimized HTML)
 - [ ] Full pipeline integration test end-to-end
 
 ## Phase 22 — Deployment Pipeline

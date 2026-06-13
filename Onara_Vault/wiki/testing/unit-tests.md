@@ -81,7 +81,7 @@ async def test_agents_2_and_3_run_in_parallel():
     assert bb["content_output"] is not None
     assert bb["style_output"] is not None
     # Both ran in parallel — elapsed should be less than sum of sequential
-    assert elapsed < 30  # sequential would be ~40s with 8B models
+    assert elapsed < 30  # sequential would be ~40s with under-10B local models
 ```
 
 ---

@@ -6,7 +6,7 @@ _Google Cloud Console setup: Places API key and OAuth client for Supabase auth._
 
 ## What Onara Uses Google For
 
-- **Places API (New)**: Business search and detail fetch (Agents 1, GBP Fetcher)
+- **Places API (New)**: Business search and detail fetch used by the build flow before the AI pipeline starts
 - **Google OAuth**: User sign-in via Supabase Auth ("Sign in with Google")
 
 These are two separate Google configurations — one API key, one OAuth client.
@@ -17,7 +17,7 @@ These are two separate Google configurations — one API key, one OAuth client.
 
 | Variable | Where | Value |
 |----------|-------|-------|
-| `GOOGLE_PLACES_API_KEY` | FastAPI `.env` | Restricted API key for Places API only |
+| `GOOGLE_PLACES_API_KEY` | Next.js `.env.local` | Restricted API key for Places API only |
 | `GOOGLE_OAUTH_CLIENT_ID` | Next.js `.env.local` | OAuth 2.0 Client ID |
 | `GOOGLE_OAUTH_CLIENT_SECRET` | Next.js `.env.local` | OAuth 2.0 Client Secret |
 
@@ -40,12 +40,12 @@ APIs & Services → Library → search "Places API (New)" → Enable
 APIs & Services → Credentials → Create Credentials → API Key
 
 Copy key → then immediately restrict it:
-- **Application restrictions**: None (FastAPI server calls directly, no browser/app)
+- **Application restrictions**: None for local server-side development; add server restrictions before production if using fixed infrastructure
 - **API restrictions**: Restrict key → select "Places API (New)"
 
 Copy restricted key → `GOOGLE_PLACES_API_KEY`
 
-**Key is stored in FastAPI `.env` only — never in Next.js (never exposed to browser).**
+**Key is stored in Next.js server env only — never in `NEXT_PUBLIC_*` and never exposed to browser.**
 
 ---
 
@@ -97,6 +97,7 @@ Supabase handles the OAuth flow — Next.js only needs the Supabase client SDK.
 ## Related Files
 
 - `wiki/features/google-places.md` — Places API behavior and field mapping
+- `wiki/features/api.md` — `/api/places/search` route
 - `wiki/features/auth.md` — Google OAuth sign-in flow
 - `wiki/integrations/supabase.md` — Supabase auth provider config
 - `wiki/architecture/env-vars.md` — all Google env vars

@@ -2,7 +2,7 @@
 
 | File | Description |
 |------|-------------|
-| [agents.md](agents.md) | All 10 agents: model, job, input, output, retry logic, Blackboard schema |
+| [agents.md](wiki/ai_agents/agents.md) | All 10 agents: model, job, input, output, retry logic, Blackboard schema |
 | [workflows.md](workflows.md) | Pipeline sequencing, parallelism, SSE streaming, retry logic, queue management |
 | [models.md](models.md) | Model assignment per agent, NVIDIA NIM specs, Ollama specs, plan-gated routing |
 | [rag.md](rag.md) | ChromaDB collection schema, 60 seed patterns, Agent 7/9 query flow, adding patterns |

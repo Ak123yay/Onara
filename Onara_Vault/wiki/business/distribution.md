@@ -8,8 +8,8 @@ _Go-to-market channels, outbound scripts, and referral programs. Source: `raw/09
 
 | Channel | CAC | Volume | Time | Priority |
 |---------|-----|--------|------|----------|
-| Facebook groups (local business) | $0 | Medium | Daily | 1 |
-| Cold DM (Instagram/LinkedIn) | $5–15 | Low | Weekly | 2 |
+| Cold outbound from Google Maps no-website leads | $0–15 | High | Daily | 1 |
+| Contractor Facebook groups | $0 | Medium | Daily | 2 |
 | Accountant referral program | $30–50 | High (LTV) | Monthly | 3 |
 | Trade association partnerships | $0–500 upfront | High | Quarterly | 4 |
 | Cold email | $10–20 | Medium | Weekly | 5 |
@@ -17,35 +17,9 @@ _Go-to-market channels, outbound scripts, and referral programs. Source: `raw/09
 
 ---
 
-## Channel 1: Facebook Groups
+## Primary Channel: Cold Outbound via Google Maps + DM
 
-**Target groups**: "Local Business Owners [City]", "Small Business Support [State]", entrepreneurship groups
-
-**Post template**:
-
-```
-Just built a website for my [type] business in 90 seconds using AI — no coding, no designer.
-
-It pulled all my info from Google Maps automatically (hours, phone, photos, description).
-
-Free 14-day trial, no credit card. Would love feedback from other local business owners.
-
-[Link to onara.tech]
-```
-
-**Rules**:
-- Don't post the same message in multiple groups on the same day
-- Respond to every comment within 2 hours
-- Don't post in groups that prohibit promotion
-- Post as a business owner sharing an experience, not as Onara marketing
-
-**Weekly cadence**: 3–5 posts per week across different groups
-
----
-
-## Channel 2: Cold DM (Instagram / LinkedIn)
-
-**Target**: Local businesses with no website link in their bio, or a link to a weak/outdated website
+**Target**: Washington DC / Northern Virginia contractors with a Google Business Profile, 10+ reviews, and no website link.
 
 **LinkedIn DM template**:
 
@@ -54,7 +28,7 @@ Hi [Name],
 
 I noticed [Business Name] has great Google reviews but I couldn't find your website.
 
-I built a tool that creates a professional site from your Google Business Profile in under 2 minutes — no design skills needed.
+I built a tool that creates a professional contractor site from your Google Business Profile in under 2 minutes — no design skills needed.
 
 Would you be open to a free trial? No credit card required.
 
@@ -66,9 +40,9 @@ Would you be open to a free trial? No credit card required.
 ```
 Hey [Name]! Love what you're doing with [Business Name].
 
-I saw you don't have a website — I made a tool that builds one from your Google listing in 2 minutes.
+I saw you don't have a website — I made a tool that builds a contractor site from your Google listing in 2 minutes.
 
-Free trial if you want to check it out 👇
+Free trial if you want to check it out:
 [Link]
 ```
 
@@ -77,7 +51,33 @@ Free trial if you want to check it out 👇
 - No website in bio OR website is clearly outdated
 - Business type matches ICP
 
-**Weekly cadence**: 20–30 DMs/week
+**Weekly cadence**: 10–20 messages/day during launch weeks
+
+---
+
+## Supporting Channel: Contractor Facebook Groups
+
+**Target groups**: Local trade, home services, and contractor groups in Washington DC / Northern Virginia.
+
+**Post template**:
+
+```
+Just built a contractor website in 90 seconds using AI — no coding, no designer.
+
+It pulled business info from Google Maps automatically (hours, phone, photos, description).
+
+Free 14-day trial, no credit card. Would love feedback from other DC / Northern Virginia contractors.
+
+[Link to onara.tech]
+```
+
+**Rules**:
+- Don't post the same message in multiple groups on the same day
+- Respond to every comment within 2 hours
+- Don't post in groups that prohibit promotion
+- Post as a local founder asking for contractor feedback, not as generic SaaS marketing
+
+**Weekly cadence**: 3–5 posts per week across different groups
 
 ---
 
@@ -111,12 +111,12 @@ Would you be open to a 15-minute call to see how it works?
 ## Channel 4: Trade Association Partnerships
 
 **Structure**:
-- Partner with trade associations (plumbing, restaurants, salons, accounting)
+- Partner with trade associations serving contractors and home-service businesses
 - Association promotes Onara to members in newsletter
 - Onara provides: member discount (10% off), co-branded landing page
 - Association receives: referral commission or flat fee per signup
 
-**Target associations**: PHCC (plumbing), NRA (restaurants), PBA (beauty), AICPA (accounting)
+**Target associations**: PHCC (plumbing), electrical contractor associations, HVAC associations, roofing associations, local chambers with contractor-heavy membership
 
 **Pitch approach**: Lead with member benefit; offer to present at next member meeting; provide 5 free demo sites upfront.
 
@@ -147,7 +147,7 @@ Onara
 
 ## Channel 6: Reddit
 
-**Subreddits**: r/smallbusiness, r/entrepreneur, r/restaurants, niche industry subreddits
+**Subreddits**: r/smallbusiness, r/entrepreneur, r/Contractor, r/HomeImprovement, niche trade subreddits
 
 **Approach**: Provide genuine value first; mention Onara only when directly relevant to a question.
 

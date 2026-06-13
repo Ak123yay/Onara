@@ -8,8 +8,8 @@ _Key provisions affecting data handling decisions. Full legal text: `raw/06_priv
 
 | Data Type | Source | Where Stored | Retention |
 |-----------|--------|-------------|-----------|
-| Name, email | Signup (Google OAuth or form) | Supabase `user_profiles` | Until account deletion |
-| Google Business Profile data | Google Places API | Supabase (job records) | Until account deletion |
+| Name, email | Signup (Google OAuth or form) | Supabase `users` | Until account deletion |
+| Google Business Profile data | Google Places API | Supabase `projects` and `pipeline_jobs` | Until account deletion |
 | Generated HTML | AI pipeline output | Supabase Storage + GitHub | Until account deletion |
 | Payment method | Stripe (never stored by Onara) | Stripe only | Until subscription ends |
 | Usage analytics | PostHog | PostHog (anonymized) | 2 years |

@@ -10,7 +10,7 @@ _This file is the single source of truth for all work. Claude updates this after
 - [x] Identify 50+ GBP listings without websites in target metro area _(tracker: output/gbp-leads-tracker.csv | 73 leads seeded from Craigslist DC/NoVA)_
 - [x] Join 5–10 contractor Facebook groups; read for 30 min minimum _(10 groups documented: wiki/research/facebook-groups.md)_
 - [x] Write niche-specific features list (emergency banner, service area, license number, reviews badge)
-- [x] Decide which 2–3 retention mechanisms go into v1 — Lead SMS + Reviews Badge Refresh + GBP Change Detection Email
+- [x] Decide which retention mechanisms go into v1 — Lead SMS + Reviews Badge Refresh; GBP change detection stays post-v1 unless explicitly unlocked
 - [x] Commit to target metro area for launch — Washington DC / Northern Virginia
 - [x] Create GitHub account (username: ak123yay) + submit GitHub Education verification
 - [x] Generate fine-grained PAT for Copilot SDK (name: Onara Copilot, Copilot read-only)
@@ -23,29 +23,37 @@ _This file is the single source of truth for all work. Claude updates this after
 - [x] Create Cloudflare account + configure Pages _(account ID confirmed; Vercel also set up)_
 - [x] Create Resend account + verify sending domain
 - [x] Create Stripe account _(test key confirmed)_
-- [x] Create Stripe test products — Free / Starter $12 / Pro $29 _(create price IDs in Stripe Dashboard → Products, test mode, no SSN needed)_
+- [x] Create Stripe test products — Free / Starter $12/mo / Pro $29/mo _(create price IDs in Stripe Dashboard → Products, test mode, no SSN needed)_
 
 ---
 
 ## 🔥 Active
 
-_(Phase 0 complete. Phase 1 complete. Phase 2 mostly complete — 2 items remain below.)_
+Current actionable phase: **Phase 3 — Dev Environment (PC)**.
+
+Execution rule:
+1. Complete the first unchecked, non-deferred task in this file.
+2. Do not start implementation phases until Phase 3 and Phase 4 environment setup are complete.
+3. Stripe live-mode payout setup is deferred to launch and does not block development.
 
 ---
 
 ## 📋 Backlog
 
-### Phase 2 — Remaining
+### Phase 2 — Remaining / Deferred
 
 - [x] Create Stripe webhook endpoint _(placeholder URL; events: checkout.session.completed, customer.subscription.deleted, invoice.payment_failed; whsec_ saved)_
 - [x] Install Ollama on PC
-- [x] Pull Ollama models: qwen3:8b and llama3.3:8b
+- [x] Pulled initial Ollama models _(superseded by June 2026 model refresh)_
 - [x] Fill Stripe price IDs into credentials _(STRIPE_FREE_PRICE_ID, STRIPE_STARTER_PRICE_ID, STRIPE_PRO_PRICE_ID)_
-- [ ] Stripe live mode payout setup _(deferred to launch — SSN or EIN required; alt: Lemon Squeezy)_
+- [ ] Stripe live mode payout setup _(deferred to launch — SSN or EIN required; alt: Lemon Squeezy; does not block Phase 3)_
 
 ### Phase 3 — Dev Environment (PC)
 
-- [ ] Install Node.js, Python 3.11+, pnpm
+- [x] Pull and verify current Ollama models: `qwen3.5:9b` primary and `gemma4:e4b` fallback
+- [x] Confirm Node.js installed (`v22.22.1`)
+- [x] Confirm Python 3.11+ installed (`Python 3.14.4`)
+- [ ] Install pnpm
 - [ ] Set up Cloudflare Tunnel (cloudflared)
 - [ ] Create .env file with all keys from phases 1–2
 
@@ -136,8 +144,8 @@ _(Phase 0 complete. Phase 1 complete. Phase 2 mostly complete — 2 items remain
 ### Phase 18 — Agents 1–3
 
 - [ ] Agent 1: Analyst (deepseek-v4-flash)
-- [ ] Agent 2: Content Writer (qwen3:8b) — parallel
-- [ ] Agent 3: Style Agent (qwen3:8b) — parallel with Agent 2
+- [ ] Agent 2: Content Writer (qwen3.5:9b) — parallel
+- [ ] Agent 3: Style Agent (qwen3.5:9b) — parallel with Agent 2
 
 ### Phase 19 — Agents 4–5
 
@@ -153,9 +161,9 @@ _(Phase 0 complete. Phase 1 complete. Phase 2 mostly complete — 2 items remain
 ### Phase 21 — Agents 7–10
 
 - [ ] Agent 7: Debugger (kimi-k2.6)
-- [ ] Agent 8: SEO Agent (qwen3:8b)
+- [ ] Agent 8: SEO Agent (qwen3.5:9b)
 - [ ] Agent 9: QA (deepseek-v4-pro)
-- [ ] Agent 10: Mobile / responsive check (qwen3:8b)
+- [ ] Agent 10: Mobile / responsive check (qwen3.5:9b)
 
 ### Phase 22 — Deployment Pipeline
 
@@ -173,6 +181,7 @@ _(Phase 0 complete. Phase 1 complete. Phase 2 mostly complete — 2 items remain
 ### Phase 24 — Stripe Billing
 
 - [ ] Checkout session creation
+- [ ] Starter annual checkout price support (`STRIPE_STARTER_ANNUAL_PRICE_ID`, $99/year)
 - [ ] Webhook handler: subscription created, updated, deleted, payment failed
 - [ ] Reverse trial: set trial_ends_at on signup, daily Supabase edge function to downgrade
 
@@ -184,9 +193,9 @@ _(Phase 0 complete. Phase 1 complete. Phase 2 mostly complete — 2 items remain
 
 ### Phase 26 — Retention Features
 
-- [ ] Google Business Profile polling (every 24 hours, hours/phone sync)
-- [ ] Google Reviews badge (weekly pull)
 - [ ] Lead SMS notification on contact form submit
+- [ ] Google Reviews badge refresh (weekly pull)
+- [ ] Keep GBP polling/change detection disabled for v1 (`FEATURE_GBP_SYNC=false`)
 
 ### Phase 27 — Architecture Hardening
 
@@ -206,7 +215,7 @@ _(Phase 0 complete. Phase 1 complete. Phase 2 mostly complete — 2 items remain
 - [ ] Cold outbound sequence drafted (Google Maps no-website leads)
 - [ ] Contractor Facebook groups outreach plan
 - [ ] Trade association partnership email
-- [ ] Accountant referral program setup ($20/month per active referral)
+- [ ] Accountant referral program setup (20% MRR for 12 months per active referral)
 
 ### Phase 30 — Launch
 

@@ -120,3 +120,82 @@ Also documents 5 new Blackboard fields, a v1/later priority table, and design re
 - `TASKS.md`: Annotated Phase 1 Tasks 1–2 with guide + template file references
 
 **Why**: Both tasks require manual browser interaction (account creation, token generation). Deliverable is the exact-click guide + `.env.template` so the user can execute both tasks in under 10 minutes each and immediately paste values into the right file.
+
+---
+
+## 2026-06-09
+
+### Wiki execution cleanup and secret redaction
+
+**Files affected**: `TASKS.md`, `wiki/_code-map.md`, `wiki/_coding-rules.md`, `wiki/_decision-log.md`, `wiki/_master-index.md`, `wiki/architecture/*`, `wiki/ai_agents/*`, `wiki/dev/*`, `wiki/features/*`, `wiki/integrations/*`, `wiki/data/*`, `wiki/operations/*`, `wiki/business/pricing.md`, `wiki/content/*`, `wiki/legal/privacy-policy.md`, `wiki/onara_credentials.md`, `Onara_Code/config/.env.template`
+
+**What changed**:
+- Clarified that Phase 3 is the next actionable phase and Stripe live payouts are deferred.
+- Standardized implementation paths around `Onara_Code/`, design source around `Onara_Design/`, and schema names around `users`, `projects`, `pipeline_jobs`, `revisions`, and `pipeline_errors`.
+- Made the recommended dev topology explicit: FastAPI and Ollama run on the same host; `cloudflared` runs where FastAPI runs.
+- Aligned model docs with the active 10-agent pipeline and the pulled Ollama models `qwen3:8b` and `llama3.3:8b`.
+- Aligned Stripe price ID names, plan limits, reverse-trial behavior, annual-plan flag, and local concurrency defaults.
+- Replaced `wiki/onara_credentials.md` with a no-secret checklist/template.
+
+**Why**: The wiki had conflicting execution guidance, stale schema and agent names, old env var names, and live credentials stored in a wiki file. These conflicts would cause wrong implementation choices during Phase 3 and later phases.
+
+---
+
+### Raw-supported pricing, subscription, and model audit
+
+**Files affected**: `TASKS.md`, `Onara_Code/config/.env.template`, `wiki/architecture/env-vars.md`, `wiki/business/pricing.md`, `wiki/business/roadmap.md`, `wiki/content/email-copy.md`, `wiki/content/landing-page.md`, `wiki/dev/phase-checklist.md`, `wiki/features/billing.md`, `wiki/features/build-flow.md`, `wiki/features/dashboard.md`, `wiki/features/revision-system.md`, `wiki/integrations/nvidia-nim.md`, `wiki/integrations/stripe.md`, `wiki/legal/terms-of-service.md`, `wiki/operations/billing-ops.md`, `wiki/testing/test-strategy.md`, `wiki/onara_credentials.md`
+
+**What changed**:
+- Confirmed raw sources use local Ollama models `qwen3:8b` and `llama3.3:8b`; no raw plan source supports `qwen3.5:9b`.
+- Standardized paid plans as Stripe subscriptions: Starter at `$12/month or $99/year`, Pro at `$29/month`.
+- Restored annual Starter support through `STRIPE_STARTER_ANNUAL_PRICE_ID` and `FEATURE_ANNUAL_PLAN=true`.
+- Standardized plan limits: Trial 3 sites/unlimited revisions during trial, Free 1 preview site/3 revisions, Starter 1 live site/10 revisions, Pro 3 live sites/unlimited revisions.
+- Updated revision reset guidance: Free resets via pg_cron on the 1st; Starter resets on Stripe billing period; Trial/Pro use unlimited revision limits.
+- Updated trial expiry copy so Free keeps dashboard preview but hides the public URL after Day 14.
+- Added a Phase 24 task for Starter annual checkout price support without marking the annual price ID as completed.
+
+**Why**: The wiki still contained old Starter/Pro limits, disabled annual-plan guidance, stale customer emails, and inconsistent Agent 6 routing. The raw 30-step plan and business plan were used as the support source for the corrected wiki behavior.
+
+---
+
+### June 2026 model refresh + v1 business scope alignment
+
+**Files affected**: `TASKS.md`, `PROJECT_CONTEXT.md`, `Onara_Code/config/.env.template`, `wiki/_decision-log.md`, `wiki/ai_agents/*`, `wiki/integrations/ollama.md`, `wiki/dev/*`, `wiki/business/*`, `wiki/content/landing-page.md`, `wiki/features/retention.md`, `wiki/operations/scaling.md`, `wiki/testing/unit-tests.md`
+
+**What changed**:
+- Standardized current Ollama local models to `qwen3.5:9b` primary and `gemma4:e4b` fallback/supervisor.
+- Moved the model pull/verification task to the top of Phase 3, before Node/Python/pnpm and `cloudflared`.
+- Confirmed Starter and Pro subscriptions remain in scope, with Starter monthly + annual pricing documented.
+- Re-centered launch strategy on Washington DC / Northern Virginia contractors and home-service businesses.
+- Removed fake landing-page social proof and replaced it with honest early-access positioning.
+- Kept v1 retention focused on lead SMS and weekly reviews badge refresh; moved GBP polling/change detection, seasonal SEO, and custom domains to post-v1.
+- Corrected MRR tracking so active trials are not counted as recurring revenue.
+- Updated infrastructure guidance to treat 16 GB RAM as minimum and 24 GB as recommended for reliable local fallback with both Ollama models.
+
+**Why**: The user selected newer local models and asked for one more full wiki/business audit. The wiki now treats raw files as historical source material, while `TASKS.md`, `PROJECT_CONTEXT.md`, and the decision log carry the current operating truth.
+
+---
+
+### Phase 3 Ollama models verified
+
+**Files affected**: `TASKS.md`, `wiki/dev/phase-checklist.md`
+
+**What changed**:
+- Marked the Phase 3 Ollama model pull/verification task complete.
+- Confirmed the active local model pair is `qwen3.5:9b` primary and `gemma4:e4b` fallback.
+- Reordered the phase checklist so the completed model verification appears before the remaining toolchain install task.
+
+**Why**: User confirmed both Ollama models were pulled and responded successfully.
+
+---
+
+### Phase 3 toolchain check
+
+**Files affected**: `TASKS.md`, `wiki/dev/phase-checklist.md`
+
+**What changed**:
+- Confirmed Node.js is installed at `v22.22.1`.
+- Confirmed Python is installed at `Python 3.14.4`, satisfying the Python 3.11+ requirement.
+- Split the remaining toolchain task so `pnpm` is the only unchecked install item.
+
+**Why**: The original task bundled three tools together, but only `pnpm` is still missing.

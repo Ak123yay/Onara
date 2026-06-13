@@ -21,10 +21,10 @@ _These rules apply to every line of code written for Onara. Claude follows them 
 
 ### Agent Rules
 
-- Every agent is a single Python file in `pipeline/agents/`
+- Every agent is a single Python file in `Onara_Code/pipeline/agents/`
 - Every agent has exactly one job. If you find yourself adding a second responsibility, split it.
 - Every agent retries up to 2 times on failure, then surfaces a structured error to the supervisor
-- No agent writes directly to the database. All DB writes go through `pipeline/deployment/supabase.py`
+- No agent writes directly to the database. All DB writes go through `Onara_Code/pipeline/deployment/supabase.py`
 - Agents 2 and 3 always run in parallel. Never await one before starting the other.
 
 ---
@@ -36,7 +36,7 @@ _These rules apply to every line of code written for Onara. Claude follows them 
 - Python 3.11+. Use type hints on all function signatures.
 - Async functions for all I/O (HTTP calls, file reads, DB writes). Never use `requests` — use `httpx`.
 - All secrets via environment variables. Never hardcode keys, URLs, or model names.
-- Model names are constants defined in `pipeline/ai_client/model_picker.py`. Reference the constant, never the string.
+- Model names are constants defined in `Onara_Code/pipeline/ai_client/model_picker.py`. Reference the constant, never the string.
 - All agent output is a typed dataclass or Pydantic model. No raw dicts passed between agents.
 
 ### TypeScript (Next.js)
@@ -90,6 +90,6 @@ _These rules apply to every line of code written for Onara. Claude follows them 
 
 - User-generated site files (those go in `onara-sites/`)
 - Stripe secret keys, webhook secrets, or signing keys
-- Supabase service role key (only in `pipeline/` and Supabase edge function env — never in Next.js env)
+- Supabase service role key (only in server-side Next.js routes, `Onara_Code/pipeline/`, and Supabase edge function env — never in browser code)
 - Any `.pem` file (GitHub App private key stored as env var string only)
 - Real user data or test accounts with real email addresses

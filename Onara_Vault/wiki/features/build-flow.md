@@ -39,7 +39,7 @@ The build flow is the core product experience. A user enters a business name or 
 
 **Validation before submission**:
 - `placeId` must be non-null (user must select from results, not freetext)
-- Plan limit check (client-side): warn if at Starter site limit (3 sites), block if exceeded
+- Plan limit check (client-side): warn at plan site limit, block if exceeded (Free 1, Starter 1, Trial/Pro 3)
 
 ---
 
@@ -75,15 +75,16 @@ The build flow is the core product experience. A user enters a business name or 
 **Timeline display** (left rail):
 
 ```
-✅ Fetch Business Data
-✅ Write Copy + Style (parallel)
-✅ Brand Voice
-✅ SEO Tags
-✅ Choose Layout
-⏳ Generate HTML
-   Asset Optimization
-   Quality Check
-   Deploy
+[done] Analyze Business
+[done] Write Copy + Style (parallel)
+[done] Plan Components
+[done] Build Code Prompt
+[done] Generate HTML
+[done] Debug HTML
+[done] Add SEO
+[done] Quality Check
+[active] Mobile Pass
+        Deploy
 ```
 
 **Auto-retry on SSE disconnect**: Reconnects up to 3× with exponential backoff before showing "Connection lost" warning.
@@ -105,7 +106,7 @@ The build flow is the core product experience. A user enters a business name or 
 |--------|------|--------|
 | Visit Site | All | Opens `site_url` in new tab |
 | Regenerate | All | Triggers new build job (counts against limit) |
-| Request Revision | All | Opens revision form (3/month Starter, unlimited Pro) |
+| Request Revision | All | Opens revision form (3/month Free, 10/month Starter, unlimited Trial/Pro) |
 | Download Code | Pro | Downloads `index.html` |
 | Copy Site URL | All | Copies URL to clipboard |
 
@@ -129,8 +130,9 @@ Triggered by "Request Revision" button.
 - Resend email sent when revision complete
 
 **Revision limits**:
-- Starter: 3/month (enforced via `revisions` table count + pg_cron reset)
-- Pro: unlimited
+- Free: 3/month (reset by pg_cron on the 1st)
+- Starter: 10/month (reset on the Stripe billing period)
+- Trial/Pro: unlimited
 
 ---
 
@@ -141,8 +143,8 @@ Triggered by "Request Revision" button.
 | Places API unavailable | "Search unavailable — enter your Google Place ID manually" with link to instructions |
 | Pipeline offline | "Our generation service is temporarily offline. Try again in a few minutes." |
 | Job failed (agent error) | "Generation failed at [step name]. Your credits are not affected. Try again." |
-| Plan limit reached | "You've reached your 3-site limit. Upgrade to Pro for unlimited sites." with upgrade CTA |
-| Revision limit reached | "You've used your 3 revisions this month. Resets on [date]. Upgrade for unlimited." |
+| Plan limit reached | "You've reached your site limit for this plan. Upgrade to Pro for up to 3 live sites." with upgrade CTA |
+| Revision limit reached | "You've used your revisions for this billing period. Resets on [date]. Upgrade for unlimited revisions." |
 
 ---
 

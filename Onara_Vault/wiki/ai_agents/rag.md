@@ -1,12 +1,12 @@
 # RAG System — Onara
 
-_ChromaDB vector store, what's in it, and how Agents 7 and 9 use it to generate better HTML._
+_ChromaDB vector store, what's in it, and how Agents 6, 7, and 9 use it to generate and validate better HTML._
 
 ---
 
 ## Overview
 
-The RAG (Retrieval-Augmented Generation) system gives Agent 7 (HTML Generator) and Agent 9 (QA Gate) access to a library of proven HTML/CSS/JS patterns for small business websites. Instead of generating structure from scratch, Agent 7 retrieves the most relevant patterns for the business category and uses them as templates.
+The RAG (Retrieval-Augmented Generation) system gives Agent 6 (Code Generator), Agent 7 (Debugger), and Agent 9 (QA Agent) access to a library of proven HTML/CSS/JS patterns for small business websites. Instead of generating structure from scratch, Agent 6 retrieves the most relevant patterns for the business category and uses them as templates.
 
 ---
 
@@ -58,9 +58,9 @@ The initial collection is seeded from `raw/10_rag_seed_content.md`, which contai
 
 ---
 
-## How Agent 7 Uses RAG
+## How Agent 6 Uses RAG
 
-Agent 7 (HTML Generator) query flow:
+Agent 6 (Code Generator) query flow:
 
 1. Receives `business_category` and `layout_json` from blackboard
 2. Queries ChromaDB:
@@ -71,8 +71,8 @@ Agent 7 (HTML Generator) query flow:
        where={"category": business_category}
    )
    ```
-3. Top 3 matching patterns injected into Agent 7's prompt as examples
-4. Agent 7 generates HTML using patterns as structural reference, not copy-paste
+3. Top 3 matching patterns injected into Agent 6's prompt as examples
+4. Agent 6 generates HTML using patterns as structural reference, not copy-paste
 
 **Why RAG over pure generation**:
 - Consistent HTML structure across sites

@@ -19,12 +19,12 @@ ollama list
 ```
 
 **Out of memory / model crashes**
-- Running both qwen3:8b + llama3.3:8b simultaneously requires ~12 GB RAM
-- If you have 8 GB, pull only qwen3:8b and configure NIM as fallback for llama tasks
+- Running both `qwen3.5:9b` and `gemma4:e4b` reliably is a 24 GB+ RAM target
+- If you have 16 GB, keep `PIPELINE_MAX_CONCURRENCY=1` and avoid keeping both models hot
 - Check RAM usage: `free -h` (Linux) or Activity Monitor (Mac)
 
 **Slow responses (>60 seconds)**
-- Local 8B models take 5–15 seconds per completion on typical hardware
+- Local under-10B models can take 5–20 seconds per completion on CPU-only hardware
 - If responses take >30s, check: CPU-only inference (no GPU acceleration) or system is swapping
 - Enable GPU offloading: `OLLAMA_NUM_GPU=1 ollama serve`
 

@@ -47,7 +47,7 @@ _Plan tiers, reverse trial rationale, pricing psychology, and revenue projection
 - Positioned as "less than a coffee a week" ($2.77/week)
 - Below the $15–20 threshold where SMB owners start to question ROI
 - Competes directly with DIY website builders (Wix $17+, Squarespace $16+)
-- Annual option ($99) = 2 months free → 31% discount → strong annual conversion incentive
+- Annual option ($99/year) creates a low-friction full-year commitment at $8.25/month effective pricing
 
 **$29/month (Pro)**:
 - Below $30 psychological barrier
@@ -55,10 +55,9 @@ _Plan tiers, reverse trial rationale, pricing psychology, and revenue projection
 - ROI clear: one new customer from the website pays for 1 year of Pro
 
 **Annual plan**:
-- $99/year = $8.25/month (vs. $12/month)
-- Reduces churn (annual commitment)
-- Improves cash flow (upfront payment)
-- Feature-flagged: `FEATURE_ANNUAL_PLAN=true`
+- Starter annual: $99/year = $8.25/month effective pricing
+- Stripe price ID: `STRIPE_STARTER_ANNUAL_PRICE_ID`
+- Feature flag: `FEATURE_ANNUAL_PLAN=true` by default
 
 ---
 
@@ -75,16 +74,17 @@ _Conservative model. Source: Onara Business Plan v12._
 | 18 | 3,000 | 9% | $8,700 |
 | 24 | 6,000 | 10% | $21,600 |
 
-**Break-even**: ~Month 6–8 (covering infrastructure costs of ~$500–800/month)
+**Break-even**: 2–5 paying Starter users while v1 runs on local infrastructure and free tiers. Re-check break-even before moving to a permanent cloud server or GPU-backed Ollama.
 
-**Infrastructure costs** (v1):
-- Vercel Pro: $20/month
-- DigitalOcean Droplet (4GB RAM): $24/month
-- Supabase Pro: $25/month
-- Cloudflare Pages: $0 (free)
-- NVIDIA NIM: $0 (free tier)
-- Resend: $0 (free tier up to 3,000/month)
-- **Total v1**: ~$70/month
+**Infrastructure costs** (v1 planning):
+- Vercel hosting for the app
+- Pipeline server sized for FastAPI + Ollama (16 GB minimum; 24 GB recommended if both local models stay available)
+- Supabase
+- Cloudflare Pages
+- NVIDIA NIM
+- Resend
+
+Do not hardcode vendor pricing in implementation docs; verify current pricing before launch budgeting.
 
 ---
 

@@ -99,7 +99,7 @@ Revisions:    4 / 10 used this month | Resets Jun 15
 
 **Manage billing button**: Opens Stripe Customer Portal via `POST /api/billing/portal`. Available after first paid subscription. Allows plan changes, cancellation, invoice downloads.
 
-**Copilot model tier** (Pro only): Shows which Agent 6 model the user's plan uses. Pro users can paste their own API key (OpenAI or Anthropic) to use the highest-capability models.
+**Agent 6 model tier**: Shows which Agent 6 model route the user's plan uses. Starter users can use GitHub Copilot SDK routing; Pro users can paste their own OpenAI or Anthropic API key to use the highest-capability models.
 
 ---
 
@@ -118,10 +118,10 @@ While `onboarding_complete = false`:
 
 | User state | Preview | Public URL | Revise | Build new |
 |-----------|---------|------------|--------|-----------|
-| Trial (any day) | ✅ | ✅ | ✅ unlimited | ✅ up to plan limit |
+| Trial (any day) | ✅ | ✅ | ✅ unlimited | ✅ up to 3 sites during trial |
 | Free (post-trial) | ✅ | ❌ hidden | ✅ 3/month | ✅ 1 site |
 | Starter | ✅ | ✅ | ✅ 10/month | ✅ 1 site |
 | Pro | ✅ | ✅ | ✅ unlimited | ✅ 3 sites |
 | Past due | ✅ | ❌ | ❌ | ❌ |
 
-All enforcement is also in the API (`/api/generate`, `/api/revision`) — the UI state is a UX layer, not the security layer.
+All enforcement is also in the API (`/api/generate`, `/api/revisions/create`) — the UI state is a UX layer, not the security layer.
