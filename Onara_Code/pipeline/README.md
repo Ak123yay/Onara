@@ -40,6 +40,10 @@ pm2 status
 curl http://localhost:8000/health -UseBasicParsing
 ```
 
+Cloudflare Tunnel is handled separately by the named Cloudflare Tunnel service for
+`https://pipeline.onara.tech`. Do not run the temporary `trycloudflare.com` tunnel
+under PM2.
+
 Persist the PM2 process list:
 
 ```powershell
