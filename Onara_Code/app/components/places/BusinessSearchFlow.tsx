@@ -22,7 +22,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { FormEvent, type CSSProperties, type ReactNode, useState } from "react";
+import { FormEvent, type CSSProperties, type ReactNode, useEffect, useRef, useState } from "react";
 
 type PlacePhoto = {
   name: string;
@@ -70,6 +70,7 @@ type GenerateApiResponse = {
 };
 
 type BusinessSearchFlowProps = {
+  initialQuery?: string | null;
   userEmail: string;
   userName?: string | null;
 };
@@ -258,8 +259,10 @@ const sectionOptions: Array<{
   { description: "Mention financing or payment options if relevant.", id: "financing", label: "Financing" },
 ];
 
-export function BusinessSearchFlow({ userEmail, userName }: BusinessSearchFlowProps) {
-  const [query, setQuery] = useState("");
+export function BusinessSearchFlow({ initialQuery, userEmail, userName }: BusinessSearchFlowProps) {
+  const normalizedInitialQuery = initialQuery?.trim().slice(0, 200) ?? "";
+  const initialSearchStarted = useRef(false);
+  const [query, setQuery] = useState(normalizedInitialQuery);
   const [results, setResults] = useState<PlaceSearchResult[] | null>(null);
   const [selectedBusiness, setSelectedBusiness] = useState<PlaceSearchResult | null>(null);
   const [confirmedBusiness, setConfirmedBusiness] = useState<PlaceSearchResult | null>(null);
@@ -268,6 +271,15 @@ export function BusinessSearchFlow({ userEmail, userName }: BusinessSearchFlowPr
   const [generationPackage, setGenerationPackage] = useState<GenerationPackage | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isSearching, setIsSearching] = useState(false);
+
+  useEffect(() => {
+    if (!normalizedInitialQuery || initialSearchStarted.current) {
+      return;
+    }
+
+    initialSearchStarted.current = true;
+    void runSearch(normalizedInitialQuery);
+  }, [normalizedInitialQuery]);
 
   async function handleSearch(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -279,6 +291,10 @@ export function BusinessSearchFlow({ userEmail, userName }: BusinessSearchFlowPr
       return;
     }
 
+    await runSearch(trimmedQuery);
+  }
+
+  async function runSearch(trimmedQuery: string) {
     setQuery(trimmedQuery);
     setIsSearching(true);
     setError(null);
@@ -417,8 +433,8 @@ export function BusinessSearchFlow({ userEmail, userName }: BusinessSearchFlowPr
                   <div className="places-empty card">
                     <p className="serif">No matches came back.</p>
                     <span>
-                      Try adding your city, state, or a nearby landmark. Manual Place ID fallback is
-                      the next Phase 8 task.
+                      Try the exact Google business name with city and state, or include the phone
+                      number shown on Google Maps.
                     </span>
                   </div>
                 )}
