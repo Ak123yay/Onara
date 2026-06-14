@@ -2,8 +2,9 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Onara",
-  description: "AI website builder for local service businesses.",
+  title: "Onara - AI Website Builder for Local Contractors",
+  description:
+    "Turn your Google Business Profile into a professional contractor website in 90 seconds. No designer, no code, no hassle.",
 };
 
 export default function RootLayout({

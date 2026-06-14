@@ -29,7 +29,7 @@ _This file is the single source of truth for all work. Claude updates this after
 
 ## 🔥 Active
 
-Current actionable phase: **Phase 3 — Dev Environment (PC)**.
+Current actionable phase: **Phase 11 — Auth Pages**.
 
 Execution rule:
 1. Complete the first unchecked, non-deferred task in this file.
@@ -83,21 +83,21 @@ Execution rule:
 
 ### Phase 8 — Google Places Route
 
-- [ ] Build /api/places/search Next.js route (Text Search)
-- [ ] Build business confirmation card UI (name, address, phone, hours, photo)
-- [ ] Handle missing fields (amber highlight + manual input fallback)
+- [x] Build /api/places/search Next.js route (Text Search)
+- [x] Build business confirmation card UI (name, address, phone, hours, photo)
+- [x] Handle missing fields (amber highlight + manual input fallback)
 
 ### Phase 9 — Design System
 
-- [ ] Define Tailwind tokens (contractor vertical palette)
-- [ ] Build base components (Button, Card, Input, Badge)
+- [x] Define Tailwind tokens (contractor vertical palette)
+- [x] Build base components (Button, Card, Input, Badge)
 
 ### Phase 10 — Landing Page
 
-- [ ] Build niche-specific landing page (contractors copy)
-- [ ] Add pricing section (Free / Starter / Pro)
-- [ ] Add social proof section (placeholder until real testimonials)
-- [ ] Add 60-second demo video placeholder
+- [x] Build niche-specific landing page (contractors copy)
+- [x] Add pricing section (Free / Starter / Pro)
+- [x] Add social proof section (placeholder until real testimonials)
+- [x] Add 60-second demo video placeholder
 
 ### Phase 11 — Auth Pages
 
