@@ -18,7 +18,9 @@ export default async function UpdatePasswordPage() {
     <main className="auth-shell">
       <section className="auth-proof">
         <Link href="/" className="onara-logo auth-logo-dark">
-          <span className="onara-logo-mark" />
+          <span className="onara-logo-mark" aria-hidden="true">
+            <span className="onara-logo-dot" />
+          </span>
           <span>Onara</span>
         </Link>
 

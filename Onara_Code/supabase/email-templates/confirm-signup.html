@@ -10,8 +10,8 @@
     <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@400;600;700&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@300;400;500&family=Fraunces:opsz,wght@9..144,300;9..144,400;9..144,500;9..144,600;9..144,700&display=swap" rel="stylesheet">
     <style>
       @media only screen and (max-width: 680px) {
-        .shell { padding: 24px 12px !important; }
-        .wrap { width: 100% !important; }
+        .shell { padding: 0 !important; }
+        .wrap { width: 100% !important; max-width: none !important; }
         .hero { padding: 34px 22px 28px !important; }
         .headline { font-size: 44px !important; line-height: 46px !important; }
         .subcopy { font-size: 16px !important; line-height: 25px !important; }
@@ -24,26 +24,32 @@
       }
     </style>
   </head>
-  <body style="margin:0; padding:0; background:#f7f3ea; color:#1a1a1a; font-family:'Inter', Arial, Helvetica, sans-serif;">
+  <body style="margin:0; min-height:100vh; padding:0; background:#f7f3ea; color:#1a1a1a; font-family:'Inter', Arial, Helvetica, sans-serif;">
     <div style="display:none; max-height:0; overflow:hidden; opacity:0; color:transparent;">
       Confirm your email to build your Onara website.
     </div>
 
-    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#f7f3ea;">
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="min-height:100vh; background:#f7f3ea;">
       <tr>
-        <td class="shell" align="center" style="padding:44px 20px;">
-          <table class="wrap" role="presentation" width="680" cellspacing="0" cellpadding="0" style="width:680px; max-width:680px;">
+        <td class="shell" align="center" style="padding:0;">
+          <table class="wrap" role="presentation" width="100%" cellspacing="0" cellpadding="0" style="width:100%; max-width:none;">
             <tr>
-              <td style="padding:0 0 18px;">
+              <td style="padding:28px 48px 18px;">
                 <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
                   <tr>
                     <td align="left" style="vertical-align:middle;">
-                      <table role="presentation" cellspacing="0" cellpadding="0">
+                      <table role="presentation" cellspacing="0" cellpadding="0" style="border-collapse:separate;">
                         <tr>
-                          <td style="width:26px; height:26px; border:1.5px solid #1a1a1a; border-radius:50%; text-align:center; vertical-align:middle;">
-                            <span style="display:inline-block; width:11px; height:11px; background:#e85d13; border-radius:50%;">&nbsp;</span>
+                          <td style="width:22px; height:22px; vertical-align:middle;">
+                            <table role="presentation" cellspacing="0" cellpadding="0" style="width:22px; height:22px; border:1.5px solid #1a1a1a; border-radius:50%;">
+                              <tr>
+                                <td align="center" valign="middle" style="width:22px; height:22px; line-height:0;">
+                                  <span style="display:inline-block; width:10px; height:10px; border-radius:50%; background:#e85d13; line-height:10px;">&nbsp;</span>
+                                </td>
+                              </tr>
+                            </table>
                           </td>
-                          <td style="padding-left:10px; color:#1a1a1a; font-family:'Fraunces', Georgia, 'Times New Roman', serif; font-size:25px; line-height:28px; font-weight:500; letter-spacing:-0.03em;">
+                          <td style="padding-left:9px; color:#1a1a1a; font-family:'Fraunces', Georgia, 'Times New Roman', serif; font-size:19px; line-height:22px; font-weight:500; letter-spacing:-0.015em; vertical-align:middle;">
                             Onara
                           </td>
                         </tr>
@@ -58,10 +64,10 @@
             </tr>
 
             <tr>
-              <td style="border:1px solid #d8d6cf; border-radius:18px; background:#fffdf7; overflow:hidden; box-shadow:0 28px 80px rgba(20,16,10,0.10);">
+              <td style="border-top:1px solid #d8d6cf; border-bottom:1px solid #d8d6cf; background:#fffdf7; overflow:hidden;">
                 <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
                   <tr>
-                    <td class="hero" align="center" style="padding:46px 42px 34px; background:#fffdf7;">
+                    <td class="hero" align="center" style="padding:64px 48px 42px; background:#fffdf7;">
                       <table role="presentation" cellspacing="0" cellpadding="0" style="margin:0 auto 22px;">
                         <tr>
                           <td style="border:1px solid #ebeae4; border-radius:999px; background:#fbfaf5; padding:7px 14px; color:#6a6a6a; font-family:'JetBrains Mono', 'Courier New', Courier, monospace; font-size:10px; line-height:14px; letter-spacing:0.13em; text-transform:uppercase;">
@@ -87,7 +93,7 @@
                         Then search your business and Onara will turn your hours, photos, reviews, service areas, and phone number into a professional contractor website.
                       </p>
 
-                      <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin-top:32px; border:1px solid #1a1a1a; border-radius:6px; background:#fffdf7; box-shadow:0 14px 40px -8px rgba(20,16,10,0.10);">
+                      <table role="presentation" width="760" cellspacing="0" cellpadding="0" align="center" style="width:100%; max-width:760px; margin-top:32px; border:1px solid #1a1a1a; border-radius:6px; background:#fffdf7; box-shadow:0 14px 40px -8px rgba(20,16,10,0.10);">
                         <tr class="search-row">
                           <td class="search-main" style="width:100%; padding:8px 8px 8px 16px; vertical-align:middle;">
                             <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
@@ -128,7 +134,7 @@
                   </tr>
 
                   <tr>
-                    <td style="padding:0 30px 34px;">
+                    <td style="padding:0 48px 56px;">
                       <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border:1px solid #d8d6cf; border-radius:10px; overflow:hidden; background:#f4efe6;">
                         <tr>
                           <td style="padding:10px 13px; border-bottom:1px solid #d8d6cf; background:#fffaf2;">
@@ -178,7 +184,7 @@
             </tr>
 
             <tr>
-              <td style="padding:18px 6px 0;">
+              <td style="padding:22px 48px 34px;">
                 <p style="margin:0; color:#776f66; font-size:13px; line-height:20px;">
                   Confirming account: <strong style="color:#1a1a1a;">{{ .Email }}</strong>
                 </p>

@@ -13,7 +13,9 @@ export function AuthLogo() {
       className="onara-logo"
       aria-label={user ? "Open Onara dashboard" : "Onara home"}
     >
-      <span className="onara-logo-mark" />
+      <span className="onara-logo-mark" aria-hidden="true">
+        <span className="onara-logo-dot" />
+      </span>
       <span>Onara</span>
     </Link>
   );

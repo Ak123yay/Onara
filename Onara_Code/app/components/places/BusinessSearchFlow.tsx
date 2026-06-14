@@ -115,7 +115,9 @@ export function BusinessSearchFlow({ userEmail, userName }: BusinessSearchFlowPr
     <main className="build-shell paper">
       <section className="build-header">
         <Link href="/" className="onara-logo">
-          <span className="onara-logo-mark" />
+          <span className="onara-logo-mark" aria-hidden="true">
+            <span className="onara-logo-dot" />
+          </span>
           <span>Onara</span>
         </Link>
         <div className="build-user-pill" title={userEmail}>

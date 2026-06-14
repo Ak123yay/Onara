@@ -154,7 +154,9 @@ export function AuthForm({
     <main className="auth-shell">
       <section className="auth-proof">
         <Link href="/" className="onara-logo auth-logo-dark">
-          <span className="onara-logo-mark" />
+          <span className="onara-logo-mark" aria-hidden="true">
+            <span className="onara-logo-dot" />
+          </span>
           <span>Onara</span>
         </Link>
 
@@ -168,7 +170,7 @@ export function AuthForm({
             <div className="auth-thumb" aria-hidden="true">BF</div>
             <div>
               <p>Rosa Mendez</p>
-              <span>Bloom Florist · Brooklyn</span>
+              <span>Bloom Florist - Brooklyn</span>
             </div>
           </div>
         </div>
@@ -221,7 +223,7 @@ export function AuthForm({
                   id="fullName"
                   type="text"
                   autoComplete="name"
-                  placeholder="Aarush Katam"
+                  placeholder="Your name"
                   value={fullName}
                   onChange={(event) => setFullName(event.target.value)}
                   required

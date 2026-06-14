@@ -310,7 +310,9 @@ function clearRenderEffects(element: HTMLElement) {
 function Logo() {
   return (
     <Link href="/" className="onara-logo" aria-label="Onara home">
-      <span className="onara-logo-mark" />
+      <span className="onara-logo-mark" aria-hidden="true">
+        <span className="onara-logo-dot" />
+      </span>
       <span>Onara</span>
     </Link>
   );
