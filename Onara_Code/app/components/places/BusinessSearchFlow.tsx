@@ -21,6 +21,7 @@ import {
   X,
 } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { FormEvent, type CSSProperties, type ReactNode, useState } from "react";
 
 type PlacePhoto = {
@@ -954,6 +955,7 @@ function GenerateStep({
   generationPackage: GenerationPackage;
   onBack: () => void;
 }) {
+  const router = useRouter();
   const [prepared, setPrepared] = useState(false);
   const palette = paletteOptions.find((option) => option.id === generationPackage.style.palette);
   const layout = layoutOptions.find((option) => option.id === generationPackage.style.layout);
@@ -966,8 +968,15 @@ function GenerateStep({
     .join(", ");
 
   function prepareGenerationPackage() {
+    const jobId =
+      typeof crypto !== "undefined" && "randomUUID" in crypto
+        ? crypto.randomUUID()
+        : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+
+    window.sessionStorage.setItem(`onara:generation:${jobId}`, JSON.stringify(generationPackage));
     window.sessionStorage.setItem("onara:last-generation-package", JSON.stringify(generationPackage));
     setPrepared(true);
+    router.push(`/dashboard/build/progress?jobId=${encodeURIComponent(jobId)}`);
   }
 
   return (
@@ -975,11 +984,11 @@ function GenerateStep({
       <div className="style-heading">
         <p className="eyebrow">Step 4 - Generate</p>
         <h1 className="serif">
-          Ready for the <span className="serif-italic">pipeline</span>.
+          Ready for the <span className="serif-italic">agent build</span>.
         </h1>
         <p>
-          Phase 13 now collects the complete request. The FastAPI call will be connected when the
-          pipeline server exists.
+          Phase 14 streams a live build console and preview now. Phase 15 swaps this mock stream to
+          the real FastAPI generation server.
         </p>
       </div>
 
@@ -1019,8 +1028,8 @@ function GenerateStep({
           <Rocket size={16} aria-hidden="true" />
           <span>
             {prepared
-              ? "Generation package saved in this browser session."
-              : "No FastAPI server yet. This prepares the exact payload for the future pipeline call."}
+              ? "Starting the live build console with this saved package."
+              : "This will start the agent progress console and live preview for this build."}
           </span>
         </div>
       </section>
@@ -1031,7 +1040,7 @@ function GenerateStep({
           Back to style
         </button>
         <button className="btn btn-accent" type="button" onClick={prepareGenerationPackage}>
-          {prepared ? "Package ready" : "Prepare generation"}
+          {prepared ? "Starting..." : "Start agent build"}
           <Rocket size={14} aria-hidden="true" />
         </button>
       </div>

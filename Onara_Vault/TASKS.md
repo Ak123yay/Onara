@@ -29,7 +29,7 @@ _This file is the single source of truth for all work. Claude updates this after
 
 ## 🔥 Active
 
-Current actionable phase: **Phase 14 — Agent Progress UI**.
+Current actionable phase: **Phase 15 — FastAPI Server**.
 
 Note: Phase 4 PM2 auto-restart is blocked until the FastAPI app exists in Phase 15. PM2 is already installed.
 
@@ -119,10 +119,10 @@ Execution rule:
 
 ### Phase 14 — Agent Progress UI
 
-- [ ] SSE connection to stream agent status updates
-- [ ] Agent progress component (10 steps, live status)
-- [ ] Preview iframe (stream HTML chunks as they arrive)
-- [ ] Status fallback route for non-SSE browsers
+- [x] SSE connection to stream agent status updates
+- [x] Agent progress component (10 steps, live status)
+- [x] Preview iframe (stream HTML chunks as they arrive)
+- [x] Status fallback route for non-SSE browsers
 
 ### Phase 15 — FastAPI Server
 
