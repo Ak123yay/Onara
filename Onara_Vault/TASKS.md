@@ -29,7 +29,9 @@ _This file is the single source of truth for all work. Claude updates this after
 
 ## 🔥 Active
 
-Current actionable phase: **Phase 11 — Auth Pages**.
+Current actionable phase: **Phase 14 — Agent Progress UI**.
+
+Note: Phase 4 PM2 auto-restart is blocked until the FastAPI app exists in Phase 15. PM2 is already installed.
 
 Execution rule:
 1. Complete the first unchecked, non-deferred task in this file.
@@ -60,7 +62,7 @@ Execution rule:
 ### Phase 4 — Dev Environment (Mini PC / Server)
 
 - [x] Set up mini PC/server environment (FastAPI + cloudflared + PM2; Ollama stays on main PC over LAN)
-- [ ] Configure PM2 for FastAPI auto-restart
+- [ ] Configure PM2 for FastAPI auto-restart _(blocked until FastAPI is scaffolded in Phase 15; PM2 is installed)_
 
 ### Phase 5 — Database
 
@@ -101,19 +103,19 @@ Execution rule:
 
 ### Phase 11 — Auth Pages
 
-- [ ] Build sign-up page
-- [ ] Build login page
-- [ ] Implement Next.js middleware for route protection
+- [x] Build sign-up page
+- [x] Build login page
+- [x] Implement Next.js middleware for route protection
 
 ### Phase 12 — Dashboard Shell
 
-- [ ] Build layout + sidebar
-- [ ] Build My Sites list view
+- [x] Build layout + sidebar
+- [x] Build My Sites list view
 
 ### Phase 13 — Build Flow
 
-- [ ] Search → Confirm → Style → Generate 4-step flow
-- [ ] Style preference UI (color palette, layout style)
+- [x] Search → Confirm → Style → Generate 4-step flow
+- [x] Style preference UI (color palette, layout style)
 
 ### Phase 14 — Agent Progress UI
 

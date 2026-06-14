@@ -11,7 +11,9 @@ import {
   Image as ImageIcon,
   LoaderCircle,
   MapPin,
+  Palette,
   Phone,
+  Rocket,
   Search,
   Sparkles,
   Star,
@@ -19,7 +21,7 @@ import {
   X,
 } from "lucide-react";
 import Link from "next/link";
-import { FormEvent, type ReactNode, useState } from "react";
+import { FormEvent, type CSSProperties, type ReactNode, useState } from "react";
 
 type PlacePhoto = {
   name: string;
@@ -62,11 +64,198 @@ type BusinessSearchFlowProps = {
   userName?: string | null;
 };
 
+type PaletteChoice = "emergency" | "trust" | "clean" | "custom";
+type LayoutChoice = "phone-first" | "trust-led" | "service-grid" | "split-hero";
+type ToneChoice = "direct" | "professional" | "friendly" | "premium";
+type CtaChoice = "call-now" | "free-estimate" | "emergency" | "book-online";
+type SectionChoice = "reviews" | "license" | "service-area" | "gallery" | "faq" | "financing";
+
+type CustomPalette = {
+  accent: string;
+  background: string;
+  primary: string;
+  text: string;
+};
+
+type StylePreferences = {
+  cta: CtaChoice;
+  customPalette: CustomPalette;
+  layout: LayoutChoice;
+  notes: string;
+  palette: PaletteChoice;
+  sections: SectionChoice[];
+  tone: ToneChoice;
+};
+
+type GenerationPackage = {
+  business: PlaceSearchResult;
+  created_at: string;
+  style: StylePreferences;
+};
+
+const defaultStylePreferences: StylePreferences = {
+  cta: "free-estimate",
+  customPalette: {
+    accent: "#ea5b0c",
+    background: "#fff7ed",
+    primary: "#10263a",
+    text: "#ffffff",
+  },
+  layout: "phone-first",
+  notes: "",
+  palette: "emergency",
+  sections: ["reviews", "license", "service-area"],
+  tone: "professional",
+};
+
+const paletteOptions: Array<{
+  description: string;
+  id: PaletteChoice;
+  label: string;
+  swatches: string[];
+}> = [
+  {
+    description: "Navy, orange, and high-contrast CTAs for urgent local service calls.",
+    id: "emergency",
+    label: "Emergency orange",
+    swatches: ["#10263a", "#ea5b0c", "#fff7ed"],
+  },
+  {
+    description: "Cream, blue-green, and proof-first accents for license and review trust.",
+    id: "trust",
+    label: "Trust blue",
+    swatches: ["#f7efe2", "#006477", "#fff7ed"],
+  },
+  {
+    description: "Clean charcoal, sand, and copper for maintenance and planned work.",
+    id: "clean",
+    label: "Clean local",
+    swatches: ["#1a1a1a", "#c96f35", "#f4efe6"],
+  },
+  {
+    description: "Use the custom colors you pick below.",
+    id: "custom",
+    label: "Custom",
+    swatches: ["#10263a", "#ea5b0c", "#fff7ed"],
+  },
+];
+
+const layoutOptions: Array<{
+  description: string;
+  id: LayoutChoice;
+  label: string;
+}> = [
+  {
+    description: "Big phone CTA, emergency strip, service cards, then trust proof.",
+    id: "phone-first",
+    label: "Phone-first",
+  },
+  {
+    description: "License, reviews, and service area proof before the call action.",
+    id: "trust-led",
+    label: "Trust-led",
+  },
+  {
+    description: "Clear service menu for HVAC, roofing, cleaning, and planned work.",
+    id: "service-grid",
+    label: "Service grid",
+  },
+  {
+    description: "Large visual area beside services, proof, and the primary CTA.",
+    id: "split-hero",
+    label: "Split hero",
+  },
+];
+
+const toneOptions: Array<{
+  description: string;
+  id: ToneChoice;
+  label: string;
+}> = [
+  {
+    description: "Short, practical, built for homeowners who need help now.",
+    id: "direct",
+    label: "Direct",
+  },
+  {
+    description: "Polished contractor copy with proof, clarity, and no hype.",
+    id: "professional",
+    label: "Professional",
+  },
+  {
+    description: "Warmer phrasing for family-owned and neighborhood businesses.",
+    id: "friendly",
+    label: "Friendly",
+  },
+  {
+    description: "More refined copy for premium, high-ticket local services.",
+    id: "premium",
+    label: "Premium",
+  },
+];
+
+const layoutSketches: Record<LayoutChoice, number[]> = {
+  "phone-first": [70, 95, 92, 52],
+  "trust-led": [54, 82, 100, 72],
+  "service-grid": [88, 42, 42, 42, 42],
+  "split-hero": [100, 56, 56, 76],
+};
+
+const toneExamples: Record<ToneChoice, string> = {
+  direct: "\"Fast help. Clear pricing. Call now.\"",
+  friendly: "\"Local, helpful, and easy to work with.\"",
+  premium: "\"Refined service for serious home projects.\"",
+  professional: "\"Proof-led copy without generic filler.\"",
+};
+
+const ctaOptions: Array<{
+  description: string;
+  id: CtaChoice;
+  label: string;
+}> = [
+  {
+    description: "Prioritize tap-to-call buttons and phone number visibility.",
+    id: "call-now",
+    label: "Call now",
+  },
+  {
+    description: "Use estimate language for homeowners comparing providers.",
+    id: "free-estimate",
+    label: "Free estimate",
+  },
+  {
+    description: "Push emergency availability and same-day service.",
+    id: "emergency",
+    label: "Emergency help",
+  },
+  {
+    description: "Lead with appointment or booking language.",
+    id: "book-online",
+    label: "Book online",
+  },
+];
+
+const sectionOptions: Array<{
+  description: string;
+  id: SectionChoice;
+  label: string;
+}> = [
+  { description: "Show rating and review snippets near the top.", id: "reviews", label: "Google reviews" },
+  { description: "Add license, insurance, and trust badge copy.", id: "license", label: "License proof" },
+  { description: "Make the service area clear for local SEO.", id: "service-area", label: "Service area" },
+  { description: "Feature the best business photos in a clean strip.", id: "gallery", label: "Photo gallery" },
+  { description: "Answer common homeowner objections.", id: "faq", label: "FAQ block" },
+  { description: "Mention financing or payment options if relevant.", id: "financing", label: "Financing" },
+];
+
 export function BusinessSearchFlow({ userEmail, userName }: BusinessSearchFlowProps) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<PlaceSearchResult[] | null>(null);
   const [selectedBusiness, setSelectedBusiness] = useState<PlaceSearchResult | null>(null);
   const [confirmedBusiness, setConfirmedBusiness] = useState<PlaceSearchResult | null>(null);
+  const [stylePreferences, setStylePreferences] =
+    useState<StylePreferences>(defaultStylePreferences);
+  const [generationPackage, setGenerationPackage] = useState<GenerationPackage | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isSearching, setIsSearching] = useState(false);
 
@@ -84,6 +273,7 @@ export function BusinessSearchFlow({ userEmail, userName }: BusinessSearchFlowPr
     setResults(null);
     setSelectedBusiness(null);
     setConfirmedBusiness(null);
+    setGenerationPackage(null);
 
     try {
       const response = await fetch("/api/places/search", {
@@ -110,6 +300,7 @@ export function BusinessSearchFlow({ userEmail, userName }: BusinessSearchFlowPr
   const displayName = userName?.trim() || userEmail.split("@")[0] || "Account";
   const displayInitial = displayName.charAt(0).toUpperCase();
   const firstName = displayName.split(" ")[0] || "there";
+  const currentStep = generationPackage ? 3 : confirmedBusiness ? 2 : selectedBusiness ? 1 : 0;
 
   return (
     <main className="build-shell paper">
@@ -127,7 +318,7 @@ export function BusinessSearchFlow({ userEmail, userName }: BusinessSearchFlowPr
       </section>
 
       <section className="build-workspace">
-        <StepIndicator current={selectedBusiness ? 1 : 0} />
+        <StepIndicator current={currentStep} />
 
         {!selectedBusiness ? (
           <div className="build-panel fadein-up">
@@ -226,18 +417,49 @@ export function BusinessSearchFlow({ userEmail, userName }: BusinessSearchFlowPr
             )}
           </div>
         ) : (
-          <BusinessConfirmationCard
-            business={selectedBusiness}
-            confirmed={confirmedBusiness?.place_id === selectedBusiness.place_id}
-            onBack={() => {
-              setSelectedBusiness(null);
-              setConfirmedBusiness(null);
-            }}
-            onConfirm={(business) => {
-              setSelectedBusiness(business);
-              setConfirmedBusiness(business);
-            }}
-          />
+          <>
+            {!confirmedBusiness ? (
+              <BusinessConfirmationCard
+                business={selectedBusiness}
+                confirmed={false}
+                onBack={() => {
+                  setSelectedBusiness(null);
+                  setConfirmedBusiness(null);
+                  setGenerationPackage(null);
+                }}
+                onConfirm={(business) => {
+                  setSelectedBusiness(business);
+                  setConfirmedBusiness(business);
+                  setGenerationPackage(null);
+                }}
+              />
+            ) : !generationPackage ? (
+              <StylePreferenceStep
+                business={confirmedBusiness}
+                preferences={stylePreferences}
+                onBack={() => {
+                  setConfirmedBusiness(null);
+                  setGenerationPackage(null);
+                }}
+                onChange={(nextPreferences) => {
+                  setStylePreferences(nextPreferences);
+                  setGenerationPackage(null);
+                }}
+                onContinue={() => {
+                  setGenerationPackage({
+                    business: confirmedBusiness,
+                    created_at: new Date().toISOString(),
+                    style: stylePreferences,
+                  });
+                }}
+              />
+            ) : (
+              <GenerateStep
+                generationPackage={generationPackage}
+                onBack={() => setGenerationPackage(null)}
+              />
+            )}
+          </>
         )}
       </section>
     </main>
@@ -263,6 +485,565 @@ function StepIndicator({ current }: { current: number }) {
           <span className={index === current ? "step-label-active" : ""}>{step}</span>
         </div>
       ))}
+    </div>
+  );
+}
+
+function StylePreferenceStep({
+  business,
+  preferences,
+  onBack,
+  onChange,
+  onContinue,
+}: {
+  business: PlaceSearchResult;
+  preferences: StylePreferences;
+  onBack: () => void;
+  onChange: (preferences: StylePreferences) => void;
+  onContinue: () => void;
+}) {
+  function updatePreference<Key extends keyof StylePreferences>(
+    key: Key,
+    value: StylePreferences[Key],
+  ) {
+    onChange({ ...preferences, [key]: value });
+  }
+
+  function selectPalette(option: (typeof paletteOptions)[number]) {
+    if (option.id === "custom") {
+      onChange({
+        ...preferences,
+        palette: "custom",
+      });
+      return;
+    }
+
+    const [primary, accent, background] = option.swatches;
+
+    onChange({
+      ...preferences,
+      customPalette: {
+        accent,
+        background,
+        primary,
+        text: textColorForPalette(option.id),
+      },
+      palette: option.id,
+    });
+  }
+
+  function updateCustomPalette(key: keyof CustomPalette, value: string) {
+    onChange({
+      ...preferences,
+      customPalette: {
+        ...preferences.customPalette,
+        [key]: value,
+      },
+      palette: "custom",
+    });
+  }
+
+  function toggleSection(section: SectionChoice) {
+    const exists = preferences.sections.includes(section);
+    const nextSections = exists
+      ? preferences.sections.filter((item) => item !== section)
+      : [...preferences.sections, section];
+
+    updatePreference("sections", nextSections);
+  }
+
+  return (
+    <div className="style-wrap style-wrap-simple fadein-up">
+      <div className="style-heading">
+        <p className="eyebrow">Step 3 - Style</p>
+        <h1 className="serif">
+          Choose the first <span className="serif-italic">direction</span>.
+        </h1>
+        <p>
+          These choices guide the generated contractor website. They can be changed later with revisions.
+        </p>
+      </div>
+
+      <div className="style-layout style-builder-grid">
+        <div className="style-controls style-control-stack">
+          <section className="style-simple-card style-palette-builder">
+            <p className="mono">
+              <Palette size={15} aria-hidden="true" />
+              Palette
+            </p>
+            <div className="palette-preset-row">
+              {paletteOptions.map((option) => {
+                  const active = preferences.palette === option.id;
+                  const swatches =
+                    option.id === "custom"
+                      ? [
+                          preferences.customPalette.primary,
+                          preferences.customPalette.accent,
+                          preferences.customPalette.background,
+                          preferences.customPalette.text,
+                        ]
+                      : option.swatches;
+
+                  return (
+                    <button
+                      aria-pressed={active}
+                      className={`palette-preset ${active ? "palette-preset-active" : ""}`}
+                      key={option.id}
+                      onClick={() => selectPalette(option)}
+                      type="button"
+                    >
+                      <span className="palette-swatch-row" aria-hidden="true">
+                        {swatches.map((swatch, index) => (
+                          <span key={`${swatch}-${index}`} style={{ background: swatch }} />
+                        ))}
+                      </span>
+                      <span className="palette-preset-copy">
+                        <strong>{option.label}</strong>
+                        <small>{option.description}</small>
+                      </span>
+                    </button>
+                  );
+                })}
+            </div>
+
+            {preferences.palette === "custom" ? (
+              <div className="custom-palette-box">
+                <div>
+                  <strong>Pick your own palette</strong>
+                  <span>Use your brand colors or just choose what looks right.</span>
+                </div>
+                <div className="custom-color-grid">
+                  <CustomColorInput
+                    label="Primary"
+                    value={preferences.customPalette.primary}
+                    onChange={(value) => updateCustomPalette("primary", value)}
+                  />
+                  <CustomColorInput
+                    label="Accent"
+                    value={preferences.customPalette.accent}
+                    onChange={(value) => updateCustomPalette("accent", value)}
+                  />
+                  <CustomColorInput
+                    label="Background"
+                    value={preferences.customPalette.background}
+                    onChange={(value) => updateCustomPalette("background", value)}
+                  />
+                  <CustomColorInput
+                    label="Text"
+                    value={preferences.customPalette.text}
+                    onChange={(value) => updateCustomPalette("text", value)}
+                  />
+                </div>
+              </div>
+            ) : null}
+          </section>
+
+          <LayoutPreferenceGroup
+            selected={preferences.layout}
+            onSelect={(layout) => updatePreference("layout", layout)}
+          />
+
+          <TonePreferenceGroup
+            selected={preferences.tone}
+            onSelect={(tone) => updatePreference("tone", tone)}
+          />
+
+          <StyleOptionGroup
+            label="Conversion goal"
+            icon={<Rocket size={15} aria-hidden="true" />}
+            options={ctaOptions}
+            selected={preferences.cta}
+            onSelect={(cta) => updatePreference("cta", cta)}
+          />
+
+          <section className="style-simple-card style-sections-card">
+            <p className="mono">
+              <Check size={15} aria-hidden="true" />
+              Include on page
+            </p>
+            <div className="style-section-toggle-grid">
+              {sectionOptions.map((section) => {
+                const active = preferences.sections.includes(section.id);
+
+                return (
+                  <button
+                    aria-pressed={active}
+                    className={`style-section-toggle ${active ? "style-section-toggle-active" : ""}`}
+                    key={section.id}
+                    onClick={() => toggleSection(section.id)}
+                    type="button"
+                  >
+                    <span>{section.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </section>
+
+          <section className="style-simple-card style-notes-card">
+            <p className="mono">
+              <Sparkles size={15} aria-hidden="true" />
+              Notes
+            </p>
+            <textarea
+              className="input style-notes-input"
+              maxLength={700}
+              onChange={(event) => updatePreference("notes", event.target.value)}
+              placeholder="Anything else? Example: use our navy/gold colors, highlight emergency repairs, mention family-owned since 1998, avoid stock-photo language."
+              rows={5}
+              value={preferences.notes}
+            />
+            <small>{preferences.notes.length}/700 characters</small>
+          </section>
+        </div>
+
+        <div className="style-preview-column">
+          <StylePreview business={business} preferences={preferences} />
+
+          <div className="style-preview-actions">
+            <button className="btn btn-soft" type="button" onClick={onBack}>
+              <ArrowLeft size={14} aria-hidden="true" />
+              Back
+            </button>
+            <button className="btn btn-accent" type="button" onClick={onContinue}>
+              Continue
+              <ArrowRight size={14} aria-hidden="true" />
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function LayoutPreferenceGroup({
+  onSelect,
+  selected,
+}: {
+  onSelect: (layout: LayoutChoice) => void;
+  selected: LayoutChoice;
+}) {
+  return (
+    <section className="style-option-group style-layout-choices">
+      <p className="mono">
+        <Globe size={15} aria-hidden="true" />
+        Layout
+      </p>
+      <div className="layout-choice-grid">
+        {layoutOptions.map((option) => {
+          const active = option.id === selected;
+
+          return (
+            <button
+              aria-pressed={active}
+              className={`layout-choice-card ${active ? "layout-choice-card-active" : ""}`}
+              key={option.id}
+              onClick={() => onSelect(option.id)}
+              type="button"
+            >
+              <span className="layout-choice-sketch" aria-hidden="true">
+                {layoutSketches[option.id].map((width, index) => (
+                  <span key={`${option.id}-${index}`} style={{ width: `${width}%` }} />
+                ))}
+              </span>
+              <strong>{option.label}</strong>
+              <small>{option.description}</small>
+            </button>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
+function TonePreferenceGroup({
+  onSelect,
+  selected,
+}: {
+  onSelect: (tone: ToneChoice) => void;
+  selected: ToneChoice;
+}) {
+  return (
+    <section className="style-option-group style-tone-choices">
+      <p className="mono">
+        <Sparkles size={15} aria-hidden="true" />
+        Tone
+      </p>
+      <div className="tone-choice-grid">
+        {toneOptions.map((option) => {
+          const active = option.id === selected;
+
+          return (
+            <button
+              aria-pressed={active}
+              className={`tone-choice-card ${active ? "tone-choice-card-active" : ""}`}
+              key={option.id}
+              onClick={() => onSelect(option.id)}
+              type="button"
+            >
+              <strong>{option.label}</strong>
+              <small>{toneExamples[option.id]}</small>
+            </button>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
+function CustomColorInput({
+  label,
+  onChange,
+  value,
+}: {
+  label: string;
+  onChange: (value: string) => void;
+  value: string;
+}) {
+  return (
+    <label className="custom-color-input">
+      <span>{label}</span>
+      <input
+        aria-label={`${label} color`}
+        onChange={(event) => onChange(event.target.value)}
+        type="color"
+        value={value}
+      />
+      <input
+        aria-label={`${label} hex value`}
+        defaultValue={value}
+        key={value}
+        maxLength={7}
+        onBlur={(event) => {
+          const nextValue = normalizeHexInput(event.target.value, value);
+          event.currentTarget.value = nextValue;
+          onChange(nextValue);
+        }}
+      />
+    </label>
+  );
+}
+
+function StyleOptionGroup<Value extends string>({
+  icon,
+  label,
+  onSelect,
+  options,
+  selected,
+}: {
+  icon: ReactNode;
+  label: string;
+  onSelect: (value: Value) => void;
+  options: Array<{
+    description: string;
+    id: Value;
+    label: string;
+    swatches?: string[];
+  }>;
+  selected: Value;
+}) {
+  return (
+    <section className="style-option-group">
+      <p className="mono">
+        {icon}
+        {label}
+      </p>
+      <div className="style-option-list">
+        {options.map((option) => {
+          const active = option.id === selected;
+
+          return (
+            <button
+              aria-pressed={active}
+              className={`style-option ${active ? "style-option-active" : ""}`}
+              key={option.id}
+              onClick={() => onSelect(option.id)}
+              type="button"
+            >
+              <span>
+                <strong>{option.label}</strong>
+                <small>{option.description}</small>
+              </span>
+              {option.swatches ? (
+                <span className="style-swatches" aria-hidden="true">
+                  {option.swatches.map((swatch) => (
+                    <span key={swatch} style={{ background: swatch }} />
+                  ))}
+                </span>
+              ) : null}
+            </button>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
+function StylePreview({
+  business,
+  preferences,
+}: {
+  business: PlaceSearchResult;
+  preferences: StylePreferences;
+}) {
+  const palette = paletteOptions.find((option) => option.id === preferences.palette) ?? paletteOptions[0];
+  const layout = layoutOptions.find((option) => option.id === preferences.layout) ?? layoutOptions[0];
+  const tone = toneOptions.find((option) => option.id === preferences.tone) ?? toneOptions[1];
+  const cta = ctaOptions.find((option) => option.id === preferences.cta) ?? ctaOptions[1];
+  const selectedSections = sectionOptions.filter((option) => preferences.sections.includes(option.id));
+  const colors = activePaletteColors(preferences);
+  const previewStyle = {
+    "--style-accent": colors.accent,
+    "--style-background": colors.background,
+    "--style-primary": colors.primary,
+    "--style-text": colors.text,
+  } as CSSProperties;
+
+  return (
+    <aside className={`style-preview style-preview-${preferences.palette}`} style={previewStyle}>
+      <div className="style-preview-window">
+        <div className="style-preview-bar">
+          <span />
+          <span />
+          <span />
+          <strong>{slugForBusiness(business.name)}.onara.site</strong>
+        </div>
+        <div className="style-preview-alert">
+          <span>{business.category ?? "Local contractor"}</span>
+          <strong>{cta.label}</strong>
+        </div>
+        <div className={`style-preview-hero style-preview-hero-${preferences.layout}`}>
+          <p className="mono">{layout.label}</p>
+          <h2 className="serif">{headlineForLayout(business.name, preferences.layout)}</h2>
+          <span>{copyForTone(preferences.tone)}</span>
+          <button className="style-preview-cta" type="button">
+            {cta.label}
+          </button>
+        </div>
+        <div className="style-preview-services">
+          {(selectedSections.length > 0 ? selectedSections : sectionOptions.slice(0, 3)).map((section) => (
+            <span key={section.id}>{section.label}</span>
+          ))}
+        </div>
+      </div>
+
+      <div className="style-preview-summary">
+        <p className="eyebrow">Selected direction</p>
+        <strong>{palette.label}</strong>
+        <span className="style-summary-swatches" aria-label="Selected palette colors">
+          <span style={{ background: colors.primary }} />
+          <span style={{ background: colors.accent }} />
+          <span style={{ background: colors.background }} />
+          <span style={{ background: colors.text }} />
+        </span>
+        <span>
+          {layout.label} layout, {tone.label.toLowerCase()} tone, {cta.label.toLowerCase()} CTA.
+        </span>
+        {preferences.notes.trim() ? (
+          <em>{preferences.notes.trim().slice(0, 110)}{preferences.notes.trim().length > 110 ? "..." : ""}</em>
+        ) : null}
+      </div>
+    </aside>
+  );
+}
+
+function GenerateStep({
+  generationPackage,
+  onBack,
+}: {
+  generationPackage: GenerationPackage;
+  onBack: () => void;
+}) {
+  const [prepared, setPrepared] = useState(false);
+  const palette = paletteOptions.find((option) => option.id === generationPackage.style.palette);
+  const layout = layoutOptions.find((option) => option.id === generationPackage.style.layout);
+  const tone = toneOptions.find((option) => option.id === generationPackage.style.tone);
+  const cta = ctaOptions.find((option) => option.id === generationPackage.style.cta);
+  const colors = activePaletteColors(generationPackage.style);
+  const selectedSections = sectionOptions
+    .filter((option) => generationPackage.style.sections.includes(option.id))
+    .map((option) => option.label)
+    .join(", ");
+
+  function prepareGenerationPackage() {
+    window.sessionStorage.setItem("onara:last-generation-package", JSON.stringify(generationPackage));
+    setPrepared(true);
+  }
+
+  return (
+    <div className="generate-wrap fadein-up">
+      <div className="style-heading">
+        <p className="eyebrow">Step 4 - Generate</p>
+        <h1 className="serif">
+          Ready for the <span className="serif-italic">pipeline</span>.
+        </h1>
+        <p>
+          Phase 13 now collects the complete request. The FastAPI call will be connected when the
+          pipeline server exists.
+        </p>
+      </div>
+
+      <section className="generate-card card">
+        <div className="generate-summary">
+          <BusinessMonogram name={generationPackage.business.name} />
+          <div>
+            <p className="mono">Generation package</p>
+            <h2 className="serif">{generationPackage.business.name}</h2>
+            <span>{generationPackage.business.address ?? "Service area pending"}</span>
+          </div>
+        </div>
+
+        <div className="generate-grid">
+          <GenerateFact label="Palette" value={palette?.label ?? generationPackage.style.palette} />
+          <GenerateFact
+            label="Colors"
+            value={`${colors.primary} / ${colors.accent} / ${colors.background} / ${colors.text}`}
+          />
+          <GenerateFact label="Layout" value={layout?.label ?? generationPackage.style.layout} />
+          <GenerateFact label="Tone" value={tone?.label ?? generationPackage.style.tone} />
+          <GenerateFact label="CTA" value={cta?.label ?? generationPackage.style.cta} />
+          <GenerateFact label="Sections" value={selectedSections || "Smart defaults"} />
+          <GenerateFact
+            label="Notes"
+            value={generationPackage.style.notes.trim() || "No extra notes"}
+          />
+          <GenerateFact
+            label="Google data"
+            value={`${generationPackage.business.rating ?? "No rating"} rating, ${
+              generationPackage.business.photos.length || generationPackage.business.manual_photo ? "photo ready" : "no photo"
+            }`}
+          />
+        </div>
+
+        <div className={`generate-status ${prepared ? "generate-status-ready" : ""}`}>
+          <Rocket size={16} aria-hidden="true" />
+          <span>
+            {prepared
+              ? "Generation package saved in this browser session."
+              : "No FastAPI server yet. This prepares the exact payload for the future pipeline call."}
+          </span>
+        </div>
+      </section>
+
+      <div className="confirmation-actions">
+        <button className="btn btn-soft" type="button" onClick={onBack}>
+          <ArrowLeft size={14} aria-hidden="true" />
+          Back to style
+        </button>
+        <button className="btn btn-accent" type="button" onClick={prepareGenerationPackage}>
+          {prepared ? "Package ready" : "Prepare generation"}
+          <Rocket size={14} aria-hidden="true" />
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function GenerateFact({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="generate-fact">
+      <p className="mono">{label}</p>
+      <strong>{value}</strong>
     </div>
   );
 }
@@ -618,6 +1399,80 @@ function summarizeHours(hours: string[] | null) {
   }
 
   return hours[0].replace("Monday: ", "Mon ");
+}
+
+function activePaletteColors(preferences: StylePreferences): CustomPalette {
+  if (preferences.palette === "custom") {
+    return preferences.customPalette;
+  }
+
+  const option = paletteOptions.find((palette) => palette.id === preferences.palette);
+
+  if (!option) {
+    return preferences.customPalette;
+  }
+
+  const [primary, accent, background] = option.swatches;
+
+  return {
+    accent,
+    background,
+    primary,
+    text: textColorForPalette(option.id),
+  };
+}
+
+function textColorForPalette(palette: PaletteChoice) {
+  return palette === "trust" ? "#10263a" : "#ffffff";
+}
+
+function normalizeHexInput(rawValue: string, fallback: string) {
+  const trimmed = rawValue.trim();
+  const value = trimmed.startsWith("#") ? trimmed : `#${trimmed}`;
+
+  return /^#[0-9a-fA-F]{6}$/.test(value) ? value : fallback;
+}
+
+function slugForBusiness(name: string) {
+  const slug = name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "")
+    .slice(0, 28);
+
+  return slug || "contractor";
+}
+
+function headlineForLayout(name: string, layout: LayoutChoice) {
+  if (layout === "trust-led") {
+    return `${name} homeowners can verify before they call.`;
+  }
+
+  if (layout === "service-grid") {
+    return `Clear service options from ${name}.`;
+  }
+
+  if (layout === "split-hero") {
+    return `${name} makes local service feel simple.`;
+  }
+
+  return `Fast local help from ${name}.`;
+}
+
+function copyForTone(tone: ToneChoice) {
+  if (tone === "direct") {
+    return "Tell customers what you do, where you serve, and how to call.";
+  }
+
+  if (tone === "friendly") {
+    return "Helpful, local copy that sounds like a real neighborhood business.";
+  }
+
+  if (tone === "premium") {
+    return "More polished language for higher-trust, higher-ticket work.";
+  }
+
+  return "Professional, proof-led copy without generic website filler.";
 }
 
 function placePhotoUrl(name: string) {

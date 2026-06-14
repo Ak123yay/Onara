@@ -1,13 +1,10 @@
 import {
   AlertTriangle,
   ArrowRight,
-  ChevronRight,
-  Clock3,
   ExternalLink,
   Eye,
   Globe2,
   Hammer,
-  MousePointer2,
   RefreshCw,
   Sparkles,
 } from "lucide-react";
@@ -36,13 +33,9 @@ type Project = {
 
 type Profile = {
   full_name: string | null;
-  is_trial: boolean;
-  onboarding_complete: boolean;
-  plan: string;
   revisions_limit: number;
   revisions_used: number;
   show_url: boolean;
-  trial_ends_at: string | null;
 };
 
 type DashboardAuthUser = {
@@ -56,27 +49,17 @@ type DashboardAuthUser = {
 const statusMeta: Record<
   ProjectStatus,
   {
-    detail: string;
     label: string;
     tone: "neutral" | "success" | "warning" | "danger";
   }
 > = {
-  queued: { detail: "Waiting for the build agent", label: "Queued", tone: "neutral" },
-  generating: { detail: "Drafting copy and layout", label: "Building", tone: "warning" },
-  deploying: { detail: "Publishing public URL", label: "Deploying", tone: "warning" },
-  live: { detail: "Ready for customers", label: "Live", tone: "success" },
-  failed: { detail: "Needs a retry", label: "Failed", tone: "danger" },
-  suspended: { detail: "Paused by plan state", label: "Paused", tone: "neutral" },
+  queued: { label: "Queued", tone: "neutral" },
+  generating: { label: "Building", tone: "warning" },
+  deploying: { label: "Deploying", tone: "warning" },
+  live: { label: "Live", tone: "success" },
+  failed: { label: "Failed", tone: "danger" },
+  suspended: { label: "Paused", tone: "neutral" },
 };
-
-function daysUntil(value: string | null | undefined) {
-  if (!value) {
-    return 0;
-  }
-
-  const delta = new Date(value).getTime() - Date.now();
-  return Math.max(0, Math.ceil(delta / 86_400_000));
-}
 
 function formatDate(value: string | null | undefined) {
   if (!value) {
@@ -169,45 +152,12 @@ function SiteThumb({ project }: { project: Project }) {
   );
 }
 
-function SiteSparkline({ status }: { status: ProjectStatus }) {
-  const liveTrend = [12, 18, 15, 24, 21, 32, 38];
-  const buildingTrend = [3, 7, 10, 14, 18, 21, 25];
-  const flatTrend = [8, 8, 8, 8, 8, 8, 8];
-  const data = status === "live" ? liveTrend : status === "failed" ? flatTrend : buildingTrend;
-  const max = Math.max(...data, 1);
-  const width = 78;
-  const height = 26;
-  const step = width / (data.length - 1);
-  const path = data
-    .map((value, index) => {
-      const command = index === 0 ? "M" : "L";
-      const x = index * step;
-      const y = height - (value / max) * (height - 3) - 1;
-
-      return `${command} ${x.toFixed(1)} ${y.toFixed(1)}`;
-    })
-    .join(" ");
-
-  return (
-    <svg
-      aria-hidden="true"
-      className="site-card-sparkline"
-      height={height}
-      viewBox={`0 0 ${width} ${height}`}
-      width={width}
-    >
-      <path d={path} fill="none" pathLength={1} />
-    </svg>
-  );
-}
-
 function SiteCard({ project, showUrl }: { project: Project; showUrl: boolean }) {
   const siteHref = showUrl ? externalHref(project.public_url) : null;
   const rating = formatRating(project.google_rating);
-  const meta = statusMeta[project.status];
 
   return (
-    <article className="site-card dashboard-site-row hover-lift">
+    <article className="site-card dashboard-site-row dashboard-site-row-simple hover-lift">
       <SiteThumb project={project} />
       <div className="site-card-main">
         <div className="site-card-title-row">
@@ -220,7 +170,6 @@ function SiteCard({ project, showUrl }: { project: Project; showUrl: boolean }) 
 
         <div className="site-card-meta">
           <span>{project.business_category ?? "Local contractor"}</span>
-          <span>{project.business_address ?? "Service area pending"}</span>
           {rating ? (
             <span>
               {rating} from {project.google_review_count ?? 0} reviews
@@ -237,38 +186,27 @@ function SiteCard({ project, showUrl }: { project: Project; showUrl: boolean }) 
         ) : null}
       </div>
 
-      <div className="site-card-right">
-        <div className="site-card-kpi">
-          <SiteSparkline status={project.status} />
-          <div>
-            <strong>{project.status === "live" ? "Live" : meta.label}</strong>
-            <span>{project.status === "live" ? `Published ${formatDate(project.last_deployed_at)}` : meta.detail}</span>
-          </div>
-        </div>
-
-        <div className="site-card-actions">
-          <Link className="btn btn-soft btn-sm" href={`/api/preview/${project.id}`} target="_blank">
-            <Eye aria-hidden="true" size={14} />
-            Preview
+      <div className="site-card-actions">
+        <Link className="btn btn-soft btn-sm" href={`/api/preview/${project.id}`} target="_blank">
+          <Eye aria-hidden="true" size={14} />
+          Preview
+        </Link>
+        {siteHref ? (
+          <Link className="btn btn-soft btn-sm" href={siteHref} target="_blank">
+            <ExternalLink aria-hidden="true" size={14} />
+            Visit
           </Link>
-          {siteHref ? (
-            <Link className="btn btn-soft btn-sm" href={siteHref} target="_blank">
-              <ExternalLink aria-hidden="true" size={14} />
-              Visit
-            </Link>
-          ) : null}
-          {project.status === "failed" ? (
-            <Link className="btn btn-accent btn-sm" href={`/dashboard/build?retry=${project.id}`}>
-              <RefreshCw aria-hidden="true" size={14} />
-              Retry
-            </Link>
-          ) : (
-            <button className="btn btn-soft btn-sm" disabled type="button">
-              Revise
-            </button>
-          )}
-          <ChevronRight aria-hidden="true" className="site-card-chevron" size={15} />
-        </div>
+        ) : null}
+        {project.status === "failed" ? (
+          <Link className="btn btn-accent btn-sm" href={`/dashboard/build?retry=${project.id}`}>
+            <RefreshCw aria-hidden="true" size={14} />
+            Retry
+          </Link>
+        ) : (
+          <button className="btn btn-soft btn-sm" disabled type="button">
+            Revise
+          </button>
+        )}
       </div>
     </article>
   );
@@ -282,76 +220,12 @@ function QuickBuildCard({ hasSites }: { hasSites: boolean }) {
       </div>
       <div>
         <h2 className="serif">{hasSites ? "Build another site" : "Start your first build"}</h2>
-        <p>
-          About 90 seconds from Google Business Profile search to first contractor-site draft.
-        </p>
+        <p>Google profile to first draft in about 90 seconds.</p>
       </div>
       <Link className="btn btn-accent" href="/dashboard/build">
         {hasSites ? "New site" : "Build free"}
         <ArrowRight aria-hidden="true" size={14} />
       </Link>
-    </section>
-  );
-}
-
-function StatusSummary({
-  activeBuilds,
-  failedCount,
-  liveCount,
-  total,
-}: {
-  activeBuilds: number;
-  failedCount: number;
-  liveCount: number;
-  total: number;
-}) {
-  const filters = [
-    { active: true, count: total, label: "All" },
-    { count: liveCount, label: "Live" },
-    { count: activeBuilds, label: "Building" },
-    { count: failedCount, label: "Needs retry" },
-  ];
-
-  return (
-    <div aria-label="Site status summary" className="dashboard-chip-row">
-      {filters.map((filter) => (
-        <span
-          className={`dashboard-chip ${filter.active ? "dashboard-chip-active" : ""}`}
-          key={filter.label}
-        >
-          {filter.label}
-          <strong>{filter.count}</strong>
-        </span>
-      ))}
-    </div>
-  );
-}
-
-function OnboardingCard() {
-  const steps = [
-    "Search your Google Business Profile",
-    "Confirm photos, hours, services, and phone",
-    "Generate the first draft and preview it",
-  ];
-
-  return (
-    <section className="dashboard-onboarding-card">
-      <div>
-        <p className="eyebrow">First value moment</p>
-        <h2 className="serif">Finish onboarding by building one real site.</h2>
-        <p>
-          Onara waits to push billing until you have a useful draft. Start with the business
-          profile and review the generated page before publishing.
-        </p>
-      </div>
-      <ol>
-        {steps.map((step, index) => (
-          <li key={step}>
-            <span>{index + 1}</span>
-            {step}
-          </li>
-        ))}
-      </ol>
     </section>
   );
 }
@@ -366,10 +240,7 @@ function EmptySites() {
       <h2 className="serif">
         A Google profile is not enough. <span className="serif-italic">Build the site.</span>
       </h2>
-      <p>
-        Search your business, confirm the details, choose the style, and send it into the
-        generation queue. Your first draft starts from real Google Business Profile data.
-      </p>
+      <p>Search your business, confirm the details, and generate your first draft.</p>
       <Link className="btn btn-accent btn-lg" href="/dashboard/build">
         Build your first site
         <ArrowRight aria-hidden="true" size={16} />
@@ -391,7 +262,7 @@ export default async function DashboardPage() {
   const [{ data: profile }, { data: projects, error: projectsError }] = await Promise.all([
     supabase
       .from("users")
-      .select("full_name, plan, is_trial, trial_ends_at, revisions_used, revisions_limit, show_url, onboarding_complete")
+      .select("full_name, revisions_used, revisions_limit, show_url")
       .eq("id", user.id)
       .maybeSingle<Profile>(),
     supabase
@@ -426,10 +297,6 @@ export default async function DashboardPage() {
           <h1 className="serif">
             Hi {firstName}. <span className="serif-italic">{headline}</span>
           </h1>
-          <p className="dashboard-hero-copy">
-            Manage generated contractor sites, retry failed builds, preview drafts, and start the
-            next Google-profile-to-website run.
-          </p>
         </div>
         <Link className="btn btn-accent dashboard-new-site" href="/dashboard/build">
           <Sparkles aria-hidden="true" size={15} />
@@ -453,18 +320,9 @@ export default async function DashboardPage() {
           <strong className="serif">{revisionLabel(profile)}</strong>
           <span>This month</span>
         </div>
-        <div className="dashboard-stat-card dashboard-stat-card-dark">
-          <p className="mono">{profile?.is_trial ?? true ? "Trial" : "Plan"}</p>
-          <strong className="serif">
-            {profile?.is_trial ?? true ? `${daysUntil(profile?.trial_ends_at)}d` : profile?.plan ?? "Free"}
-          </strong>
-          <span>{profile?.is_trial ?? true ? "remaining" : "active plan"}</span>
-        </div>
       </section>
 
       <QuickBuildCard hasSites={hasSites} />
-
-      {profile?.onboarding_complete === false ? <OnboardingCard /> : null}
 
       {projectsError ? (
         <section className="dashboard-alert" role="alert">
@@ -483,16 +341,10 @@ export default async function DashboardPage() {
           <div className="sites-list-header">
             <div>
               <p className="eyebrow">Generated sites</p>
-              <h2 className="serif">Recent sites</h2>
+              <h2 className="serif">Sites</h2>
             </div>
-            <p>{showUrl ? "Public URLs are visible." : "Free-plan public URLs are hidden."}</p>
+            <p>{projectList.length} total</p>
           </div>
-          <StatusSummary
-            activeBuilds={activeBuilds}
-            failedCount={failedCount}
-            liveCount={liveCount}
-            total={projectList.length}
-          />
           <div className="sites-list-stack">
             {projectList.map((project) => (
               <SiteCard key={project.id} project={project} showUrl={showUrl} />
@@ -500,13 +352,6 @@ export default async function DashboardPage() {
           </div>
         </section>
       )}
-
-      <section className="dashboard-footnote-card">
-        <Clock3 aria-hidden="true" size={16} />
-        <span>Most first drafts finish in about 90 seconds after the pipeline starts.</span>
-        <MousePointer2 aria-hidden="true" size={16} />
-        <span>Preview is always available, even before a public URL is shown.</span>
-      </section>
     </div>
   );
 }
