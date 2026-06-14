@@ -28,3 +28,29 @@ curl -Method POST http://localhost:8000/generate `
   -Headers @{ "X-Pipeline-Secret" = $secret; "Content-Type" = "application/json" } `
   -Body $body
 ```
+
+## Mini PC PM2 Run
+
+Stop any manual `uvicorn` window first, then run:
+
+```powershell
+cd "C:\Users\Aarush Katam\Downloads\Onara\Onara_Code\pipeline"
+pm2 start ecosystem.config.cjs
+pm2 status
+curl http://localhost:8000/health -UseBasicParsing
+```
+
+Persist the PM2 process list:
+
+```powershell
+pm2 save
+```
+
+Useful commands:
+
+```powershell
+pm2 logs onara-pipeline --lines 50
+pm2 restart onara-pipeline
+pm2 stop onara-pipeline
+pm2 delete onara-pipeline
+```
