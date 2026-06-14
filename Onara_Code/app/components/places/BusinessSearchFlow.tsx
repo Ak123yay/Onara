@@ -107,7 +107,9 @@ export function BusinessSearchFlow({ userEmail, userName }: BusinessSearchFlowPr
     }
   }
 
-  const firstName = userName?.split(" ")[0] || userEmail.split("@")[0] || "there";
+  const displayName = userName?.trim() || userEmail.split("@")[0] || "Account";
+  const displayInitial = displayName.charAt(0).toUpperCase();
+  const firstName = displayName.split(" ")[0] || "there";
 
   return (
     <main className="build-shell paper">
@@ -116,9 +118,9 @@ export function BusinessSearchFlow({ userEmail, userName }: BusinessSearchFlowPr
           <span className="onara-logo-mark" />
           <span>Onara</span>
         </Link>
-        <div className="build-user-pill">
-          <span className="build-user-initial">{userEmail[0]?.toUpperCase() ?? "O"}</span>
-          <span>{userEmail}</span>
+        <div className="build-user-pill" title={userEmail}>
+          <span className="build-user-initial">{displayInitial}</span>
+          <span>{displayName}</span>
         </div>
       </section>
 

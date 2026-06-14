@@ -8,69 +8,146 @@ import { createClient } from "@/lib/supabase/client";
 
 type AuthFormProps = {
   mode: "login" | "signup";
+  initialMessage?: string | null;
   nextPath?: string;
 };
 
-export function AuthForm({ mode, nextPath = "/dashboard" }: AuthFormProps) {
+type AuthAction = "email" | "google" | "reset";
+
+function safeInternalPath(path: string): string {
+  if (!path.startsWith("/") || path.startsWith("//")) {
+    return "/dashboard";
+  }
+
+  return path;
+}
+
+export function AuthForm({
+  initialMessage = null,
+  mode,
+  nextPath = "/dashboard",
+}: AuthFormProps) {
   const router = useRouter();
   const supabase = createClient();
   const isSignup = mode === "signup";
+  const safeNextPath = safeInternalPath(nextPath);
+  const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [message, setMessage] = useState<string | null>(null);
+  const [message, setMessage] = useState<string | null>(initialMessage);
+  const [pendingAuthAction, setPendingAuthAction] = useState<AuthAction | null>(null);
   const [isPending, startTransition] = useTransition();
+  const isAuthPending = pendingAuthAction !== null;
+  const isBusy = isAuthPending || isPending;
 
   async function continueWithGoogle() {
     setMessage(null);
-    const redirectTo = `${window.location.origin}/auth/callback?next=${encodeURIComponent(nextPath)}`;
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: {
-        redirectTo,
-        queryParams: {
-          access_type: "offline",
-          prompt: "consent",
-        },
-      },
-    });
+    setPendingAuthAction("google");
+    const redirectTo = `${window.location.origin}/auth/callback?next=${encodeURIComponent(safeNextPath)}`;
 
-    if (error) {
-      setMessage(error.message);
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo,
+          queryParams: {
+            access_type: "offline",
+            prompt: "consent",
+          },
+        },
+      });
+
+      if (error) {
+        setMessage(error.message);
+        setPendingAuthAction(null);
+      }
+    } catch {
+      setMessage("Google sign-in could not start. Please try again.");
+      setPendingAuthAction(null);
     }
   }
 
   async function submitEmail(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setMessage(null);
+    setPendingAuthAction("email");
 
     if (isSignup) {
-      const { error } = await supabase.auth.signUp({
+      const trimmedName = fullName.trim();
+
+      if (!trimmedName) {
+        setMessage("Enter your name to create your account.");
+        setPendingAuthAction(null);
+        return;
+      }
+
+      const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
-          emailRedirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(nextPath)}`,
+          data: {
+            full_name: trimmedName,
+            name: trimmedName,
+          },
+          emailRedirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(safeNextPath)}`,
         },
       });
 
       if (error) {
         setMessage(error.message);
+        setPendingAuthAction(null);
+        return;
+      }
+
+      if (data.session) {
+        startTransition(() => {
+          router.push(safeNextPath);
+          router.refresh();
+        });
         return;
       }
 
       setMessage("Check your email to finish creating your account.");
+      setPendingAuthAction(null);
       return;
     }
 
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) {
       setMessage(error.message);
+      setPendingAuthAction(null);
       return;
     }
 
     startTransition(() => {
-      router.push(nextPath);
+      router.push(safeNextPath);
       router.refresh();
     });
+  }
+
+  async function sendPasswordReset() {
+    const trimmedEmail = email.trim();
+
+    if (!trimmedEmail) {
+      setMessage("Enter your email first, then click reset password.");
+      return;
+    }
+
+    setMessage(null);
+    setPendingAuthAction("reset");
+
+    const { error } = await supabase.auth.resetPasswordForEmail(trimmedEmail, {
+      redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent("/auth/update-password")}`,
+    });
+
+    if (error) {
+      setMessage(error.message);
+      setPendingAuthAction(null);
+      return;
+    }
+
+    setMessage("Check your email for a password reset link.");
+    setPendingAuthAction(null);
   }
 
   return (
@@ -119,9 +196,14 @@ export function AuthForm({ mode, nextPath = "/dashboard" }: AuthFormProps) {
             {isSignup ? "14-day Pro trial. No credit card." : "Pick up where you left off."}
           </p>
 
-          <button className="btn btn-soft auth-google" type="button" onClick={continueWithGoogle}>
+          <button
+            className="btn btn-soft auth-google"
+            disabled={isBusy}
+            type="button"
+            onClick={continueWithGoogle}
+          >
             <GoogleIcon />
-            Continue with Google
+            {pendingAuthAction === "google" ? "Opening Google..." : "Continue with Google"}
           </button>
 
           <div className="auth-divider">
@@ -131,7 +213,23 @@ export function AuthForm({ mode, nextPath = "/dashboard" }: AuthFormProps) {
           </div>
 
           <form onSubmit={submitEmail}>
-            <label className="mono" htmlFor="email">Email</label>
+            {isSignup ? (
+              <>
+                <label className="mono" htmlFor="fullName">Your name</label>
+                <input
+                  className="input"
+                  id="fullName"
+                  type="text"
+                  autoComplete="name"
+                  placeholder="Aarush Katam"
+                  value={fullName}
+                  onChange={(event) => setFullName(event.target.value)}
+                  required
+                />
+              </>
+            ) : null}
+
+            <label className={isSignup ? "mono auth-password-label" : "mono"} htmlFor="email">Email</label>
             <input
               className="input"
               id="email"
@@ -143,7 +241,19 @@ export function AuthForm({ mode, nextPath = "/dashboard" }: AuthFormProps) {
               required
             />
 
-            <label className="mono auth-password-label" htmlFor="password">Password</label>
+            <div className="auth-label-row auth-password-label">
+              <label className="mono" htmlFor="password">Password</label>
+              {!isSignup ? (
+                <button
+                  className="auth-link-button"
+                  disabled={isBusy}
+                  type="button"
+                  onClick={sendPasswordReset}
+                >
+                  {pendingAuthAction === "reset" ? "Sending reset link..." : "Reset password"}
+                </button>
+              ) : null}
+            </div>
             <input
               className="input"
               id="password"
@@ -158,8 +268,14 @@ export function AuthForm({ mode, nextPath = "/dashboard" }: AuthFormProps) {
 
             {message ? <p className="auth-message">{message}</p> : null}
 
-            <button className="btn btn-accent auth-submit" type="submit" disabled={isPending}>
-              {isSignup ? "Create account" : "Sign in"}
+            <button className="btn btn-accent auth-submit" type="submit" disabled={isBusy}>
+              {pendingAuthAction === "email"
+                ? isSignup
+                  ? "Creating account..."
+                  : "Signing in..."
+                : isSignup
+                  ? "Create account"
+                  : "Sign in"}
               <ArrowRight size={14} aria-hidden="true" />
             </button>
           </form>

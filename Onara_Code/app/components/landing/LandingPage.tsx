@@ -23,6 +23,8 @@ import {
   Zap,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
+import { AuthLogo } from "@/components/auth/AuthLogo";
+import { AuthNav } from "@/components/auth/AuthNav";
 import { Badge, Card } from "@/components/ui";
 
 gsap.registerPlugin(useGSAP, ScrollTrigger);
@@ -290,24 +292,19 @@ function StaggerItem({
 function FloatElement({
   children,
   className,
-  delay = 0,
-  rotate = 0,
 }: {
   children: ReactNode;
   className?: string;
-  delay?: number;
-  rotate?: number;
 }) {
-  return (
-    <div
-      className={className}
-      data-gsap-delay={delay}
-      data-gsap-float
-      data-gsap-rotate={rotate}
-    >
-      {children}
-    </div>
-  );
+  return <div className={className}>{children}</div>;
+}
+
+function clearRenderEffects(element: HTMLElement) {
+  element.style.removeProperty("filter");
+  element.style.removeProperty("rotate");
+  element.style.removeProperty("scale");
+  element.style.removeProperty("transform");
+  element.style.removeProperty("translate");
 }
 
 function Logo() {
@@ -509,37 +506,32 @@ function ContractorPreview() {
 
 function HeroShowcase() {
   return (
-    <div className="relative mx-auto max-w-6xl">
+    <div className="hero-showcase-shell">
       <FloatElement
-        className="absolute -left-4 top-12 z-[3] hidden w-[255px] -rotate-2 xl:block"
-        rotate={-2}
+        className="hero-showcase-card hero-showcase-card-left"
       >
         <AgentProgressCard />
       </FloatElement>
       <FloatElement
-        className="absolute -right-4 top-24 z-[3] hidden w-[265px] rotate-2 xl:block"
-        delay={0.8}
-        rotate={2}
+        className="hero-showcase-card hero-showcase-card-right"
       >
         <TrustKitCard />
       </FloatElement>
 
-      <Reveal
-        className="relative z-[1] mx-auto max-w-5xl rounded-[10px] border border-rule-2 bg-[linear-gradient(135deg,oklch(0.965_0.008_80),oklch(0.93_0.05_60))] p-2 shadow-panel"
-        delay={0.15}
-        y={32}
+      <div
+        className="hero-showcase-preview"
       >
         <ContractorPreview />
-      </Reveal>
+      </div>
 
       <Stagger
-        className="relative z-[2] mx-auto mt-4 grid max-w-4xl gap-3 md:-mt-6 md:grid-cols-3"
+        className="hero-showcase-stats"
         delayChildren={0.25}
       >
         {heroStats.map(([value, label]) => (
           <StaggerItem key={value}>
             <div
-              className="rounded-card border border-rule bg-paper/95 px-5 py-4 text-left shadow-lift backdrop-blur"
+              className="hero-showcase-stat"
               data-gsap-hover
               data-gsap-hover-y="-4"
             >
@@ -568,15 +560,15 @@ function ContractorStyleGallery() {
           <Badge variant="contractor">Design-system ready</Badge>
         </Reveal>
 
-        <Stagger className="mt-14 grid gap-5 lg:grid-cols-3">
+        <Stagger className="mt-14 grid items-stretch gap-5 lg:grid-cols-3">
           {contractorStyles.map((style) => {
             const Icon = style.icon;
 
             return (
-              <StaggerItem key={style.title}>
-                <div data-gsap-hover data-gsap-hover-y="-6">
-                  <Card className="overflow-hidden" interactive>
-                    <div className={`${style.panelClass} min-h-[230px] p-5`}>
+              <StaggerItem className="h-full" key={style.title}>
+                <div className="h-full" data-gsap-hover data-gsap-hover-y="-6">
+                  <Card className="flex h-full flex-col overflow-hidden" interactive>
+                    <div className={`${style.panelClass} min-h-[292px] p-5`}>
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
                           <span
@@ -602,7 +594,7 @@ function ContractorStyleGallery() {
                         </div>
                       </div>
                     </div>
-                    <div className="p-5">
+                    <div className="flex-1 p-5">
                       <p className="text-sm leading-6 text-ink-3">{style.body}</p>
                     </div>
                   </Card>
@@ -634,7 +626,7 @@ export function LandingPage() {
       if (reduceMotion) {
         gsap.set(
           root.querySelectorAll(
-            "[data-gsap-reveal], [data-gsap-stagger-item], [data-gsap-hero-item], [data-gsap-hero-showcase]",
+            "[data-gsap-reveal], [data-gsap-stagger-item], [data-gsap-hero-item], [data-gsap-hero-showcase], [data-gsap-showcase-piece]",
           ),
           { clearProps: "all" },
         );
@@ -642,35 +634,86 @@ export function LandingPage() {
       }
 
       const cleanups: Array<() => void> = [];
+      const introTargets = root.querySelectorAll(
+        "[data-gsap-nav], [data-gsap-hero-item], [data-gsap-hero-showcase], [data-gsap-showcase-piece]",
+      );
 
-      gsap
-        .timeline({ defaults: { ease: "power3.out" } })
-        .from("[data-gsap-nav]", {
-          duration: 0.55,
-          opacity: 0,
-          y: -18,
-        })
-        .from(
+      gsap.globalTimeline.paused(false);
+      gsap.ticker.wake();
+
+      const introTimeline = gsap.timeline({ defaults: { ease: "power3.out" } });
+
+      introTimeline
+        .fromTo(
+          "[data-gsap-nav]",
+          {
+            opacity: 0,
+            y: -18,
+          },
+          {
+            duration: 0.55,
+            opacity: 1,
+            y: 0,
+          },
+        )
+        .fromTo(
           "[data-gsap-hero-item]",
           {
-            duration: 0.72,
             filter: "blur(8px)",
             opacity: 0,
-            stagger: 0.09,
             y: 24,
+          },
+          {
+            clearProps: "filter,transform",
+            duration: 0.72,
+            filter: "blur(0px)",
+            opacity: 1,
+            stagger: 0.09,
+            y: 0,
           },
           "-=0.15",
         )
-        .from(
+        .fromTo(
           "[data-gsap-hero-showcase]",
           {
-            duration: 0.8,
             filter: "blur(8px)",
             opacity: 0,
             y: 32,
           },
+          {
+            clearProps: "filter,transform",
+            duration: 0.8,
+            filter: "blur(0px)",
+            opacity: 1,
+            y: 0,
+          },
           "-=0.25",
+        )
+        .fromTo(
+          "[data-gsap-showcase-piece]",
+          {
+            filter: "blur(8px)",
+            opacity: 0,
+            y: 18,
+          },
+          {
+            clearProps: "filter,transform",
+            duration: 0.62,
+            filter: "blur(0px)",
+            opacity: 1,
+            stagger: 0,
+            y: 0,
+          },
+          "<",
         );
+
+      introTimeline.eventCallback("onComplete", () => {
+        introTargets.forEach((target) => {
+          if (target instanceof HTMLElement) {
+            clearRenderEffects(target);
+          }
+        });
+      });
 
       gsap.to("[data-gsap-glow='right']", {
         duration: 6,
@@ -691,57 +734,61 @@ export function LandingPage() {
         yoyo: true,
       });
 
-      gsap.utils.toArray<HTMLElement>("[data-gsap-float]").forEach((el) => {
-        const delay = Number(el.dataset.gsapDelay ?? 0);
-        const rotate = Number(el.dataset.gsapRotate ?? 0);
-
-        gsap.to(el, {
-          delay,
-          duration: 3.5,
-          ease: "sine.inOut",
-          repeat: -1,
-          rotate: rotate + 0.6,
-          y: -8,
-          yoyo: true,
-        });
-      });
-
       gsap.utils.toArray<HTMLElement>("[data-gsap-reveal]").forEach((el) => {
         const delay = Number(el.dataset.gsapDelay ?? 0);
         const y = Number(el.dataset.gsapY ?? 24);
 
-        gsap.from(el, {
-          delay,
-          duration: 0.7,
-          ease: "power3.out",
-          filter: "blur(8px)",
-          opacity: 0,
-          scrollTrigger: {
-            once: true,
-            start: "top 82%",
-            trigger: el,
+        gsap.fromTo(
+          el,
+          {
+            filter: "blur(8px)",
+            opacity: 0,
+            y,
           },
-          y,
-        });
+          {
+            clearProps: "filter,transform",
+            delay,
+            duration: 0.7,
+            ease: "power3.out",
+            filter: "blur(0px)",
+            opacity: 1,
+            onComplete: () => {
+              clearRenderEffects(el);
+            },
+            scrollTrigger: {
+              once: true,
+              start: "top 82%",
+              trigger: el,
+            },
+            y: 0,
+          },
+        );
       });
 
       gsap.utils.toArray<HTMLElement>("[data-gsap-stagger]").forEach((group) => {
         const delay = Number(group.dataset.gsapDelay ?? 0);
         const items = group.querySelectorAll("[data-gsap-stagger-item]");
 
-        gsap.from(items, {
-          delay,
-          duration: 0.55,
-          ease: "power3.out",
-          opacity: 0,
-          scrollTrigger: {
-            once: true,
-            start: "top 82%",
-            trigger: group,
+        gsap.fromTo(
+          items,
+          {
+            opacity: 0,
+            y: 18,
           },
-          stagger: 0.08,
-          y: 18,
-        });
+          {
+            delay,
+            duration: 0.55,
+            ease: "power3.out",
+            opacity: 1,
+            scrollTrigger: {
+              once: true,
+              start: "top 82%",
+              trigger: group,
+            },
+            stagger: 0.08,
+            y: 0,
+          },
+        );
       });
 
       gsap.utils.toArray<HTMLElement>("[data-gsap-hover]").forEach((el) => {
@@ -770,6 +817,19 @@ export function LandingPage() {
         yoyo: true,
       });
 
+      const introFallback = window.setTimeout(() => {
+        introTargets.forEach((target) => {
+          if (target instanceof HTMLElement) {
+            target.style.opacity = "1";
+            clearRenderEffects(target);
+          }
+        });
+      }, 2600);
+
+      cleanups.push(() => {
+        window.clearTimeout(introFallback);
+      });
+
       return () => {
         cleanups.forEach((cleanup) => cleanup());
       };
@@ -783,7 +843,7 @@ export function LandingPage() {
         className="nav"
         data-gsap-nav
       >
-        <Logo />
+        <AuthLogo />
         <nav className="nav-links">
           <a className="hidden sm:inline" href="#how">
             How it works
@@ -794,10 +854,7 @@ export function LandingPage() {
           <a className="hidden md:inline" href="#demo">
             Demo
           </a>
-          <Link href="/auth/login">Sign in</Link>
-          <Link href="/auth/signup" className="btn btn-accent btn-sm">
-            Start free
-          </Link>
+          <AuthNav />
         </nav>
       </header>
 
@@ -879,7 +936,7 @@ export function LandingPage() {
             </span>
           </div>
 
-          <div className="mx-auto mt-16 max-w-5xl" data-gsap-hero-showcase>
+          <div className="hero-showcase-wrap">
             <HeroShowcase />
           </div>
         </div>
