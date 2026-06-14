@@ -126,10 +126,10 @@ Execution rule:
 
 ### Phase 15 — FastAPI Server
 
-- [ ] Scaffold FastAPI project
-- [ ] Implement in-memory queue with deduplication
-- [ ] Expose /generate and /health endpoints
-- [ ] Test Cloudflare Tunnel connection
+- [x] Scaffold FastAPI project
+- [x] Implement in-memory queue with deduplication
+- [x] Expose /generate and /health endpoints
+- [x] Test Cloudflare Tunnel connection
 
 ### Phase 16 — AI Client Library
 

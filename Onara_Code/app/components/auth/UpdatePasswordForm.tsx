@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { ArrowRight } from "lucide-react";
 import { FormEvent, useState, useTransition } from "react";
+import { PasswordInput } from "@/components/auth/PasswordInput";
 import { createClient } from "@/lib/supabase/client";
 
 export function UpdatePasswordForm() {
@@ -47,27 +48,23 @@ export function UpdatePasswordForm() {
   return (
     <form onSubmit={updatePassword}>
       <label className="mono" htmlFor="password">New password</label>
-      <input
-        className="input"
+      <PasswordInput
         id="password"
-        type="password"
         autoComplete="new-password"
         placeholder="Minimum 6 characters"
         value={password}
-        onChange={(event) => setPassword(event.target.value)}
+        onChange={setPassword}
         required
         minLength={6}
       />
 
       <label className="mono auth-password-label" htmlFor="confirmPassword">Confirm password</label>
-      <input
-        className="input"
+      <PasswordInput
         id="confirmPassword"
-        type="password"
         autoComplete="new-password"
         placeholder="Repeat your new password"
         value={confirmPassword}
-        onChange={(event) => setConfirmPassword(event.target.value)}
+        onChange={setConfirmPassword}
         required
         minLength={6}
       />

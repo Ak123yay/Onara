@@ -50,6 +50,7 @@ export default async function DashboardLayout({ children }: DashboardLayoutProps
     name,
     plan: profile?.plan ?? "free",
     trialDaysLeft: daysUntil(profile?.trial_ends_at),
+    trialEndsAt: profile?.trial_ends_at ?? null,
   };
 
   return <DashboardShell user={dashboardUser}>{children}</DashboardShell>;

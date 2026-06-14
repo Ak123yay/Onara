@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowRight } from "lucide-react";
 import { FormEvent, useState, useTransition } from "react";
+import { PasswordInput } from "@/components/auth/PasswordInput";
 import { createClient } from "@/lib/supabase/client";
 
 type AuthFormProps = {
@@ -256,14 +257,12 @@ export function AuthForm({
                 </button>
               ) : null}
             </div>
-            <input
-              className="input"
+            <PasswordInput
               id="password"
-              type="password"
               autoComplete={isSignup ? "new-password" : "current-password"}
               placeholder="Minimum 6 characters"
               value={password}
-              onChange={(event) => setPassword(event.target.value)}
+              onChange={setPassword}
               required
               minLength={6}
             />

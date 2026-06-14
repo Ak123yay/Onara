@@ -60,6 +60,15 @@ type PlacesSearchResponse = {
   message?: string;
 };
 
+type GenerateApiResponse = {
+  error?: string;
+  jobId?: string;
+  job_id?: string;
+  message?: string;
+  queuePosition?: number | null;
+  queue_position?: number | null;
+};
+
 type BusinessSearchFlowProps = {
   userEmail: string;
   userName?: string | null;
@@ -263,12 +272,14 @@ export function BusinessSearchFlow({ userEmail, userName }: BusinessSearchFlowPr
   async function handleSearch(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    const trimmedQuery = query.trim();
+    const formQuery = new FormData(event.currentTarget).get("query");
+    const trimmedQuery = (typeof formQuery === "string" ? formQuery : query).trim();
     if (trimmedQuery.length < 2) {
       setError("Type at least 2 characters to search Google.");
       return;
     }
 
+    setQuery(trimmedQuery);
     setIsSearching(true);
     setError(null);
     setResults(null);
@@ -335,6 +346,7 @@ export function BusinessSearchFlow({ userEmail, userName }: BusinessSearchFlowPr
             <form className="places-search-form" onSubmit={handleSearch}>
               <Search size={18} aria-hidden="true" />
               <input
+                name="query"
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
                 placeholder="e.g. Mike's Plumbing Arlington VA"
@@ -956,6 +968,8 @@ function GenerateStep({
   onBack: () => void;
 }) {
   const router = useRouter();
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [isStarting, setIsStarting] = useState(false);
   const [prepared, setPrepared] = useState(false);
   const palette = paletteOptions.find((option) => option.id === generationPackage.style.palette);
   const layout = layoutOptions.find((option) => option.id === generationPackage.style.layout);
@@ -967,16 +981,48 @@ function GenerateStep({
     .map((option) => option.label)
     .join(", ");
 
-  function prepareGenerationPackage() {
-    const jobId =
-      typeof crypto !== "undefined" && "randomUUID" in crypto
-        ? crypto.randomUUID()
-        : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  async function prepareGenerationPackage() {
+    if (isStarting || prepared) {
+      return;
+    }
 
-    window.sessionStorage.setItem(`onara:generation:${jobId}`, JSON.stringify(generationPackage));
-    window.sessionStorage.setItem("onara:last-generation-package", JSON.stringify(generationPackage));
-    setPrepared(true);
-    router.push(`/dashboard/build/progress?jobId=${encodeURIComponent(jobId)}`);
+    setErrorMessage(null);
+    setIsStarting(true);
+
+    try {
+      const response = await fetch("/api/pipeline/generate", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          business_data: generationPackage.business,
+          generation_package: generationPackage,
+          style_preferences: generationPackage.style,
+        }),
+      });
+      const payload = (await response.json()) as GenerateApiResponse;
+
+      if (!response.ok) {
+        setErrorMessage(payload.message ?? "The pipeline could not start. Check FastAPI and try again.");
+        return;
+      }
+
+      const jobId = payload.jobId ?? payload.job_id;
+      if (!jobId) {
+        setErrorMessage("The pipeline started without returning a job id.");
+        return;
+      }
+
+      window.sessionStorage.setItem(`onara:generation:${jobId}`, JSON.stringify(generationPackage));
+      window.sessionStorage.setItem("onara:last-generation-package", JSON.stringify(generationPackage));
+      setPrepared(true);
+      router.push(`/dashboard/build/progress?jobId=${encodeURIComponent(jobId)}`);
+    } catch {
+      setErrorMessage("The pipeline server is unreachable. Confirm FastAPI and the tunnel are running.");
+    } finally {
+      setIsStarting(false);
+    }
   }
 
   return (
@@ -1027,11 +1073,15 @@ function GenerateStep({
         <div className={`generate-status ${prepared ? "generate-status-ready" : ""}`}>
           <Rocket size={16} aria-hidden="true" />
           <span>
-            {prepared
+            {isStarting
+              ? "Starting the FastAPI pipeline and reserving a queue slot."
+              : prepared
               ? "Starting the live build console with this saved package."
               : "This will start the agent progress console and live preview for this build."}
           </span>
         </div>
+
+        {errorMessage ? <p className="auth-message">{errorMessage}</p> : null}
       </section>
 
       <div className="confirmation-actions">
@@ -1039,8 +1089,13 @@ function GenerateStep({
           <ArrowLeft size={14} aria-hidden="true" />
           Back to style
         </button>
-        <button className="btn btn-accent" type="button" onClick={prepareGenerationPackage}>
-          {prepared ? "Starting..." : "Start agent build"}
+        <button
+          className="btn btn-accent"
+          disabled={isStarting || prepared}
+          type="button"
+          onClick={prepareGenerationPackage}
+        >
+          {isStarting || prepared ? "Starting..." : "Start agent build"}
           <Rocket size={14} aria-hidden="true" />
         </button>
       </div>

@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useTransition, type ReactNode } from "react";
+import { useEffect, useState, useTransition, type ReactNode } from "react";
 import { createClient } from "@/lib/supabase/client";
 
 export type DashboardUser = {
@@ -22,6 +22,7 @@ export type DashboardUser = {
   name: string;
   plan: string;
   trialDaysLeft: number;
+  trialEndsAt: string | null;
 };
 
 type DashboardShellProps = {
@@ -56,10 +57,47 @@ function planLabel(user: DashboardUser) {
   return user.plan;
 }
 
+function daysUntil(value: string | null) {
+  if (!value) {
+    return 0;
+  }
+
+  const delta = new Date(value).getTime() - Date.now();
+  return Math.max(0, Math.ceil(delta / 86_400_000));
+}
+
+function trialLabel(daysLeft: number) {
+  if (daysLeft <= 0) {
+    return "Trial ends today";
+  }
+
+  if (daysLeft === 1) {
+    return "1 day left";
+  }
+
+  return `${daysLeft} days left`;
+}
+
 export function DashboardShell({ children, user }: DashboardShellProps) {
   const pathname = usePathname();
   const router = useRouter();
+  const [trialDaysLeft, setTrialDaysLeft] = useState(user.trialDaysLeft);
   const [isPending, startTransition] = useTransition();
+
+  useEffect(() => {
+    if (!user.trialEndsAt) {
+      return;
+    }
+
+    const updateTrialDaysLeft = () => {
+      setTrialDaysLeft(daysUntil(user.trialEndsAt));
+    };
+
+    updateTrialDaysLeft();
+    const timer = window.setInterval(updateTrialDaysLeft, 60_000);
+
+    return () => window.clearInterval(timer);
+  }, [user.trialEndsAt]);
 
   async function signOut() {
     const supabase = createClient();
@@ -142,7 +180,7 @@ export function DashboardShell({ children, user }: DashboardShellProps) {
               <Sparkles size={16} />
             </div>
             <p className="mono">Pro trial</p>
-            <h2>{user.trialDaysLeft} days left</h2>
+            <h2>{trialLabel(trialDaysLeft)}</h2>
             <p>
               Keep your public URL, revisions, and build history after the trial ends.
             </p>

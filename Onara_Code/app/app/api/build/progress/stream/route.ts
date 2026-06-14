@@ -90,7 +90,7 @@ export async function GET(request: Request) {
         send("complete", {
           elapsedSeconds: 14,
           jobId,
-          message: "Mock generation complete. FastAPI will replace this stream in Phase 15.",
+          message: "Website draft ready. Review the preview before publishing.",
           previewUrl: "/dashboard/build/progress",
           progress: 100,
           siteId: `mock-${jobId.slice(0, 8)}`,
@@ -102,7 +102,7 @@ export async function GET(request: Request) {
       } catch (error) {
         send("error", {
           jobId,
-          message: error instanceof Error ? error.message : "Mock stream failed.",
+          message: error instanceof Error ? error.message : "Build stream failed.",
         });
 
         if (!closed) {

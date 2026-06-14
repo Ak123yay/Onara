@@ -199,7 +199,7 @@ export function AgentProgressExperience() {
       pollingTimer = setInterval(() => {
         pollStatus().catch(() => {
           setConnectionMode("error");
-          setCurrentMessage("Connection lost. Refresh to reconnect to the mock progress stream.");
+          setCurrentMessage("Connection lost. Refresh to reconnect to the build stream.");
         });
       }, 900);
       void pollStatus();
@@ -286,7 +286,7 @@ export function AgentProgressExperience() {
 
       if (messageEvent.data) {
         const data = JSON.parse(messageEvent.data) as StreamPayload;
-        setCurrentMessage(data.message || "The mock stream failed.");
+        setCurrentMessage(data.message || "The build stream failed.");
         setConnectionMode("error");
         eventSource.close();
         return;
@@ -312,13 +312,12 @@ export function AgentProgressExperience() {
         <aside className="agent-progress-panel">
           <div className="agent-progress-heading">
             <div className="agent-progress-kicker">
-              <span className={`agent-live-dot agent-live-dot-${connectionMode}`} />
               <span>{connectionLabel(connectionMode)}</span>
             </div>
-            <p className="eyebrow">Building your site</p>
+            <p className="eyebrow">{connectionMode === "complete" ? "Website draft ready" : "Building your site"}</p>
             <h1 className="serif">{businessName}</h1>
-            <span>{businessMeta}</span>
-            <p>10 small agents are building in sequence. Stay here or come back later; this job is saved in your browser session.</p>
+            <span className="agent-progress-heading-meta">{businessMeta}</span>
+            <p>Your draft is saved in this browser while the agent pipeline runs.</p>
           </div>
 
           <div className="agent-progress-meter card">
@@ -344,7 +343,7 @@ export function AgentProgressExperience() {
           {queuePosition ? (
             <div className="agent-progress-notice agent-progress-notice-queue">
               <Clock3 size={15} aria-hidden="true" />
-              Queue position {queuePosition}. Starting the local mock stream.
+              Queue position {queuePosition}. Starting the build stream.
             </div>
           ) : null}
 
@@ -402,7 +401,7 @@ export function AgentProgressExperience() {
                 New build
               </Link>
               <button className="btn btn-accent" disabled={connectionMode !== "complete"} type="button">
-                {siteId ? "Mock site ready" : "Waiting"}
+                {siteId ? "Draft ready" : "Waiting"}
               </button>
             </div>
           </div>
@@ -449,20 +448,20 @@ function AgentStepRow({
 
 function connectionLabel(mode: ConnectionMode) {
   if (mode === "sse") {
-    return "SSE stream connected";
+    return "Live build";
   }
 
   if (mode === "polling") {
-    return "Fallback polling active";
+    return "Live build";
   }
 
   if (mode === "complete") {
-    return "Mock generation complete";
+    return "Build complete";
   }
 
   if (mode === "error") {
     return "Connection needs attention";
   }
 
-  return "Connecting stream";
+  return "Starting build";
 }

@@ -25,7 +25,7 @@ export async function GET(request: Request) {
     message: progress.queued
       ? "Your site is queued. Preparing the agent workspace."
       : progress.complete
-        ? "Mock generation complete. FastAPI will replace this status route in Phase 15."
+        ? "Website draft ready. Review the preview before publishing."
         : retrying
           ? "Spacing mismatch caught. Retrying with stricter layout rules."
           : activeAgent?.task,
