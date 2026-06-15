@@ -11,6 +11,7 @@ from onara_pipeline.agents.fact_repair import (
     onara_typography_issues,
     review_license_integrity_issues,
     section_dedupe_issues,
+    service_menu_integrity_issues,
 )
 from onara_pipeline.agents.generation_contracts import (
     ONARA_GENERATION_QUALITY_CONTRACT,
@@ -42,6 +43,7 @@ Strict rules:
 - Mark status "fail" for concrete launch blockers, including low-effort visual composition.
 - Treat small subjective design improvements as warnings, but reject pages that look like generic centered templates or miss the Onara theme contract.
 - Check local contractor basics: complete document, mobile readiness, safe motion, SEO metadata, LocalBusiness schema, tap-to-call, and component completeness.
+- Fail pages that render only one day of a supplied weekly schedule, use generic service-menu labels, fabricate license/insurance/certification proof, or use generic review/proof cards instead of real review quotes or aggregate Google facts.
 - Do not invent missing data or require unsupported features."""
 
 
@@ -302,6 +304,14 @@ def audit_site(
     )
     checks["section_dedupe"] = not duplicate_section_issues
     blocking.extend(duplicate_section_issues)
+
+    service_menu_issues = service_menu_integrity_issues(
+        html,
+        business_data=business_data,
+        style_preferences=style_preferences,
+    )
+    checks["service_menu_integrity"] = not service_menu_issues
+    blocking.extend(service_menu_issues)
 
     checks["mobile_basics"] = ("name=\"viewport\"" in lower or "name='viewport'" in lower) and "@media" in lower
     if not checks["mobile_basics"]:

@@ -199,6 +199,7 @@ def validate_qa_output(output: QAOutput) -> None:
         "local_details",
         "review_integrity",
         "section_dedupe",
+        "service_menu_integrity",
         "license_honesty",
         "mobile_basics",
         "no_artifacts",

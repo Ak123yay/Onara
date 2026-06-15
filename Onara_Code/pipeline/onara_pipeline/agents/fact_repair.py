@@ -2,7 +2,13 @@ import html as html_lib
 import re
 from typing import Any
 
-from onara_pipeline.agents.context import BusinessContext, build_business_context
+from onara_pipeline.agents.context import (
+    BusinessContext,
+    build_business_context,
+    infer_industry,
+    is_generic_service_label,
+    service_candidates_for_context,
+)
 from onara_pipeline.agents.onara_theme import ONARA_FONT_IMPORT
 
 
@@ -147,6 +153,7 @@ def ensure_review_and_license_integrity(
         replacement = _aggregate_review_section(context)
         fixed, changed = _replace_component_section(fixed, "reviews", replacement)
         if changed:
+            fixed, _ = _append_css_once(fixed, "onara-review-facts", REVIEW_FACTS_CSS)
             fixes.append("Replaced unsupported review cards with public-facing aggregate Google review proof")
 
     credentials_supplied = _credentials_supplied(context, business_data)
@@ -172,6 +179,51 @@ def ensure_review_and_license_integrity(
         fixes.append("Removed internal instruction leak text from generated copy")
 
     return fixed, _unique(fixes)
+
+
+def ensure_service_menu_integrity(
+    html: str,
+    *,
+    business_data: dict[str, Any],
+    style_preferences: dict[str, Any] | None = None,
+) -> tuple[str, list[str]]:
+    context = build_business_context(business_data, style_preferences or {})
+    issues = service_menu_integrity_issues(
+        html,
+        business_data=business_data,
+        style_preferences=style_preferences,
+    )
+    if not issues:
+        return html, []
+
+    services = service_candidates_for_context(context, infer_industry(context), limit=4)
+    if len(services) < 3:
+        return html, []
+
+    def replace_menu(match: re.Match[str]) -> str:
+        menu_html = match.group(0)
+        labels = _list_item_texts(menu_html)
+        if len(labels) >= 3 and not _mostly_generic_services(labels):
+            return menu_html
+
+        opening = re.match(r"<ul\b[^>]*>", menu_html, flags=re.IGNORECASE)
+        if not opening:
+            return menu_html
+
+        items = "\n".join(
+            f"      <li>{html_lib.escape(service)}</li>" for service in services[:4]
+        )
+        return f"{opening.group(0)}\n{items}\n    </ul>"
+
+    fixed = re.sub(
+        r"<ul\b(?=[^>]*class=[\"'][^\"']*\bservice-menu\b[^\"']*[\"'])[^>]*>.*?</ul>",
+        replace_menu,
+        html,
+        flags=re.IGNORECASE | re.DOTALL,
+    )
+    if fixed == html:
+        return html, []
+    return fixed, ["Replaced generic hero service-menu labels with specific business services"]
 
 
 def ensure_section_dedupe(
@@ -227,6 +279,30 @@ def section_dedupe_issues(
     return []
 
 
+def service_menu_integrity_issues(
+    html: str,
+    *,
+    business_data: dict[str, Any],
+    style_preferences: dict[str, Any] | None = None,
+) -> list[str]:
+    del business_data, style_preferences
+
+    menu_match = re.search(
+        r"<ul\b(?=[^>]*class=[\"'][^\"']*\bservice-menu\b[^\"']*[\"'])[^>]*>.*?</ul>",
+        html,
+        flags=re.IGNORECASE | re.DOTALL,
+    )
+    if not menu_match:
+        return []
+
+    labels = _list_item_texts(menu_match.group(0))
+    if len(labels) < 3:
+        return ["Hero service menu contains fewer than three service entries"]
+    if _mostly_generic_services(labels):
+        return ["Hero service menu uses generic filler labels instead of distinct services"]
+    return []
+
+
 def review_license_integrity_issues(
     html: str,
     *,
@@ -260,6 +336,15 @@ def review_integrity_issues(
     if _internal_instruction_leak_issues(section):
         issues.append("Reviews section contains internal missing-data or prompt-instruction copy")
 
+    generic_review_phrases = (
+        "review volume gives customers a quick public trust signal",
+        "rating, address, photos, hours, and contact details are grounded",
+        "local proof is paired with practical next steps",
+        "public profile signal customers can cross-check",
+    )
+    if any(phrase in lower for phrase in generic_review_phrases):
+        issues.append("Reviews section contains generic aggregate-proof filler copy")
+
     if not has_quotes and (
         _class_instance_count(section, "review-card") > 0
         or "<blockquote" in lower
@@ -285,8 +370,8 @@ def review_integrity_issues(
     if repeated:
         issues.append("Reviews section contains repeated generic card copy")
 
-    if not has_quotes and _class_instance_count(section, "proof-card") >= 3 and "review-stars" not in lower:
-        issues.append("Reviews section uses generic proof cards without a public star/rating visualization")
+    if not has_quotes and _class_instance_count(section, "proof-card") >= 3:
+        issues.append("Reviews section uses generic proof cards instead of a factual aggregate Google summary")
 
     return _unique(issues)
 
@@ -310,21 +395,14 @@ def license_integrity_issues(
 def hours_visible(html: str, hours: list[str]) -> bool:
     lower = html.lower()
     compact_html = _compact_hour_text(lower)
-    for item in hours:
-        normalized = re.sub(r"\s+", " ", str(item).strip().lower())
-        if normalized and normalized in lower:
-            return True
-        compact_normalized = _compact_hour_text(normalized)
-        if compact_normalized and compact_normalized in compact_html:
-            return True
-        if ":" in normalized:
-            time_part = normalized.split(":", 1)[1].strip()
-            if time_part and time_part in lower:
-                return True
-            compact_time_part = _compact_hour_text(time_part)
-            if compact_time_part and compact_time_part in compact_html:
-                return True
-    return False
+    normalized_hours = [re.sub(r"\s+", " ", str(item).strip().lower()) for item in hours if str(item).strip()]
+    if not normalized_hours:
+        return True
+
+    if _daily_hours_summary_visible(lower, compact_html, normalized_hours):
+        return True
+
+    return all(_hour_item_visible(lower, compact_html, item) for item in normalized_hours)
 
 
 def hours_summary(context: BusinessContext) -> str:
@@ -341,7 +419,7 @@ def hours_summary(context: BusinessContext) -> str:
     if len(unique_times) == 1 and len(hours) >= 5:
         return f"Daily {unique_times[0]}"
 
-    return hours[0]
+    return "Weekly hours listed below"
 
 
 def _local_hours_section(context: BusinessContext) -> str:
@@ -375,11 +453,12 @@ def _aggregate_review_section(context: BusinessContext) -> str:
     count_value = f"{context.review_count:,}" if context.review_count is not None else "public"
     service_area = html_lib.escape(context.service_area)
     business_name = html_lib.escape(context.name)
+    local_profile = html_lib.escape(context.address or context.service_area)
     return f"""
     <section class="optional-section reviews" data-component="reviews" id="reviews">
       <div class="section-head">
         <span class="eyebrow">Google reviews</span>
-        <h2>Public Google proof customers can verify.</h2>
+        <h2>Google profile proof customers can verify.</h2>
         <p>{rating_line}</p>
       </div>
       <div class="review-summary-card">
@@ -387,22 +466,13 @@ def _aggregate_review_section(context: BusinessContext) -> str:
           <span>&#9733;</span><span>&#9733;</span><span>&#9733;</span><span>&#9733;</span><span>&#9733;</span>
         </div>
         <strong>{html_lib.escape(str(rating_value))} / 5 Google rating</strong>
-        <p>Public rating signal from the Google Business Profile for {business_name}.</p>
+        <p>Public Google Business Profile rating for {business_name}.</p>
       </div>
-      <div class="proof-grid review-proof-grid">
-        <article class="proof-card review-proof-card">
-          <strong>{html_lib.escape(str(count_value))} reviews</strong>
-          <p>Review volume gives customers a quick public trust signal before they call.</p>
-        </article>
-        <article class="proof-card review-proof-card">
-          <strong>Google-backed profile</strong>
-          <p>Rating, address, photos, hours, and contact details are grounded in the business profile.</p>
-        </article>
-        <article class="proof-card review-proof-card">
-          <strong>{service_area}</strong>
-          <p>Local proof is paired with practical next steps so customers can move from trust to contact.</p>
-        </article>
-      </div>
+      <ul class="review-facts" aria-label="Google review facts">
+        <li><span>Rating</span><strong>{html_lib.escape(str(rating_value))} / 5 on Google</strong></li>
+        <li><span>Reviews</span><strong>{html_lib.escape(str(count_value))} public reviews</strong></li>
+        <li><span>Local profile</span><strong>{local_profile}</strong></li>
+      </ul>
     </section>
 """.rstrip()
 
@@ -447,6 +517,19 @@ def _is_hidden_section(section: str) -> bool:
 
     tag = opening.group(0).lower()
     return " hidden" in tag or "aria-hidden=\"true\"" in tag or "aria-hidden='true'" in tag
+
+
+def _list_item_texts(html: str) -> list[str]:
+    items = re.findall(r"<li\b[^>]*>(.*?)</li>", html, flags=re.IGNORECASE | re.DOTALL)
+    return [_visible_text(item) for item in items if _visible_text(item)]
+
+
+def _mostly_generic_services(labels: list[str]) -> bool:
+    if not labels:
+        return True
+
+    generic_count = sum(1 for label in labels if is_generic_service_label(label))
+    return generic_count >= max(2, len(labels) - 1)
 
 
 def _sections_repeat_same_proof(left: str, right: str) -> bool:
@@ -565,6 +648,8 @@ def _has_credential_claim(lower: str) -> bool:
             "verify before publishing",
             "license verification card",
             "license verification",
+            "professional licensing",
+            "implied by trade",
             "licensed and insured",
             "fully insured",
             "bonded",
@@ -605,6 +690,9 @@ def _strip_unsupplied_credential_claims(html: str) -> str:
         (r"\blicense verification card\s*\([^)]*\)", ""),
         (r"\blicense verification card\b", ""),
         (r"\blicense verification\b", ""),
+        (r"\bprofessional licensing\s*\([^)]*\)", ""),
+        (r"\bprofessional licensing\b", ""),
+        (r"\bimplied by trade[^<.\n]*", ""),
         (r"\blicensed and insured\b", ""),
         (r"\bfully insured\b", ""),
         (r"\bbonded\b", ""),
@@ -645,6 +733,8 @@ def _strip_internal_instruction_leaks(html: str) -> str:
         (r"\bNo review quotes supplied\b", "Public Google rating"),
         (r"\bThis page does not invent customer testimonials\.?\s*Add real quotes after approval\.?", "Customers can verify the public Google rating before contacting the business."),
         (r"\bLicensed professional\s*\([^)]*\)", ""),
+        (r"\bProfessional licensing\s*\([^)]*\)", ""),
+        (r"\bimplied by trade[^<.\n]*", ""),
         (r"\bproof omitted per rules[^<.\n]*", ""),
         (r"\bpending owner input\b", ""),
         (r"\bverification-needed\b", ""),
@@ -855,6 +945,73 @@ def _compact_hour_text(value: str) -> str:
     return normalized
 
 
+def _hour_item_visible(lower_html: str, compact_html: str, item: str) -> bool:
+    compact_item = _compact_hour_text(item)
+    if compact_item and compact_item in compact_html:
+        return True
+
+    if ":" not in item:
+        return bool(item and item in lower_html)
+
+    day_part, time_part = [part.strip() for part in item.split(":", 1)]
+    compact_day = _compact_hour_text(day_part)
+    compact_time = _compact_hour_text(time_part)
+    return bool(
+        compact_day
+        and compact_time
+        and compact_day in compact_html
+        and compact_time in compact_html
+    )
+
+
+def _daily_hours_summary_visible(lower_html: str, compact_html: str, hours: list[str]) -> bool:
+    time_parts = [
+        _compact_hour_text(item.split(":", 1)[1].strip())
+        for item in hours
+        if ":" in item and item.split(":", 1)[1].strip()
+    ]
+    if len(time_parts) < 5 or len(set(time_parts)) != 1:
+        return False
+
+    has_daily_label = "daily" in lower_html or "every day" in lower_html or "open 7 days" in lower_html
+    return has_daily_label and time_parts[0] in compact_html
+
+
+REVIEW_FACTS_CSS = """
+      /* onara-review-facts */
+      .review-facts {
+        display: grid;
+        gap: 10px;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        list-style: none;
+        margin: 18px 0 0;
+        padding: 0;
+      }
+
+      .review-facts li {
+        background: var(--paper, #fbfaf6);
+        border: 1px solid var(--rule, #d8d6cf);
+        display: grid;
+        gap: 8px;
+        padding: 18px;
+      }
+
+      .review-facts span {
+        color: var(--ink-3, #6a6a6a);
+        font-family: var(--mono, monospace);
+        font-size: 0.68rem;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+      }
+
+      @media (max-width: 760px) {
+        .review-facts {
+          grid-template-columns: 1fr;
+        }
+      }
+""".rstrip()
+
+
 LOCAL_HOURS_CSS = """
       .local-hours .hours-card {
         display: grid;
@@ -865,9 +1022,42 @@ LOCAL_HOURS_CSS = """
         color: var(--ink-3, #6a6a6a);
         display: grid;
         gap: 6px;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
         list-style: none;
         margin: 0;
         padding: 0;
+      }
+
+      .review-facts {
+        display: grid;
+        gap: 10px;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        list-style: none;
+        margin: 18px 0 0;
+        padding: 0;
+      }
+
+      .review-facts li {
+        background: var(--paper, #fbfaf6);
+        border: 1px solid var(--rule, #d8d6cf);
+        display: grid;
+        gap: 8px;
+        padding: 18px;
+      }
+
+      .review-facts span {
+        color: var(--ink-3, #6a6a6a);
+        font-family: var(--mono, monospace);
+        font-size: 0.68rem;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+      }
+
+      @media (max-width: 760px) {
+        .local-hours .hours-list,
+        .review-facts {
+          grid-template-columns: 1fr;
+        }
       }
 """.rstrip()
 
@@ -1058,14 +1248,14 @@ ONARA_SPACING_LOCK_CSS = """
       section.hero,
       [data-component="hero"] {
         min-height: auto !important;
-        padding-block: clamp(56px, 7vw, 104px) !important;
-        align-items: center;
+        padding-block: clamp(40px, 6vw, 82px) !important;
+        align-items: start;
         overflow: clip;
       }
 
       .hero,
       [data-component="hero"] {
-        gap: clamp(24px, 4vw, 64px);
+        gap: clamp(24px, 4vw, 58px);
       }
 
       .hero > *,
@@ -1075,7 +1265,22 @@ ONARA_SPACING_LOCK_CSS = """
 
       main > section:not([data-component="hero"]),
       section.optional-section {
-        padding-block: clamp(48px, 7vw, 88px);
+        padding-block: clamp(40px, 6vw, 76px);
+      }
+
+      .site-header {
+        align-items: center;
+      }
+
+      .brand {
+        line-height: 1.12;
+        max-width: 34ch;
+      }
+
+      .hero-photo img {
+        aspect-ratio: 16 / 10 !important;
+        max-height: 330px;
+        object-fit: cover;
       }
 
       .hero-side,

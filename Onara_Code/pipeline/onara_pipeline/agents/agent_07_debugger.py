@@ -12,11 +12,13 @@ from onara_pipeline.agents.fact_repair import (
     ensure_onara_typography,
     ensure_review_and_license_integrity,
     ensure_section_dedupe,
+    ensure_service_menu_integrity,
     hours_visible,
     onara_spacing_issues,
     onara_typography_issues,
     review_license_integrity_issues,
     section_dedupe_issues,
+    service_menu_integrity_issues,
 )
 from onara_pipeline.agents.generation_contracts import (
     ONARA_GENERATION_QUALITY_CONTRACT,
@@ -44,6 +46,8 @@ Strict rules:
 - Fix broken or risky HTML/CSS/accessibility/performance issues.
 - If the deterministic audit flags generic visual composition or off-theme Onara styling, redesign the layout while preserving copy and component IDs.
 - Enforce the Onara design contract: protected paper/ink/accent variables, selected palette through --choice-* details, Fraunces headings, Inter body copy, mono labels, low-radius panels.
+- Fix fact/rendering failures: full weekly hours, specific service-menu labels, no fake review cards, no fabricated credential claims, and no visible raw SEO keyword strings.
+- Tighten first-fold spacing when a side image/card stack creates a large blank gap before services.
 - Keep one self-contained index.html document.
 - Keep all CSS inside <style> in <head>.
 - Keep animation lightweight: opacity and transform only.
@@ -214,6 +218,13 @@ def audit_html(
             style_preferences=style_preferences,
         )
     )
+    issues.extend(
+        service_menu_integrity_issues(
+            html,
+            business_data=business_data,
+            style_preferences=style_preferences,
+        )
+    )
 
     issues.extend(professional_visual_issues(html))
 
@@ -311,12 +322,26 @@ def _apply_fact_repairs(
         business_data=business_data,
         style_preferences=style_preferences,
     )
+    fixed, service_menu_fixes = ensure_service_menu_integrity(
+        fixed,
+        business_data=business_data,
+        style_preferences=style_preferences,
+    )
     fixed, dedupe_fixes = ensure_section_dedupe(
         fixed,
         business_data=business_data,
         style_preferences=style_preferences,
     )
-    return fixed, _unique([*typography_fixes, *spacing_fixes, *hours_fixes, *integrity_fixes, *dedupe_fixes])
+    return fixed, _unique(
+        [
+            *typography_fixes,
+            *spacing_fixes,
+            *hours_fixes,
+            *integrity_fixes,
+            *service_menu_fixes,
+            *dedupe_fixes,
+        ]
+    )
 
 
 def _user_prompt(

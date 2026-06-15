@@ -74,6 +74,11 @@ class JobStatusResponse(BaseModel):
     mobile_status: str | None = None
     photo_count: int = 0
     photo_resolution_status: str | None = None
+    pre_qa_blocking_issues: list[str] = Field(default_factory=list)
+    pre_qa_check_pass_rate: float | None = None
+    pre_qa_hardening_attempts: list[dict[str, Any]] = Field(default_factory=list)
+    pre_qa_min_check_pass_rate: float | None = None
+    pre_qa_status: str | None = None
     queue_position: int | None
     preview_html: str | None = None
     qa_blocking_issues: list[str] = Field(default_factory=list)
@@ -120,6 +125,12 @@ class JobStatusResponse(BaseModel):
         qa_checks: dict[str, bool] = {}
         qa_status = None
         qa_warnings: list[str] = []
+        phase_21 = job.blackboard.get("phase_21")
+        pre_qa_blocking_issues: list[str] = []
+        pre_qa_check_pass_rate = None
+        pre_qa_hardening_attempts: list[dict[str, Any]] = []
+        pre_qa_min_check_pass_rate = None
+        pre_qa_status = None
         photo_assets = job.blackboard.get("photo_assets")
         photo_count = len(photo_assets) if isinstance(photo_assets, list) else 0
         photo_resolution_status = _optional_str(job.business_data.get("photo_resolution_status"))
@@ -169,6 +180,33 @@ class JobStatusResponse(BaseModel):
             qa_status = str(raw_status) if raw_status else None
             qa_warnings = [str(warning) for warning in raw_warnings] if isinstance(raw_warnings, list) else []
 
+        if isinstance(phase_21, dict):
+            raw_pre_qa_blocking = phase_21.get("pre_qa_blocking_issues")
+            raw_pre_qa_history = phase_21.get("pre_qa_hardening_attempts")
+            raw_pre_qa_score = phase_21.get("pre_qa_check_pass_rate")
+            raw_pre_qa_min_score = phase_21.get("pre_qa_min_check_pass_rate")
+            pre_qa_blocking_issues = (
+                [str(issue) for issue in raw_pre_qa_blocking]
+                if isinstance(raw_pre_qa_blocking, list)
+                else []
+            )
+            pre_qa_hardening_attempts = (
+                [attempt for attempt in raw_pre_qa_history if isinstance(attempt, dict)]
+                if isinstance(raw_pre_qa_history, list)
+                else []
+            )
+            pre_qa_check_pass_rate = (
+                float(raw_pre_qa_score)
+                if isinstance(raw_pre_qa_score, int | float)
+                else None
+            )
+            pre_qa_min_check_pass_rate = (
+                float(raw_pre_qa_min_score)
+                if isinstance(raw_pre_qa_min_score, int | float)
+                else None
+            )
+            pre_qa_status = _optional_str(phase_21.get("pre_qa_status"))
+
         return cls(
             blackboard_keys=list(job.blackboard.keys()),
             job_id=job.job_id,
@@ -199,6 +237,11 @@ class JobStatusResponse(BaseModel):
             mobile_status=mobile_status,
             photo_count=photo_count,
             photo_resolution_status=photo_resolution_status,
+            pre_qa_blocking_issues=pre_qa_blocking_issues,
+            pre_qa_check_pass_rate=pre_qa_check_pass_rate,
+            pre_qa_hardening_attempts=pre_qa_hardening_attempts,
+            pre_qa_min_check_pass_rate=pre_qa_min_check_pass_rate,
+            pre_qa_status=pre_qa_status,
             queue_position=queue_position,
             preview_html=preview_html if isinstance(preview_html, str) else None,
             qa_blocking_issues=qa_blocking_issues,

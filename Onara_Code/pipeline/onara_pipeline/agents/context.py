@@ -100,7 +100,46 @@ def default_services(industry: str) -> list[str]:
         "campground": ["RV sites", "Tent camping", "Full hookups", "Family stays"],
     }
 
-    return defaults.get(industry, ["Service calls", "Repairs", "Maintenance", "Free estimates"])
+    return defaults.get(
+        industry,
+        ["Project walkthroughs", "Installation work", "Repair planning", "Estimate requests"],
+    )
+
+
+def service_candidates_for_context(context: BusinessContext, industry: str, *, limit: int = 6) -> list[str]:
+    """Return customer-facing services, not category/filler labels."""
+    candidates = [
+        *_compound_trade_services(context),
+        *context.services,
+        *default_services(industry),
+        context.category,
+    ]
+    return _unique_strings(
+        candidate for candidate in candidates if candidate and not is_generic_service_label(candidate)
+    )[:limit]
+
+
+def is_generic_service_label(value: str) -> bool:
+    normalized = " ".join(value.lower().replace("&", "and").split())
+    return normalized in {
+        "service",
+        "services",
+        "service calls",
+        "local service",
+        "local services",
+        "home services",
+        "contractor",
+        "local contractor",
+        "repairs",
+        "repair",
+        "maintenance",
+        "free estimates",
+        "estimates",
+        "plumber",
+        "hvac",
+        "electrician",
+        "roofer",
+    }
 
 
 def photo_assets_for_prompt(context: BusinessContext, *, limit: int = 4) -> list[dict[str, str]]:
@@ -128,6 +167,20 @@ def _services_from_business(business_data: dict[str, Any]) -> list[str]:
 
     category = _string_value(business_data, "category")
     return [category] if category else []
+
+
+def _compound_trade_services(context: BusinessContext) -> list[str]:
+    text = f"{context.name} {context.category} {' '.join(context.services)}".lower()
+    services: list[str] = []
+    if "plumb" in text:
+        services.append("Plumbing repairs & installations")
+    if "heating" in text or "furnace" in text:
+        services.append("Heating systems service")
+    if "air conditioning" in text or "cooling" in text or "hvac" in text:
+        services.append("Air conditioning & cooling")
+    if "electric" in text:
+        services.append("Electrical repairs")
+    return services
 
 
 def _photo_assets_from_business(business_data: dict[str, Any]) -> list[BusinessPhoto]:
@@ -168,6 +221,18 @@ def _string_list(value: Any) -> list[str]:
         return []
 
     return [item.strip() for item in value if isinstance(item, str) and item.strip()]
+
+
+def _unique_strings(values) -> list[str]:
+    seen = set()
+    output: list[str] = []
+    for value in values:
+        normalized = str(value).strip()
+        key = normalized.lower()
+        if normalized and key not in seen:
+            seen.add(key)
+            output.append(normalized)
+    return output
 
 
 def _number_value(value: Any) -> float | None:

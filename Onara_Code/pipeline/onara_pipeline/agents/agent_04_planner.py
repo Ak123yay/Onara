@@ -116,6 +116,11 @@ Desktop visual requirements:
 - Use mono uppercase labels, serif H1/H2 display type, selected-palette CTAs, paper cards, and low-radius browser/proof panels.
 - Hero must be asymmetrical or split-composition, not a centered single-column brochure hero.
 - Include one proof/contact/service panel in the hero or directly adjacent to it.
+- Keep the hero side stack compact so the next section starts without a large blank gap.
+- Plan service-menu labels from real services, content services, or industry-specific defaults; never plan generic labels like Services, Service calls, Repairs, or Maintenance as the full menu.
+- If hours are supplied, plan a visible full weekly schedule or a Daily/Every day summary only when every supplied day shares the same hours.
+- If review quotes are not supplied, plan aggregate Google rating/count proof only, not testimonial cards or three generic proof cards.
+- Do not plan license, insurance, bonded, certified, or "implied by trade" proof unless the owner notes or business data include those details.
 - Include at least four named composition surfaces across the first fold: hero-side, panel-stack, proof-strip, proof-grid, service-menu, local-card, hours-card, detail-card, review-card, contact-card.
 - Include at least three distinct card types across the page, such as service-card, proof-card, review-card, local-card, contact-card, or hours-card.
 - Use section contrast, card structure, and distinctive type scale so the site looks professionally designed.

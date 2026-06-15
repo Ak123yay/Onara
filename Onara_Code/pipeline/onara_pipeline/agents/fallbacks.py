@@ -2,7 +2,12 @@ import html as html_lib
 import re
 from typing import Any
 
-from onara_pipeline.agents.context import BusinessContext, default_services, infer_industry
+from onara_pipeline.agents.context import (
+    BusinessContext,
+    default_services,
+    infer_industry,
+    service_candidates_for_context,
+)
 from onara_pipeline.agents.contracts import (
     AnalystOutput,
     CodegenOutput,
@@ -526,7 +531,7 @@ def fallback_codegen(
       }}
       a {{ color: inherit; text-decoration: none; }}
       .site-shell {{
-        min-height: 100vh;
+        min-height: 100%;
         background:
           radial-gradient(circle at 18% 10%, color-mix(in srgb, var(--choice-accent) 16%, transparent), transparent 32rem),
           radial-gradient(circle at 82% 18%, color-mix(in srgb, var(--leaf) 10%, transparent), transparent 30rem),
@@ -552,18 +557,20 @@ def fallback_codegen(
         align-items: center;
         animation: onara-fade-in 460ms var(--motion-ease) both;
         border-bottom: 1px solid var(--rule);
-        display: flex;
+        display: grid;
         gap: 22px;
-        justify-content: space-between;
+        grid-template-columns: minmax(180px, 1fr) auto auto;
         margin: 0 auto;
         max-width: var(--container);
         padding: 24px 20px;
       }}
       .brand {{
         font-family: var(--serif);
-        font-size: clamp(1.35rem, 2vw, 1.85rem);
+        font-size: clamp(1.25rem, 1.8vw, 1.65rem);
         font-weight: 500;
         letter-spacing: -0.025em;
+        line-height: 1.12;
+        max-width: 34ch;
       }}
       nav {{ display: flex; gap: 20px; }}
       nav a, .eyebrow {{
@@ -586,12 +593,13 @@ def fallback_codegen(
         transition: background 180ms ease, box-shadow 180ms ease, transform 180ms ease;
       }}
       .hero {{
+        align-items: start;
         display: grid;
-        gap: clamp(28px, 5vw, 72px);
+        gap: clamp(28px, 4vw, 58px);
         grid-template-columns: minmax(0, 1.2fr) minmax(280px, 0.8fr);
         margin: 0 auto;
         max-width: var(--container);
-        padding: clamp(58px, 8vw, 112px) 20px;
+        padding: clamp(42px, 6vw, 82px) 20px clamp(36px, 5vw, 70px);
       }}
       .hero-copy > * {{
         animation: onara-rise var(--motion-duration) var(--motion-ease) both;
@@ -659,7 +667,7 @@ def fallback_codegen(
         line-height: 1.25;
       }}
       .hero-side {{
-        align-self: end;
+        align-self: start;
         display: grid;
         gap: 12px;
       }}
@@ -691,9 +699,10 @@ def fallback_codegen(
         transition: box-shadow 180ms ease, transform 180ms ease;
       }}
       .hero-photo img {{
-        aspect-ratio: 4 / 5;
+        aspect-ratio: 16 / 10;
         display: block;
         height: auto;
+        max-height: 330px;
         object-fit: cover;
         width: 100%;
       }}
@@ -719,12 +728,13 @@ def fallback_codegen(
         margin: 12px 0 0;
       }}
       .hours-card {{
-        align-items: center;
+        align-items: start;
         display: grid;
         gap: 12px;
         grid-template-columns: 1fr auto;
       }}
       .hours-card span {{ grid-column: 1 / -1; }}
+      .hours-card .hours-list {{ grid-column: 1 / -1; }}
       .hours-card a {{
         border-bottom: 1px solid var(--choice-accent);
         color: var(--choice-primary);
@@ -733,6 +743,17 @@ def fallback_codegen(
       .hours-card small {{
         color: var(--ink-3);
         font-size: 0.9rem;
+      }}
+      .hours-list {{
+        color: var(--ink-3);
+        display: grid;
+        font-size: 0.78rem;
+        gap: 4px 12px;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        line-height: 1.35;
+        list-style: none;
+        margin: 4px 0 0;
+        padding: 0;
       }}
       .service-menu {{
         background: var(--paper-2);
@@ -826,7 +847,34 @@ def fallback_codegen(
       .optional-section {{
         margin: 0 auto;
         max-width: var(--container);
-        padding: 56px 20px;
+        padding: 48px 20px;
+      }}
+      .review-facts {{
+        display: grid;
+        gap: 10px;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        list-style: none;
+        margin: 18px 0 0;
+        padding: 0;
+      }}
+      .review-facts li {{
+        background: var(--paper);
+        border: 1px solid var(--rule);
+        display: grid;
+        gap: 8px;
+        padding: 18px;
+      }}
+      .review-facts span {{
+        color: var(--ink-3);
+        font-family: var(--mono);
+        font-size: 0.68rem;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+      }}
+      .review-facts strong {{
+        color: var(--ink);
+        font-size: 0.98rem;
+        line-height: 1.25;
       }}
       .review-grid,
       .gallery-grid,
@@ -902,12 +950,14 @@ def fallback_codegen(
         }}
       }}
       @media (max-width: 768px) {{
-        .site-header {{ align-items: stretch; flex-direction: column; }}
+        .site-header {{ align-items: stretch; grid-template-columns: 1fr; }}
         nav {{ justify-content: space-between; }}
         .header-cta, .primary-cta {{ width: 100%; }}
         .hero, .trust {{ grid-template-columns: 1fr; }}
         .hours-card,
         .proof-strip {{ grid-template-columns: 1fr; }}
+        .hours-list,
+        .review-facts,
         .review-grid,
         .gallery-grid,
         .faq-grid,
@@ -1116,11 +1166,11 @@ def _optional_component_files(
     sections = set(preferences.get("sections", []))
 
     if "reviews" in sections:
-        review_cards = _review_cards(context, rating_line, service_area)
+        review_facts = _review_fact_list(context, service_area)
         files["components/reviews.html"] = f"""<section class="optional-section reviews" data-component="reviews" id="reviews">
   <div class="section-head">
     <span class="eyebrow">{_escape(SECTION_LABELS["reviews"])}</span>
-    <h2>Public Google proof customers can verify.</h2>
+    <h2>Google profile proof customers can verify.</h2>
     <p>{_escape(rating_line)}</p>
   </div>
   <div class="review-summary-card">
@@ -1128,11 +1178,11 @@ def _optional_component_files(
       <span>&#9733;</span><span>&#9733;</span><span>&#9733;</span><span>&#9733;</span><span>&#9733;</span>
     </div>
     <strong>{_escape(rating_line)}</strong>
-    <p>Public profile signal customers can cross-check before contacting the business.</p>
+    <p>Public Google Business Profile rating for {_escape(context.name)}.</p>
   </div>
-  <div class="proof-grid review-proof-grid">
-{review_cards}
-  </div>
+  <ul class="review-facts" aria-label="Google review facts">
+{review_facts}
+  </ul>
 </section>"""
 
     if "license" in sections:
@@ -1154,7 +1204,7 @@ def _optional_component_files(
   <div class="section-head">
     <span class="eyebrow">{_escape(SECTION_LABELS["service-area"])}</span>
     <h2>Built for {_escape(service_area)} searches.</h2>
-    <p>{_escape(context.name)} keeps the coverage area, address, hours, and next step visible for local customers searching for {_escape(analyst.targetKeyword)}.</p>
+    <p>{_escape(context.name)} keeps the coverage area, address, hours, and next step visible for local customers.</p>
   </div>
   <div class="proof-grid local-detail-grid">
 {service_area_cards}
@@ -1223,26 +1273,15 @@ def _gallery_figures(context: BusinessContext, analyst: AnalystOutput) -> str:
     )
 
 
-def _review_cards(context: BusinessContext, rating_line: str, service_area: str) -> str:
-    rating_title = f"{context.rating:g} / 5 rating" if context.rating else "Google profile"
-    review_volume = f"{context.review_count:,} public reviews" if context.review_count else "Public profile"
-    cards = [
-        (
-            rating_title,
-            "Rating, hours, address, and contact details are grounded in the public business profile.",
-        ),
-        (
-            review_volume,
-            "Review volume gives customers a quick public trust signal before they call.",
-        ),
-        (
-            service_area,
-            context.address or f"Local service details are focused on {service_area}.",
-        ),
+def _review_fact_list(context: BusinessContext, service_area: str) -> str:
+    facts = [
+        ("Rating", f"{context.rating:g} / 5 on Google" if context.rating else "Google profile listed"),
+        ("Reviews", f"{context.review_count:,} public reviews" if context.review_count else "Public review count unavailable"),
+        ("Local profile", context.address or service_area),
     ]
     return "\n".join(
-        f"""    <article class="proof-card review-proof-card"><strong>{_escape(title)}</strong><p>{_escape(body)}</p></article>"""
-        for title, body in cards
+        f"""    <li><span>{_escape(label)}</span><strong>{_escape(value)}</strong></li>"""
+        for label, value in facts
     )
 
 
@@ -1265,14 +1304,18 @@ def _license_cards(context: BusinessContext, analyst: AnalystOutput, rating_line
 
 def _service_area_cards(context: BusinessContext, analyst: AnalystOutput, service_area: str) -> str:
     cards = [
-        ("Coverage", f"Focused on {service_area} and nearby searches for {analyst.targetKeyword}."),
+        ("Coverage", f"Focused on {service_area} and nearby customers."),
         ("Address", context.address or f"City/state shown as {service_area}."),
-        ("Availability", _hours_summary(context)),
     ]
-    return "\n".join(
+    html_cards = "\n".join(
         f"""    <article class="proof-card"><strong>{_escape(title)}</strong><p>{_escape(body)}</p></article>"""
         for title, body in cards
     )
+    return f"""{html_cards}
+    <article class="proof-card hours-proof-card">
+      <strong>Availability</strong>
+{_hours_list_markup(context)}
+    </article>"""
 
 
 def _credential_claims(notes: str) -> list[str]:
@@ -1301,17 +1344,25 @@ def _hours_summary(context: BusinessContext) -> str:
     if len(unique_times) == 1 and len(hours) >= 5:
         return f"Daily {unique_times[0]}"
 
-    return hours[0]
+    return "Weekly hours listed"
+
+
+def _hours_list_markup(context: BusinessContext) -> str:
+    hours = [item.strip() for item in context.hours if item.strip()]
+    if not hours:
+        return "      <p>Hours not supplied yet</p>"
+
+    items = "\n".join(f"        <li>{_escape(item)}</li>" for item in hours)
+    return f"""      <ul class="hours-list">
+{items}
+      </ul>"""
 
 
 def _service_list(context: BusinessContext, industry: str, *, limit: int = 6) -> list[str]:
-    candidates = [
-        *context.services,
-        *default_services(industry),
-        context.category,
-    ]
-    services = _unique([candidate for candidate in candidates if candidate])
-    return services[:limit]
+    services = service_candidates_for_context(context, industry, limit=limit)
+    if services:
+        return services
+    return default_services(industry)[:limit]
 
 
 def _service_description(service: str, context: BusinessContext, analyst: AnalystOutput) -> str:
@@ -1362,6 +1413,7 @@ def _hero_side_component(
       <strong>{_escape(hours_summary)}</strong>
       <small>{_escape(context.phone or "Use the estimate request to start.")}</small>
       <a href="{cta_href}">{_escape(analyst.primaryCta)}</a>
+{_hours_list_markup(context)}
     </div>"""
     service_menu = f"""    <ul class="service-menu" aria-label="Common services">
 {service_items}

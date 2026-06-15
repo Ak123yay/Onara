@@ -179,6 +179,7 @@ Execution rule:
 
 ### Phase 23 — Revision System
 
+- [ ] Allow users to leave or close the generation page while a site is building, then return to dashboard/progress and resume live status from the saved job
 - [ ] Incremental component update logic
 - [ ] Revision counter decrement + monthly reset
 - [ ] Retry button on agent failure (no revision deducted)

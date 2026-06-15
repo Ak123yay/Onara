@@ -1,10 +1,10 @@
 from collections.abc import Awaitable, Callable
 from typing import Any
 
-from onara_pipeline.agents.agent_07_debugger import run_debugger
+from onara_pipeline.agents.agent_07_debugger import deterministic_debugger, run_debugger
 from onara_pipeline.agents.agent_08_seo import run_seo_agent
-from onara_pipeline.agents.agent_09_qa import run_qa_agent
-from onara_pipeline.agents.agent_10_mobile import run_mobile_agent
+from onara_pipeline.agents.agent_09_qa import deterministic_qa, run_qa_agent
+from onara_pipeline.agents.agent_10_mobile import deterministic_mobile, run_mobile_agent
 from onara_pipeline.agents.contracts import (
     AnalystOutput,
     ContentOutput,
@@ -28,6 +28,8 @@ from onara_pipeline.job_queue import PipelineJob
 ProgressCallback = Callable[[str, str | None, str, dict[str, Any] | None], Awaitable[None]]
 
 MAX_QA_REPAIR_ATTEMPTS = 2
+MAX_PRE_QA_HARDENING_ATTEMPTS = 3
+MIN_PRE_QA_CHECK_PASS_RATE = 0.9
 
 
 async def run_phase_21(job: PipelineJob, settings: Settings, progress: ProgressCallback) -> None:
@@ -38,6 +40,7 @@ async def run_phase_21(job: PipelineJob, settings: Settings, progress: ProgressC
 
     await _run_debugger_step(job, ai_client, settings, planner, progress=progress)
     await _run_seo_step(job, ai_client, settings, analyst, content, planner, progress=progress)
+    await _run_pre_qa_gate(job, ai_client, settings, analyst, content, planner, progress=progress)
     qa = await _run_qa_step(job, ai_client, settings, planner, progress=progress)
 
     repair_history: list[dict[str, Any]] = []
@@ -99,6 +102,193 @@ async def run_phase_21(job: PipelineJob, settings: Settings, progress: ProgressC
         raise SupervisorValidationError(f"QA failed after repair attempts: {'; '.join(qa.blocking_issues)}")
 
     await _run_mobile_step(job, ai_client, settings, planner, progress=progress)
+
+
+async def _run_pre_qa_gate(
+    job: PipelineJob,
+    ai_client: AIClient,
+    settings: Settings,
+    analyst: AnalystOutput,
+    content: ContentOutput,
+    planner: PlannerOutput,
+    *,
+    progress: ProgressCallback,
+) -> QAOutput:
+    await progress(
+        "agent_started",
+        "pre_qa_gate",
+        "Running deterministic pre-QA hardening so Agent 9 only reviews a mostly clean site.",
+        {
+            "max_pre_qa_hardening_attempts": MAX_PRE_QA_HARDENING_ATTEMPTS,
+            "min_pre_qa_check_pass_rate": MIN_PRE_QA_CHECK_PASS_RATE,
+        },
+    )
+
+    history: list[dict[str, Any]] = []
+    latest: QAOutput | None = None
+
+    for attempt in range(1, MAX_PRE_QA_HARDENING_ATTEMPTS + 1):
+        latest = _run_deterministic_pre_qa(job, planner)
+        score = _qa_check_pass_rate(latest.checks)
+        passed_threshold = score >= MIN_PRE_QA_CHECK_PASS_RATE
+        passed_cleanly = latest.status == "pass"
+        attempt_record = {
+            "attempt": attempt,
+            "blocking_issue_count": len(latest.blocking_issues),
+            "check_count": len(latest.checks),
+            "check_pass_rate": round(score, 4),
+            "status": latest.status,
+        }
+        history.append(attempt_record)
+        _store_pre_qa_result(job, latest, history, check_pass_rate=score)
+
+        await progress(
+            "pre_qa_check",
+            "pre_qa_gate",
+            (
+                "Pre-QA deterministic checks passed cleanly."
+                if passed_cleanly
+                else f"Pre-QA deterministic checks are at {score:.0%}; applying hardening before Agent 9."
+            ),
+            {
+                **attempt_record,
+                "blocking_issues": latest.blocking_issues[:6],
+                "min_pre_qa_check_pass_rate": MIN_PRE_QA_CHECK_PASS_RATE,
+            },
+        )
+
+        if passed_cleanly:
+            await progress(
+                "agent_completed",
+                "pre_qa_gate",
+                "Pre-QA gate passed; activating QA agent.",
+                {
+                    "check_pass_rate": round(score, 4),
+                    "pre_qa_status": latest.status,
+                },
+            )
+            return latest
+
+        if attempt == MAX_PRE_QA_HARDENING_ATTEMPTS:
+            if passed_threshold:
+                await progress(
+                    "agent_completed",
+                    "pre_qa_gate",
+                    "Pre-QA gate met the 90% threshold; activating QA agent for final launch-blocker review.",
+                    {
+                        "blocking_issue_count": len(latest.blocking_issues),
+                        "check_pass_rate": round(score, 4),
+                        "pre_qa_status": latest.status,
+                    },
+                )
+                return latest
+
+            raise SupervisorValidationError(
+                "Pre-QA gate failed below "
+                f"{MIN_PRE_QA_CHECK_PASS_RATE:.0%} after {MAX_PRE_QA_HARDENING_ATTEMPTS} hardening attempts: "
+                f"{'; '.join(latest.blocking_issues)}"
+            )
+
+        await _run_pre_qa_hardening_attempt(
+            job,
+            ai_client,
+            settings,
+            analyst,
+            content,
+            planner,
+            progress=progress,
+            attempt=attempt,
+            issues=latest.blocking_issues,
+        )
+
+    raise SupervisorValidationError("Pre-QA gate exited unexpectedly")
+
+
+def _run_deterministic_pre_qa(job: PipelineJob, planner: PlannerOutput) -> QAOutput:
+    html = str(job.blackboard.get("seo_html") or job.blackboard.get("generated_html") or "")
+    component_files = job.blackboard.get("component_files")
+    qa = deterministic_qa(
+        html,
+        business_data=job.business_data,
+        component_files=component_files,
+        planner=planner,
+        style_preferences=job.style_preferences,
+    )
+    validate_qa_output(qa)
+    return qa
+
+
+async def _run_pre_qa_hardening_attempt(
+    job: PipelineJob,
+    ai_client: AIClient,
+    settings: Settings,
+    analyst: AnalystOutput,
+    content: ContentOutput,
+    planner: PlannerOutput,
+    *,
+    progress: ProgressCallback,
+    attempt: int,
+    issues: list[str],
+) -> None:
+    await progress(
+        "pre_qa_repair",
+        "pre_qa_gate",
+        "Applying deterministic debugger, mobile, and SEO repairs before QA.",
+        {
+            "blocking_issues": issues[:6],
+            "pre_qa_hardening_attempt": attempt,
+            "max_pre_qa_hardening_attempts": MAX_PRE_QA_HARDENING_ATTEMPTS,
+        },
+    )
+
+    html = str(job.blackboard.get("seo_html") or job.blackboard.get("generated_html") or "")
+    debugger = deterministic_debugger(
+        html,
+        business_data=job.business_data,
+        issues=issues,
+        planner=planner,
+        style_preferences=job.style_preferences,
+    )
+    validate_debugger_output(debugger)
+
+    job.blackboard["pre_qa_debugger_output"] = debugger.model_dump()
+    job.blackboard["debugger_output"] = debugger.model_dump()
+    job.blackboard["debugged_html"] = debugger.html
+    job.blackboard["generated_html"] = debugger.html
+    job.blackboard["component_files"] = debugger.component_files
+
+    await _run_seo_step(
+        job,
+        ai_client,
+        settings,
+        analyst,
+        content,
+        planner,
+        progress=progress,
+        repair_attempt=attempt,
+    )
+
+    mobile_source = str(job.blackboard.get("seo_html") or job.blackboard.get("generated_html") or debugger.html)
+    mobile = deterministic_mobile(
+        mobile_source,
+        business_data=job.business_data,
+        planner=planner,
+        style_preferences=job.style_preferences,
+    )
+    validate_mobile_output(mobile)
+
+    job.blackboard["pre_qa_mobile_output"] = mobile.model_dump()
+    job.blackboard["generated_html"] = mobile.html
+    job.blackboard["seo_html"] = mobile.html
+    job.blackboard["component_files"] = mobile.component_files
+
+    phase = job.blackboard.get("phase_21", {})
+    job.blackboard["phase_21"] = {
+        **phase,
+        "pre_qa_last_debugger_fixes": debugger.fixes,
+        "pre_qa_last_mobile_fixes": mobile.fixes,
+        "pre_qa_next_agent": "pre_qa_gate",
+    }
 
 
 async def _run_debugger_step(
@@ -367,6 +557,32 @@ def _attempt_metadata(repair_attempt: int, *, extra_issues: list[str] | None = N
         "qa_repair_attempt": repair_attempt,
         "max_qa_repair_attempts": MAX_QA_REPAIR_ATTEMPTS,
     }
+
+
+def _store_pre_qa_result(
+    job: PipelineJob,
+    qa: QAOutput,
+    history: list[dict[str, Any]],
+    *,
+    check_pass_rate: float,
+) -> None:
+    job.blackboard["pre_qa_output"] = qa.model_dump()
+    job.blackboard["phase_21"] = {
+        **job.blackboard.get("phase_21", {}),
+        "next_agent": "agent_09_qa" if check_pass_rate >= MIN_PRE_QA_CHECK_PASS_RATE else "pre_qa_gate",
+        "pre_qa_blocking_issues": qa.blocking_issues,
+        "pre_qa_check_pass_rate": round(check_pass_rate, 4),
+        "pre_qa_hardening_attempts": history,
+        "pre_qa_min_check_pass_rate": MIN_PRE_QA_CHECK_PASS_RATE,
+        "pre_qa_status": qa.status,
+    }
+
+
+def _qa_check_pass_rate(checks: dict[str, bool]) -> float:
+    if not checks:
+        return 0.0
+
+    return sum(1 for passed in checks.values() if passed) / len(checks)
 
 
 def _ordered_unique(values: list[str]) -> list[str]:

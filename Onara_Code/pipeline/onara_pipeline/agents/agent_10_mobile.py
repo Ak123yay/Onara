@@ -6,7 +6,13 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError
 from onara_pipeline.agents.agent_06_codegen import split_component_files
 from onara_pipeline.agents.context import build_business_context
 from onara_pipeline.agents.contracts import MobileOutput, PlannerOutput
-from onara_pipeline.agents.fact_repair import ensure_hours_rendered, ensure_onara_spacing, ensure_onara_typography
+from onara_pipeline.agents.fact_repair import (
+    ensure_hours_rendered,
+    ensure_onara_spacing,
+    ensure_onara_typography,
+    ensure_review_and_license_integrity,
+    ensure_service_menu_integrity,
+)
 from onara_pipeline.agents.generation_contracts import (
     ONARA_GENERATION_QUALITY_CONTRACT,
     business_fact_contract,
@@ -92,6 +98,16 @@ async def run_mobile_agent(
             business_data=job.business_data,
             style_preferences=job.style_preferences,
         )
+        html, integrity_fixes = ensure_review_and_license_integrity(
+            html,
+            business_data=job.business_data,
+            style_preferences=job.style_preferences,
+        )
+        html, service_menu_fixes = ensure_service_menu_integrity(
+            html,
+            business_data=job.business_data,
+            style_preferences=job.style_preferences,
+        )
         status: MobileStatus = ai_output.status
         if html != source_html:
             status = "fixed"
@@ -100,7 +116,16 @@ async def run_mobile_agent(
             checks=audit_mobile(html)[0],
             component_files=split_component_files(html, planner),
             fallback_used=response.fallback_used,
-            fixes=_unique([*(ai_output.fixes or deterministic.fixes), *typography_fixes, *spacing_fixes, *fact_fixes]),
+            fixes=_unique(
+                [
+                    *(ai_output.fixes or deterministic.fixes),
+                    *typography_fixes,
+                    *spacing_fixes,
+                    *fact_fixes,
+                    *integrity_fixes,
+                    *service_menu_fixes,
+                ]
+            ),
             html=html,
             issues=ai_output.issues or deterministic.issues,
             model=response.model,
@@ -151,6 +176,18 @@ def deterministic_mobile(
             style_preferences=style_preferences,
         )
         fixes.extend(fact_fixes)
+        fixed, integrity_fixes = ensure_review_and_license_integrity(
+            fixed,
+            business_data=business_data,
+            style_preferences=style_preferences,
+        )
+        fixes.extend(integrity_fixes)
+        fixed, service_menu_fixes = ensure_service_menu_integrity(
+            fixed,
+            business_data=business_data,
+            style_preferences=style_preferences,
+        )
+        fixes.extend(service_menu_fixes)
 
     status: MobileStatus = "fixed" if fixes else "pass"
     output = MobileOutput(

@@ -45,6 +45,11 @@ Onara visual quality bar:
 - Desktop hero must use a split/asymmetrical composition with a proof, service, image, booking, or contact panel beside the copy.
 - First fold must include at least four Onara composition surfaces such as hero-side, panel-stack, proof-strip, proof-grid, service-menu, local-card, hours-card, detail-card, review-card, or contact-card.
 - Do not output a page that is only a giant headline, short paragraph, one CTA, and one photo; layer useful local-business proof and action panels.
+- If hours are supplied, render the full weekly schedule unless all supplied days share the same hours and the copy clearly says Daily or Every day.
+- Hero service-menu items must be specific services, not category/filler labels like Services, Service calls, Repairs, or Maintenance.
+- If no review quotes are supplied, use one aggregate Google rating/review summary with factual rows; do not create fake testimonials or three generic proof cards.
+- Never claim licensing, insurance, bonded status, certification, or "implied by trade" credentials unless the owner notes or business data supply those exact details.
+- Keep the first fold compact: do not let a tall side photo/card stack create a large blank gap before the services section.
 - Use strong editorial type scale, low-radius cards, section contrast, atmospheric background treatment, and conversion-first CTAs.
 - Use CSS grid, grid-template-columns, minmax/repeat, clamp() typography, and at least one gradient/texture/shaped visual treatment.
 - Avoid Tailwind-looking defaults, oversized empty whitespace, generic rounded pills, and bland template symmetry.
@@ -183,6 +188,7 @@ Final Agent 6 requirements:
 - Include at least three distinct card types across the page: service-card, proof-card, review-card, local-card, contact-card, hours-card, metric-card, or detail-card.
 - Include CSS grid with grid-template-columns, fluid typography with clamp(), and a visual atmosphere layer using gradients, texture, image framing, color-mix(), clip-path, or aspect-ratio panels.
 - Use resolved photo assets from the prompt when present; otherwise use designed CSS placeholder panels, not broken image tags.
+- Keep hero photos cropped with a compact landscape or square aspect ratio unless the layout intentionally balances the opposite column.
 - Add polished, lightweight CSS motion: entry reveals, subtle CTA/card hover states, and staggered proof/card reveals.
 - Motion must animate only transform and opacity; no infinite loops, no layout-affecting animation, no JS animation.
 - Include @media (prefers-reduced-motion: reduce) that disables animations, transitions, and smooth scrolling.

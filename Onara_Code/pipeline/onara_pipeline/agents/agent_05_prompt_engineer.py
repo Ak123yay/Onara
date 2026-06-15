@@ -137,8 +137,13 @@ The generated site must:
 - Use the selected palette for CTAs/details while preserving warm paper/ink structure, mono uppercase metadata, and low-radius paper cards
 - Avoid generic centered brochure templates; the desktop hero must not be only centered text, a badge, and one CTA
 - Use a split/asymmetrical hero with a proof, service, contact, image, or booking panel beside the copy
+- Keep the split hero compact; crop photos as landscape/square panels and avoid a tall right-side stack that creates blank space before services
 - Build a complete first fold with at least four named Onara composition surfaces: hero-side, panel-stack, proof-strip, proof-grid, service-menu, local-card, hours-card, detail-card, review-card, contact-card
 - Include at least three distinct card types across the page, such as service-card, proof-card, review-card, local-card, contact-card, hours-card, or metric-card
+- Render the full supplied weekly schedule. Do not show only Monday or the first hours row unless all supplied days share the same hours and the page says Daily or Every day.
+- Populate service-menu panels with distinct services from the business data/content plan/industry defaults. Never use generic filler labels like Services, Service calls, Repairs, or Maintenance as the whole menu.
+- If no review quotes are supplied, do not invent testimonials and do not create three generic proof/review cards. Use one aggregate Google rating summary plus factual rows for rating, count, and local profile.
+- Omit credential/license/insurance sections entirely unless owner notes or business data include real credential details. Never write "implied by trade" credential claims.
 - Do not ship a page that is only a large H1, one paragraph, one CTA, and one photo; layer useful local-business proof and action panels
 - Use fluid display type with clamp(), CSS grid with grid-template-columns, and at least one atmospheric background treatment
 - Use low-radius cards, strong section contrast, practical local proof, and above-the-fold conversion structure

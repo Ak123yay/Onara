@@ -10,12 +10,15 @@ Onara generation quality contract:
 - The page must render real business facts that are available in the input: name, address, phone, service area, hours, rating/review count, listed services, website, and resolved photos.
 - Display headings must use the Onara landing-page weight: Fraunces 400, italic accents at 300, and tight readable tracking. Do not use bold/black hero headings.
 - Never ship generic filler cards. Repeated review/proof text, placeholder trust claims, or three identical cards are launch blockers.
+- If review quotes are not supplied, do not create fake testimonial cards or three generic proof cards. Use one aggregate Google rating/review summary with factual rating, count, and local profile details only.
 - Do not fabricate credentials. If license or insurance details are selected but not supplied, omit the visible license/credential section entirely. Do not show "pending", "verification-needed", or "credential status" cards on public drafts.
-- If hours are supplied, show them in a named hours-card or local detail panel above the fold or in a clearly labeled local details section.
+- If hours are supplied, render the full supplied weekly schedule. Showing only Monday or only the first row is a launch blocker unless all supplied days share the same hours and the page clearly says "Daily" or "Every day".
+- Hero service menus must use real, distinct services from the business data, content plan, or industry defaults. Never use generic labels like "Services", "Service calls", "Repairs", or "Maintenance" as the whole menu.
 - If a service area section is selected, it must include the actual service area and either the address, city/state, or a map/search reference. A single generic paragraph is not enough.
+- Service-area copy must read naturally. Do not expose raw SEO keyword strings as visible body copy.
 - If resolved photo assets are supplied, at least one exact photo src must appear in the hero, gallery, or proof section. If no photos are supplied, use designed CSS visual panels instead of broken image tags.
 - Services must feel complete. If Google only returns one service/category, supplement with industry-appropriate services and render at least four distinct service entries.
-- The final composition must look like a finished local-business brand piece: split hero, side panel stack, proof strip, service menu/grid, local/hours cards, and practical CTA repetition.
+- The final composition must look like a finished local-business brand piece: split hero, side panel stack, proof strip, service menu/grid, local/hours cards, and practical CTA repetition. Keep the first fold compact; avoid right-side panels or photos that create a large empty vertical gap before the services section.
 """.strip()
 
 
@@ -41,7 +44,7 @@ def business_fact_contract(context: BusinessContext, style_preferences: dict | N
 {compact_json(facts)}
 
 Rendering requirements for these facts:
-- Render supplied hours exactly enough that a customer can understand availability.
+- Render the full supplied hours schedule. Do not collapse varied weekly hours to the first day.
 - Render supplied address or city/state in local proof and service-area sections.
 - Render supplied phone as a tap-to-call link when available.
 - Use rating and review count only when present; do not invent review quotes.
