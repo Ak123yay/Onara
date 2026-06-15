@@ -29,7 +29,7 @@ _This file is the single source of truth for all work. Claude updates this after
 
 ## 🔥 Active
 
-Current actionable phase: **Phase 18 — Agents 1–3**.
+Current actionable phase: **Phase 19 — Agents 4–5**.
 
 Note: Mini PC FastAPI runs under PM2. The named Cloudflare Tunnel serves `https://pipeline.onara.tech`.
 
@@ -145,9 +145,9 @@ Execution rule:
 
 ### Phase 18 — Agents 1–3
 
-- [ ] Agent 1: Analyst (z-ai/glm-5.1)
-- [ ] Agent 2: Content Writer (qwen3.5:9b) — parallel
-- [ ] Agent 3: Style Agent (qwen3.5:9b) — parallel with Agent 2
+- [x] Agent 1: Analyst (z-ai/glm-5.1)
+- [x] Agent 2: Content Writer (qwen3.5:9b) — parallel
+- [x] Agent 3: Style Agent (qwen3.5:9b) — parallel with Agent 2
 
 ### Phase 19 — Agents 4–5
 

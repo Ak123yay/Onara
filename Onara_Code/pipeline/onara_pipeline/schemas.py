@@ -45,6 +45,7 @@ class QueueStats(BaseModel):
 
 
 class JobStatusResponse(BaseModel):
+    blackboard_keys: list[str]
     job_id: str
     status: str
     current_agent: str | None
@@ -52,19 +53,22 @@ class JobStatusResponse(BaseModel):
     agents_total: int
     queue_position: int | None
     created_at: datetime
+    error_message: str | None = None
     updated_at: datetime
     progress_log: list[dict[str, Any]]
 
     @classmethod
     def from_job(cls, job: Any, queue_position: int | None) -> "JobStatusResponse":
         return cls(
+            blackboard_keys=list(job.blackboard.keys()),
             job_id=job.job_id,
             status=job.status,
-            current_agent=None,
-            agents_completed=0,
-            agents_total=10,
+            current_agent=job.current_agent,
+            agents_completed=job.agents_completed,
+            agents_total=job.agents_total,
             queue_position=queue_position,
             created_at=job.created_at,
+            error_message=job.error_message,
             updated_at=job.updated_at,
             progress_log=job.progress_log,
         )

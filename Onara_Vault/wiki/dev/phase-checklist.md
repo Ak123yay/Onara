@@ -113,10 +113,10 @@ Current actionable phase.
 - [ ] Wire RAG into Agent 7 (Debugger) and Agent 9 (QA)
 
 ## Phase 18 — Agents 1–3
-- [ ] Agent 1: Business Analyst (z-ai/glm-5.1 → JSON spec)
-- [ ] Agent 2: Content Writer (qwen3.5:9b → copy JSON) — parallel
-- [ ] Agent 3: Style Agent (qwen3.5:9b → design tokens) — parallel with Agent 2
-- [ ] Supervisor validation between each step
+- [x] Agent 1: Business Analyst (z-ai/glm-5.1 → JSON spec)
+- [x] Agent 2: Content Writer (qwen3.5:9b → copy JSON) — parallel
+- [x] Agent 3: Style Agent (qwen3.5:9b → design tokens) — parallel with Agent 2
+- [x] Supervisor validation between each step
 
 ## Phase 19 — Agents 4–5
 - [ ] Agent 4: Planner (z-ai/glm-5.1 → component blueprint JSON)

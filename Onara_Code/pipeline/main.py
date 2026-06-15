@@ -50,6 +50,7 @@ async def generate(body: GenerateRequest) -> JobEnqueueResponse:
     enqueue_result = await queue.enqueue(body)
     job = enqueue_result.job
     settings = get_settings()
+    await queue.start_workers(settings)
     agent_6_selection = get_agent_6_model_selection(
         requested_option_id=job.agent_6_model,
         is_trial=job.is_trial,

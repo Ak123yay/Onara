@@ -1,9 +1,10 @@
 import asyncio
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
-from typing import Literal
+from typing import Any, Literal
 from uuid import uuid4
 
+from onara_pipeline.config import Settings
 from onara_pipeline.schemas import GenerateRequest, QueueStats
 
 JobStatus = Literal["queued", "running", "completed", "failed"]
@@ -19,6 +20,11 @@ class PipelineJob:
     user_plan: str
     business_data: dict
     style_preferences: dict
+    agents_completed: int = 0
+    agents_total: int = 10
+    blackboard: dict[str, Any] = field(default_factory=dict)
+    current_agent: str | None = None
+    error_message: str | None = None
     status: JobStatus = "queued"
     created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
@@ -37,6 +43,7 @@ class JobQueue:
         self._jobs: dict[str, PipelineJob] = {}
         self._queued_job_ids: list[str] = []
         self._project_to_job_id: dict[str, str] = {}
+        self._worker_tasks: set[asyncio.Task[None]] = set()
 
     async def enqueue(self, request: GenerateRequest) -> EnqueueResult:
         async with self._lock:
@@ -67,6 +74,16 @@ class JobQueue:
             self._project_to_job_id[project_id] = job_id
             return EnqueueResult(job=job, deduped=False)
 
+    async def start_workers(self, settings: Settings) -> None:
+        async with self._lock:
+            self._worker_tasks = {task for task in self._worker_tasks if not task.done()}
+            target_workers = max(1, settings.pipeline_max_concurrency)
+
+            while self._queued_job_ids and len(self._worker_tasks) < target_workers:
+                task = asyncio.create_task(self._worker_loop(settings))
+                task.add_done_callback(self._consume_worker_exception)
+                self._worker_tasks.add(task)
+
     async def get(self, job_id: str) -> PipelineJob | None:
         async with self._lock:
             return self._jobs.get(job_id)
@@ -82,3 +99,114 @@ class JobQueue:
         async with self._lock:
             active_jobs = sum(1 for job in self._jobs.values() if job.status == "running")
             return QueueStats(queue_length=len(self._queued_job_ids), active_jobs=active_jobs)
+
+    async def _worker_loop(self, settings: Settings) -> None:
+        while True:
+            job = await self._claim_next_job()
+            if not job:
+                return
+
+            try:
+                from onara_pipeline.agents import run_phase_18
+
+                async def progress(
+                    event: str,
+                    agent_id: str | None,
+                    message: str,
+                    extra: dict[str, Any] | None = None,
+                ) -> None:
+                    await self.record_progress(job.job_id, event, agent_id, message, extra)
+
+                await run_phase_18(job, settings, progress)
+                await self._mark_completed(job.job_id)
+            except Exception as exc:
+                await self._mark_failed(job.job_id, exc)
+
+    async def _claim_next_job(self) -> PipelineJob | None:
+        async with self._lock:
+            if not self._queued_job_ids:
+                return None
+
+            job_id = self._queued_job_ids.pop(0)
+            job = self._jobs[job_id]
+            job.status = "running"
+            job.updated_at = datetime.now(timezone.utc)
+            job.progress_log.append(
+                {
+                    "event": "pipeline_started",
+                    "message": "Phase 18 worker started.",
+                    "timestamp": job.updated_at.isoformat(),
+                }
+            )
+            return job
+
+    async def record_progress(
+        self,
+        job_id: str,
+        event: str,
+        agent_id: str | None,
+        message: str,
+        extra: dict[str, Any] | None = None,
+    ) -> None:
+        async with self._lock:
+            job = self._jobs.get(job_id)
+            if not job:
+                return
+
+            now = datetime.now(timezone.utc)
+            if event == "agent_started":
+                job.current_agent = agent_id
+            elif event == "agent_completed":
+                job.current_agent = None
+                job.agents_completed = min(job.agents_completed + 1, job.agents_total)
+
+            job.updated_at = now
+            entry: dict[str, Any] = {
+                "agent_id": agent_id,
+                "event": event,
+                "message": message,
+                "timestamp": now.isoformat(),
+            }
+            if extra:
+                entry.update(extra)
+            job.progress_log.append(entry)
+
+    async def _mark_completed(self, job_id: str) -> None:
+        async with self._lock:
+            job = self._jobs[job_id]
+            now = datetime.now(timezone.utc)
+            job.status = "completed"
+            job.current_agent = None
+            job.updated_at = now
+            job.progress_log.append(
+                {
+                    "event": "phase_completed",
+                    "message": "Phase 18 completed. Agents 1-3 outputs are ready for Phase 19.",
+                    "phase": "phase_18",
+                    "timestamp": now.isoformat(),
+                }
+            )
+
+    async def _mark_failed(self, job_id: str, exc: Exception) -> None:
+        async with self._lock:
+            job = self._jobs[job_id]
+            now = datetime.now(timezone.utc)
+            job.status = "failed"
+            job.current_agent = None
+            job.error_message = str(exc)
+            job.updated_at = now
+            job.progress_log.append(
+                {
+                    "event": "pipeline_failed",
+                    "message": str(exc),
+                    "phase": "phase_18",
+                    "timestamp": now.isoformat(),
+                }
+            )
+
+    @staticmethod
+    def _consume_worker_exception(task: asyncio.Task[None]) -> None:
+        try:
+            task.result()
+        except Exception:
+            pass

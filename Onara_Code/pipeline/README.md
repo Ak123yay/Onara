@@ -26,10 +26,23 @@ $body = @{
   style_preferences = @{ palette = "onara" }
 } | ConvertTo-Json -Depth 5
 
-curl -Method POST http://localhost:8000/generate `
+$jobId = (curl -Method POST http://localhost:8000/generate `
   -Headers @{ "X-Pipeline-Secret" = $secret; "Content-Type" = "application/json" } `
-  -Body $body
+  -Body $body).Content | ConvertFrom-Json | Select-Object -ExpandProperty job_id
+
+Start-Sleep -Seconds 5
+
+curl http://localhost:8000/pipeline/status/$jobId `
+  -Headers @{ "X-Pipeline-Secret" = $secret } `
+  -UseBasicParsing
 ```
+
+Phase 18 now runs in the background after enqueue:
+
+- Agent 1 Analyst: `z-ai/glm-5.1` through NIM, with NIM/local fallback and deterministic repair fallback.
+- Agent 2 Content Writer: `qwen3.5:9b` through Ollama, runs in parallel with Agent 3.
+- Agent 3 Style Agent: `qwen3.5:9b` through Ollama, runs in parallel with Agent 2.
+- `/pipeline/status/{job_id}` exposes `current_agent`, `agents_completed`, `blackboard_keys`, and progress log entries.
 
 ## AI Client Smoke Test
 
