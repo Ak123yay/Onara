@@ -176,7 +176,9 @@ def audit_site(
     missing_components = [
         component_id
         for component_id in planner.component_order
-        if f'data-component="{component_id}"' not in lower and f"data-component='{component_id}'" not in lower
+        if f'data-component="{component_id}"' not in lower
+        and f"data-component='{component_id}'" not in lower
+        and _component_required(component_id, html=html, business_data=business_data, style_preferences=style_preferences)
     ]
     checks["component_markers"] = not missing_components
     if missing_components:
@@ -402,6 +404,34 @@ def _credential_terms_supplied(notes: str) -> bool:
             notes,
         )
     )
+
+
+def _component_required(
+    component_id: str,
+    *,
+    html: str,
+    business_data: dict[str, Any],
+    style_preferences: dict[str, Any] | None,
+) -> bool:
+    lower = html.lower()
+    context = build_business_context(business_data, style_preferences or {})
+
+    if component_id == "license_proof":
+        data_text = " ".join(
+            str(value)
+            for key, value in business_data.items()
+            if "license" in str(key).lower()
+            or "insurance" in str(key).lower()
+            or "bond" in str(key).lower()
+            or "cert" in str(key).lower()
+            or str(key).lower() in {"notes", "owner_notes", "additional_notes"}
+        )
+        return _credential_terms_supplied(f"{context.notes} {data_text}")
+
+    if component_id == "reviews" and context.rating is not None and context.review_count is not None:
+        return "google review" not in lower and "google rating" not in lower
+
+    return True
 
 
 def _unique(values: list[str]) -> list[str]:

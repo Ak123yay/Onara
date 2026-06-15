@@ -31,6 +31,10 @@ def ensure_onara_spacing(html: str) -> tuple[str, list[str]]:
     if fixed != html:
         fixes.append("Replaced full-viewport section heights with content-sized spacing")
 
+    fixed, changed = _append_css_once(fixed, "onara-root-reset", ONARA_ROOT_RESET_CSS)
+    if changed:
+        fixes.append("Applied Onara root reset to remove default browser page gaps")
+
     fixed, changed = _append_css_once(fixed, "onara-spacing-lock", ONARA_SPACING_LOCK_CSS)
     if changed:
         fixes.append("Applied Onara spacing lock to prevent oversized hero whitespace")
@@ -78,6 +82,13 @@ def onara_spacing_issues(html: str) -> list[str]:
     lower = html.lower()
     issues: list[str] = []
     has_spacing_lock = "onara-spacing-lock" in lower
+
+    if "onara-root-reset" not in lower and not re.search(
+        r"(?:html\s*,\s*body|body)\s*\{[^}]*margin\s*:\s*0",
+        lower,
+        flags=re.DOTALL,
+    ):
+        issues.append("Generated page is missing a root margin reset, causing a visible browser gap above the header")
 
     if not has_spacing_lock:
         issues.append("Generated page is missing the Onara spacing lock that prevents oversized hero whitespace")
@@ -136,7 +147,7 @@ def ensure_review_and_license_integrity(
         replacement = _aggregate_review_section(context)
         fixed, changed = _replace_component_section(fixed, "reviews", replacement)
         if changed:
-            fixes.append("Replaced unsupported review cards with honest aggregate Google review proof")
+            fixes.append("Replaced unsupported review cards with public-facing aggregate Google review proof")
 
     credentials_supplied = _credentials_supplied(context, business_data)
     license_issues = license_integrity_issues(
@@ -145,15 +156,20 @@ def ensure_review_and_license_integrity(
         style_preferences=style_preferences,
     )
     if not credentials_supplied and (_component_section(fixed, "license_proof") or license_issues):
-        fixed, changed = _replace_component_section(fixed, "license_proof", _hidden_component_marker("license_proof"))
+        fixed, changed = _replace_component_section(fixed, "license_proof", "")
         if changed:
-            fixes.append("Removed visible license proof section because no credential data was supplied")
+            fixes.append("Omitted license proof section because no credential data was supplied")
 
         stripped = _remove_unsupplied_credential_blocks(fixed)
         stripped = _strip_unsupplied_credential_claims(stripped)
         if stripped != fixed:
             fixed = stripped
             fixes.append("Removed unsupported license, insurance, bonded, or certified trust claims")
+
+    cleaned = _strip_internal_instruction_leaks(fixed)
+    if cleaned != fixed:
+        fixed = cleaned
+        fixes.append("Removed internal instruction leak text from generated copy")
 
     return fixed, _unique(fixes)
 
@@ -179,8 +195,7 @@ def ensure_section_dedupe(
         ("trust_proof", "trust", "proof", "social_proof", "license_proof"),
     )
     if reviews_section and proof_section:
-        marker = _hidden_component_marker("reviews")
-        fixed, changed = _replace_component_section(fixed, "reviews", marker)
+        fixed, changed = _replace_component_section(fixed, "reviews", "")
         if changed:
             fixes.append("Merged duplicate Google reviews section into the visible trust proof section")
 
@@ -220,6 +235,7 @@ def review_license_integrity_issues(
 ) -> list[str]:
     return _unique(
         [
+            *_internal_instruction_leak_issues(html),
             *review_integrity_issues(html, business_data=business_data, style_preferences=style_preferences),
             *license_integrity_issues(html, business_data=business_data, style_preferences=style_preferences),
         ]
@@ -240,6 +256,9 @@ def review_integrity_issues(
     lower = section.lower()
     issues: list[str] = []
     has_quotes = _review_quotes_supplied(business_data)
+
+    if _internal_instruction_leak_issues(section):
+        issues.append("Reviews section contains internal missing-data or prompt-instruction copy")
 
     if not has_quotes and (
         _class_instance_count(section, "review-card") > 0
@@ -265,6 +284,9 @@ def review_integrity_issues(
     repeated = _repeated_card_text(card_texts)
     if repeated:
         issues.append("Reviews section contains repeated generic card copy")
+
+    if not has_quotes and _class_instance_count(section, "proof-card") >= 3 and "review-stars" not in lower:
+        issues.append("Reviews section uses generic proof cards without a public star/rating visualization")
 
     return _unique(issues)
 
@@ -348,27 +370,37 @@ def _local_hours_section(context: BusinessContext) -> str:
 
 
 def _aggregate_review_section(context: BusinessContext) -> str:
-    rating = html_lib.escape(_rating_line(context) or "Google review count not supplied")
+    rating_line = html_lib.escape(_rating_line(context) or "Google rating available on the public business profile")
+    rating_value = f"{context.rating:g}" if context.rating is not None else "Google"
+    count_value = f"{context.review_count:,}" if context.review_count is not None else "public"
     service_area = html_lib.escape(context.service_area)
+    business_name = html_lib.escape(context.name)
     return f"""
     <section class="optional-section reviews" data-component="reviews" id="reviews">
       <div class="section-head">
         <span class="eyebrow">Google reviews</span>
-        <h2>Google proof without fake quotes.</h2>
-        <p>{rating}</p>
+        <h2>Public Google proof customers can verify.</h2>
+        <p>{rating_line}</p>
+      </div>
+      <div class="review-summary-card">
+        <div class="review-stars" aria-label="{html_lib.escape(str(rating_value))} Google rating">
+          <span>&#9733;</span><span>&#9733;</span><span>&#9733;</span><span>&#9733;</span><span>&#9733;</span>
+        </div>
+        <strong>{html_lib.escape(str(rating_value))} / 5 Google rating</strong>
+        <p>Public rating signal from the Google Business Profile for {business_name}.</p>
       </div>
       <div class="proof-grid review-proof-grid">
         <article class="proof-card review-proof-card">
-          <strong>{rating}</strong>
-          <p>Aggregate Google review proof from the supplied business profile.</p>
+          <strong>{html_lib.escape(str(count_value))} reviews</strong>
+          <p>Review volume gives customers a quick public trust signal before they call.</p>
         </article>
         <article class="proof-card review-proof-card">
-          <strong>No review quotes supplied</strong>
-          <p>This page does not invent customer testimonials. Add real quotes after approval.</p>
+          <strong>Google-backed profile</strong>
+          <p>Rating, address, photos, hours, and contact details are grounded in the business profile.</p>
         </article>
         <article class="proof-card review-proof-card">
-          <strong>Local profile signal</strong>
-          <p>Customers can verify rating, hours, address, and service area details for {service_area}.</p>
+          <strong>{service_area}</strong>
+          <p>Local proof is paired with practical next steps so customers can move from trust to contact.</p>
         </article>
       </div>
     </section>
@@ -408,14 +440,6 @@ def _component_section_pattern(component_id: str) -> str:
     )
 
 
-def _hidden_component_marker(component_id: str) -> str:
-    return (
-        f'<section class="optional-section {html_lib.escape(component_id)} merged-section-marker" '
-        f'data-component="{html_lib.escape(component_id)}" id="{html_lib.escape(component_id)}" '
-        'hidden aria-hidden="true"></section>'
-    )
-
-
 def _is_hidden_section(section: str) -> bool:
     opening = re.search(r"<section\b[^>]*>", section, flags=re.IGNORECASE)
     if not opening:
@@ -443,7 +467,15 @@ def _sections_repeat_same_proof(left: str, right: str) -> bool:
     ):
         return True
 
-    return _word_overlap(left_text, right_text) >= 0.6
+    if not (_has_review_signal(left_text) and _has_review_signal(right_text)):
+        return False
+
+    left_word_count = len(_meaningful_words(left_text))
+    right_word_count = len(_meaningful_words(right_text))
+    if min(left_word_count, right_word_count) < 10:
+        return False
+
+    return _word_overlap(left_text, right_text) >= 0.72
 
 
 def _section_heading_text(section: str) -> str:
@@ -469,12 +501,21 @@ def _compact_visible_text(text: str) -> str:
 
 
 def _word_overlap(left: str, right: str) -> float:
-    left_words = {word for word in re.findall(r"[a-z0-9]+", left.lower()) if len(word) > 3}
-    right_words = {word for word in re.findall(r"[a-z0-9]+", right.lower()) if len(word) > 3}
+    left_words = _meaningful_words(left)
+    right_words = _meaningful_words(right)
     if not left_words or not right_words:
         return 0.0
 
     return len(left_words & right_words) / min(len(left_words), len(right_words))
+
+
+def _meaningful_words(text: str) -> set[str]:
+    return {word for word in re.findall(r"[a-z0-9]+", text.lower()) if len(word) > 3}
+
+
+def _has_review_signal(text: str) -> bool:
+    lower = text.lower()
+    return "review" in lower or "rating" in lower or "rated" in lower or "google" in lower
 
 
 def _review_quotes_supplied(business_data: dict[str, Any]) -> bool:
@@ -515,6 +556,9 @@ def _has_credential_claim(lower: str) -> bool:
     return any(
         phrase in lower
         for phrase in (
+            "licensed professional",
+            "proof omitted per rules",
+            "owner input",
             "credential status",
             "credential details pending",
             "credential details need",
@@ -555,6 +599,9 @@ def _remove_unsupplied_credential_blocks(html: str) -> str:
 
 def _strip_unsupplied_credential_claims(html: str) -> str:
     replacements = (
+        (r"\blicensed professional\s*\([^)]*\)", ""),
+        (r"\blicensed professional\b", ""),
+        (r"\bproof omitted per rules[^<.\n]*", ""),
         (r"\blicense verification card\s*\([^)]*\)", ""),
         (r"\blicense verification card\b", ""),
         (r"\blicense verification\b", ""),
@@ -568,6 +615,79 @@ def _strip_unsupplied_credential_claims(html: str) -> str:
     fixed = html
     for pattern, replacement in replacements:
         fixed = re.sub(pattern, replacement, fixed, flags=re.IGNORECASE)
+    return fixed
+
+
+def _internal_instruction_leak_issues(html: str) -> list[str]:
+    visible = _visible_text(html).lower()
+    lower = html.lower()
+    issues: list[str] = []
+    phrases = (
+        "proof omitted per rules",
+        "no review quotes supplied",
+        "this page does not invent",
+        "add real quotes",
+        "pending owner input",
+        "verification-needed",
+        "not supplied for this draft",
+    )
+    if any(phrase in visible for phrase in phrases):
+        issues.append("Generated page leaks internal missing-data or prompt-instruction copy")
+    if "merged-section-marker" in lower:
+        issues.append("Generated page contains hidden phantom component marker markup")
+    return issues
+
+
+def _strip_internal_instruction_leaks(html: str) -> str:
+    fixed = html
+    fixed = _remove_blocks_with_internal_leaks(fixed)
+    replacements = (
+        (r"\bNo review quotes supplied\b", "Public Google rating"),
+        (r"\bThis page does not invent customer testimonials\.?\s*Add real quotes after approval\.?", "Customers can verify the public Google rating before contacting the business."),
+        (r"\bLicensed professional\s*\([^)]*\)", ""),
+        (r"\bproof omitted per rules[^<.\n]*", ""),
+        (r"\bpending owner input\b", ""),
+        (r"\bverification-needed\b", ""),
+        (r"\bnot supplied for this draft\b", ""),
+    )
+    for pattern, replacement in replacements:
+        fixed = re.sub(pattern, replacement, fixed, flags=re.IGNORECASE)
+    return fixed
+
+
+def _remove_blocks_with_internal_leaks(html: str) -> str:
+    leak_phrases = (
+        "proof omitted per rules",
+        "no review quotes supplied",
+        "this page does not invent",
+        "add real quotes",
+        "pending owner input",
+        "verification-needed",
+        "not supplied for this draft",
+    )
+
+    def remove_if_leak(match: re.Match[str]) -> str:
+        text = _visible_text(match.group(0)).lower()
+        return "" if any(phrase in text for phrase in leak_phrases) else match.group(0)
+
+    fixed = re.sub(
+        r"<(?:article|li)\b[^>]*>.*?</(?:article|li)>",
+        remove_if_leak,
+        html,
+        flags=re.IGNORECASE | re.DOTALL,
+    )
+    fixed = re.sub(
+        r"<div\b(?=[^>]*class=[\"'][^\"']*(?:card|proof|review)[^\"']*[\"'])[^>]*>.*?</div>",
+        remove_if_leak,
+        fixed,
+        flags=re.IGNORECASE | re.DOTALL,
+    )
+    fixed = re.sub(
+        r"<section\b(?=[^>]*\bhidden\b)[^>]*>\s*</section>",
+        "",
+        fixed,
+        flags=re.IGNORECASE | re.DOTALL,
+    )
     return fixed
 
 
@@ -853,6 +973,33 @@ ONARA_TYPOGRAPHY_LOCK_CSS = """
         font-family: var(--hand);
       }
 
+      .review-summary-card {
+        background: color-mix(in srgb, var(--accent, #c76f35) 10%, var(--paper, #fbfaf6));
+        border: 1px solid var(--rule, #d8d6cf);
+        display: grid;
+        gap: 10px;
+        margin-bottom: clamp(18px, 3vw, 32px);
+        padding: clamp(18px, 3vw, 28px);
+      }
+
+      .review-stars {
+        color: var(--accent-ink, #8a461f);
+        display: flex;
+        font-family: var(--serif);
+        font-size: clamp(1.35rem, 2.2vw, 2rem);
+        gap: 4px;
+        letter-spacing: 0.02em;
+        line-height: 1;
+      }
+
+      .review-summary-card strong {
+        font-family: var(--serif);
+        font-size: clamp(1.5rem, 3vw, 2.4rem);
+        font-weight: 400;
+        letter-spacing: -0.03em;
+        line-height: 1;
+      }
+
       @media (max-width: 760px) {
         h1,
         .hero h1,
@@ -870,8 +1017,35 @@ ONARA_TYPOGRAPHY_LOCK_CSS = """
 """.rstrip()
 
 
+ONARA_ROOT_RESET_CSS = """
+      /* onara-root-reset */
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        margin: 0 !important;
+        padding: 0 !important;
+        min-width: 0;
+      }
+
+      body {
+        min-height: 100%;
+      }
+""".rstrip()
+
+
 ONARA_SPACING_LOCK_CSS = """
       /* onara-spacing-lock */
+      html,
+      body {
+        margin: 0 !important;
+        padding: 0 !important;
+      }
+
       body {
         overflow-x: clip;
       }

@@ -1120,10 +1120,17 @@ def _optional_component_files(
         files["components/reviews.html"] = f"""<section class="optional-section reviews" data-component="reviews" id="reviews">
   <div class="section-head">
     <span class="eyebrow">{_escape(SECTION_LABELS["reviews"])}</span>
-    <h2>{_escape(content.social_proof.headline)}</h2>
-    <p>{_escape(content.social_proof.subtext)}</p>
+    <h2>Public Google proof customers can verify.</h2>
+    <p>{_escape(rating_line)}</p>
   </div>
-  <div class="review-grid">
+  <div class="review-summary-card">
+    <div class="review-stars" aria-label="{_escape(rating_line)}">
+      <span>&#9733;</span><span>&#9733;</span><span>&#9733;</span><span>&#9733;</span><span>&#9733;</span>
+    </div>
+    <strong>{_escape(rating_line)}</strong>
+    <p>Public profile signal customers can cross-check before contacting the business.</p>
+  </div>
+  <div class="proof-grid review-proof-grid">
 {review_cards}
   </div>
 </section>"""
@@ -1140,11 +1147,6 @@ def _optional_component_files(
 {trust_items}
   </div>
 </section>"""
-        else:
-            files["components/license_proof.html"] = (
-                '<section class="optional-section license-proof" data-component="license_proof" '
-                'id="license-proof" hidden aria-hidden="true"></section>'
-            )
 
     if "service-area" in sections:
         service_area_cards = _service_area_cards(context, analyst, service_area)
@@ -1222,27 +1224,24 @@ def _gallery_figures(context: BusinessContext, analyst: AnalystOutput) -> str:
 
 
 def _review_cards(context: BusinessContext, rating_line: str, service_area: str) -> str:
-    rating_title = (
-        f"{context.rating:g} from {context.review_count} Google reviews"
-        if context.rating and context.review_count
-        else "Google profile details"
-    )
+    rating_title = f"{context.rating:g} / 5 rating" if context.rating else "Google profile"
+    review_volume = f"{context.review_count:,} public reviews" if context.review_count else "Public profile"
     cards = [
         (
             rating_title,
-            rating_line if context.rating and context.review_count else "Review count was not supplied, so the page uses available profile facts instead of fake testimonials.",
+            "Rating, hours, address, and contact details are grounded in the public business profile.",
         ),
         (
-            "Hours customers can check",
-            _hours_summary(context),
+            review_volume,
+            "Review volume gives customers a quick public trust signal before they call.",
         ),
         (
-            f"Local to {service_area}",
-            context.address or f"Service area shown as {service_area}.",
+            service_area,
+            context.address or f"Local service details are focused on {service_area}.",
         ),
     ]
     return "\n".join(
-        f"""    <article class="review-card"><strong>{_escape(title)}</strong><p>{_escape(body)}</p></article>"""
+        f"""    <article class="proof-card review-proof-card"><strong>{_escape(title)}</strong><p>{_escape(body)}</p></article>"""
         for title, body in cards
     )
 
