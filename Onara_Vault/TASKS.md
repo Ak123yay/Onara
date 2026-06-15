@@ -211,7 +211,7 @@ Execution rule:
 - [ ] 11 production fixes (document each in wiki as identified)
 - [ ] PM2 setup on pipeline server
 - [ ] UptimeRobot monitoring on /health endpoint
-- [ ] AI blackboard reviewer: optional advisory model pass over blackboard outputs that suggests warnings/reruns, while deterministic supervisor remains the final pass/fail authority
+- [x] AI blackboard reviewer: optional advisory model pass over blackboard outputs that suggests warnings/reruns, while deterministic supervisor remains the final pass/fail authority
 - [ ] Curated RAG learning loop: save only QA-approved generated components/patterns back into ChromaDB so future builds improve without storing bad or duplicate sites
 - [ ] Training data pipeline: add user consent fields and `training_examples` storage for QA-approved, redacted generation examples that can feed RAG now and future model fine-tuning later
 

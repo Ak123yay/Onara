@@ -94,7 +94,11 @@ Return this JSON structure:
     "cta_button": "string - action text"
   }},
   "about": {{ "headline": "string", "body": "string - 2-3 sentences, first person, specific" }},
-  "services": [{{ "name": "string", "description": "string - 1 sentence, benefit-focused" }}],
+  "services": [
+    {{ "name": "string - distinct service 1", "description": "string - 1 sentence, benefit-focused" }},
+    {{ "name": "string - distinct service 2", "description": "string - 1 sentence, benefit-focused" }},
+    {{ "name": "string - distinct service 3", "description": "string - 1 sentence, benefit-focused" }}
+  ],
   "social_proof": {{ "headline": "string - references real rating if available", "subtext": "string" }},
   "contact": {{ "headline": "string", "subtext": "string - reduce friction" }},
   "footer_tagline": "string - short, memorable"

@@ -129,6 +129,7 @@ class JobQueue:
                     job=job,
                     progress=progress,
                     runner=lambda: run_phase_18(job, settings, progress),
+                    settings=settings,
                     stage="after_phase_18",
                 )
                 await self.record_progress(
@@ -142,6 +143,7 @@ class JobQueue:
                     job=job,
                     progress=progress,
                     runner=lambda: run_phase_19(job, settings, progress),
+                    settings=settings,
                     stage="after_phase_19",
                 )
                 await self.record_progress(
@@ -155,6 +157,7 @@ class JobQueue:
                     job=job,
                     progress=progress,
                     runner=lambda: run_phase_20(job, settings, progress),
+                    settings=settings,
                     stage="after_phase_20",
                 )
                 await self.record_progress(
@@ -362,12 +365,14 @@ class JobQueue:
         job: PipelineJob,
         progress: Any,
         runner: Any,
+        settings: Settings,
         stage: str,
     ) -> None:
         from onara_pipeline.agents.blackboard_supervisor import (
             BlackboardSupervisorError,
             inspect_blackboard,
         )
+        from onara_pipeline.agents.ai_blackboard_reviewer import review_blackboard_with_ai
 
         rerun_attempts = 0
 
@@ -383,6 +388,20 @@ class JobQueue:
                 "blackboard_supervisor",
                 decision.reason,
                 {"supervisor_decision": decision.to_dict()},
+            )
+            ai_review = await review_blackboard_with_ai(
+                job.blackboard,
+                business_data=job.business_data,
+                deterministic_decision=decision,
+                settings=settings,
+                stage=stage,
+                style_preferences=job.style_preferences,
+            )
+            await progress(
+                "ai_blackboard_reviewer",
+                "ai_blackboard_reviewer",
+                str(ai_review.get("summary") or "AI blackboard reviewer completed."),
+                {"ai_blackboard_review": ai_review},
             )
 
             if decision.action in {"continue", "route_debugger"}:

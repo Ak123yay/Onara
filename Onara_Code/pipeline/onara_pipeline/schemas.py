@@ -45,6 +45,8 @@ class QueueStats(BaseModel):
 
 
 class JobStatusResponse(BaseModel):
+    ai_blackboard_review: dict[str, Any] | None = None
+    ai_blackboard_warnings: list[str] = Field(default_factory=list)
     blackboard_keys: list[str]
     job_id: str
     status: str
@@ -99,6 +101,7 @@ class JobStatusResponse(BaseModel):
         cloudflare_deployment = job.blackboard.get("cloudflare_deployment")
         deployment_artifact = job.blackboard.get("deployment_artifact")
         github_commit = job.blackboard.get("github_commit")
+        ai_blackboard_review = job.blackboard.get("latest_ai_blackboard_review")
         mobile_output = job.blackboard.get("mobile_output")
         qa_output = job.blackboard.get("qa_output")
         project_id = str(job.project_id)
@@ -117,6 +120,7 @@ class JobStatusResponse(BaseModel):
         github_commit_status = None
         github_commit_url = None
         github_repository = None
+        ai_blackboard_warnings: list[str] = []
         mobile_checks: dict[str, bool] = {}
         mobile_fixes: list[str] = []
         mobile_issues: list[str] = []
@@ -170,6 +174,10 @@ class JobStatusResponse(BaseModel):
             github_commit_url = _optional_str(github_commit.get("commit_url"))
             github_repository = _optional_str(github_commit.get("repository"))
 
+        if isinstance(ai_blackboard_review, dict):
+            raw_warnings = ai_blackboard_review.get("warnings")
+            ai_blackboard_warnings = [str(warning) for warning in raw_warnings] if isinstance(raw_warnings, list) else []
+
         if isinstance(qa_output, dict):
             raw_blocking = qa_output.get("blocking_issues")
             raw_checks = qa_output.get("checks")
@@ -208,6 +216,8 @@ class JobStatusResponse(BaseModel):
             pre_qa_status = _optional_str(phase_21.get("pre_qa_status"))
 
         return cls(
+            ai_blackboard_review=ai_blackboard_review if isinstance(ai_blackboard_review, dict) else None,
+            ai_blackboard_warnings=ai_blackboard_warnings,
             blackboard_keys=list(job.blackboard.keys()),
             job_id=job.job_id,
             status=job.status,

@@ -40,7 +40,7 @@ class ServiceCopy(AgentContract):
 class ContentOutput(AgentContract):
     hero: HeroCopy
     about: TextBlock
-    services: list[ServiceCopy] = Field(min_length=1)
+    services: list[ServiceCopy] = Field(min_length=3)
     social_proof: TextBlock
     contact: TextBlock
     footer_tagline: str = Field(min_length=1)

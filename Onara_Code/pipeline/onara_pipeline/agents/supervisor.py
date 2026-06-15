@@ -51,8 +51,11 @@ def validate_content_output(output: ContentOutput) -> None:
     blocked = [phrase for phrase in BANNED_COPY_PHRASES if phrase in text]
     if blocked:
         raise SupervisorValidationError(f"Content output includes banned phrase: {blocked[0]}")
-    if not output.services:
-        raise SupervisorValidationError("Content output must include at least one service")
+    if len(output.services) < 3:
+        raise SupervisorValidationError("Content output must include at least three distinct services")
+    service_names = {" ".join(service.name.lower().split()) for service in output.services}
+    if len(service_names) < 3:
+        raise SupervisorValidationError("Content output must include three distinct service names")
 
 
 def validate_style_output(output: StyleOutput) -> None:
