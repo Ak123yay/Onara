@@ -8,7 +8,7 @@ Each agent entry: model → system prompt → user prompt template → output co
 
 ## Agent 1 — Business Analyst
 
-**Model**: NVIDIA NIM `deepseek-ai/deepseek-v4-flash` | **Fallback**: Ollama `gemma4:e4b`
+**Model**: NVIDIA NIM `z-ai/glm-5.1` | **Fallback**: Ollama `gemma4:e4b`
 
 **System Prompt**
 ```
@@ -171,7 +171,7 @@ Return this JSON structure:
 
 ## Agent 4 — Planner
 
-**Model**: NVIDIA NIM `deepseek-ai/deepseek-v4-pro` | **Fallback**: Ollama `gemma4:e4b`
+**Model**: NVIDIA NIM `z-ai/glm-5.1` | **Fallback**: Ollama `gemma4:e4b`
 
 **System Prompt**
 ```
@@ -222,7 +222,7 @@ Return this structure:
 
 ## Agent 5 — Prompt Engineer
 
-**Model**: NVIDIA NIM `moonshotai/kimi-k2.6` | **Fallback**: Ollama `gemma4:e4b`
+**Model**: NVIDIA NIM `z-ai/glm-5.1` | **Fallback**: Ollama `gemma4:e4b`
 
 **System Prompt**
 ```
@@ -268,10 +268,10 @@ The generated site must:
 ## Agent 6 — Code Generator
 
 **Model (plan-gated)**:
-- Free / Trial: NVIDIA NIM `moonshotai/kimi-k2.6`
+- Free / Trial: NVIDIA NIM `z-ai/glm-5.1`
 - Starter: GitHub Copilot SDK model selected by user, with NIM fallback
 - Pro: Claude API or OpenAI if user provides key, with NIM fallback
-- Fallback 1: NVIDIA NIM `deepseek-ai/deepseek-v4-flash`
+- Fallback 1: NVIDIA NIM `meta/llama-4-maverick-17b-128e-instruct`
 - Fallback 2: Ollama `gemma4:e4b`
 
 **System Prompt**
@@ -302,7 +302,7 @@ html_content = re.search(pattern, output, re.DOTALL).group(1).strip()
 
 ## Agent 7 — Debugger
 
-**Model**: NVIDIA NIM `moonshotai/kimi-k2.6` | **Fallback**: Ollama `gemma4:e4b`
+**Model**: NVIDIA NIM `z-ai/glm-5.1` | **Fallback**: Ollama `gemma4:e4b`
 
 **System Prompt**
 ```
@@ -389,7 +389,7 @@ Return the complete updated HTML file.
 
 ## Agent 9 — QA Agent
 
-**Model**: NVIDIA NIM `deepseek-ai/deepseek-v4-pro` | **Fallback**: Ollama `gemma4:e4b`
+**Model**: NVIDIA NIM `z-ai/glm-5.1` | **Fallback**: Ollama `gemma4:e4b`
 
 **Output**: PASS or blocking issues JSON — does not fix code, only flags for retry.
 

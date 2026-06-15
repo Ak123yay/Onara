@@ -63,3 +63,31 @@ class JobStatusResponse(BaseModel):
             updated_at=job.updated_at,
             progress_log=job.progress_log,
         )
+
+
+class RAGSearchRequest(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    query: str = Field(min_length=2)
+    top_k: int = Field(default=5, ge=1, le=10)
+    vertical: str | None = None
+    pattern_type: str | None = None
+
+
+class RAGSearchResult(BaseModel):
+    id: str
+    title: str
+    vertical: str
+    pattern_type: str
+    tags: list[str]
+    summary: str
+    content: str
+    score: float
+    vector_score: float
+    bm25_score: float
+
+
+class RAGSearchResponse(BaseModel):
+    query: str
+    count: int
+    results: list[RAGSearchResult]

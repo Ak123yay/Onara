@@ -29,9 +29,9 @@ _This file is the single source of truth for all work. Claude updates this after
 
 ## 🔥 Active
 
-Current actionable phase: **Phase 15 — FastAPI Server**.
+Current actionable phase: **Phase 18 — Agents 1–3**.
 
-Note: Phase 4 PM2 auto-restart is blocked until the FastAPI app exists in Phase 15. PM2 is already installed.
+Note: Mini PC FastAPI runs under PM2. The named Cloudflare Tunnel serves `https://pipeline.onara.tech`.
 
 Execution rule:
 1. Complete the first unchecked, non-deferred task in this file.
@@ -62,7 +62,7 @@ Execution rule:
 ### Phase 4 — Dev Environment (Mini PC / Server)
 
 - [x] Set up mini PC/server environment (FastAPI + cloudflared + PM2; Ollama stays on main PC over LAN)
-- [ ] Configure PM2 for FastAPI auto-restart _(blocked until FastAPI is scaffolded in Phase 15; PM2 is installed)_
+- [x] Configure PM2 for FastAPI auto-restart _(FastAPI managed by PM2; Cloudflare named tunnel handled separately)_
 
 ### Phase 5 — Database
 
@@ -133,15 +133,15 @@ Execution rule:
 
 ### Phase 16 — AI Client Library
 
-- [ ] Build unified AI client (NIM, Kimi, DeepSeek, Ollama)
-- [ ] Implement Agent 6 model picker (plan-gated)
-- [ ] Implement 429 retry logic + local model fallback
+- [x] Build unified AI client (NIM, Kimi, DeepSeek, Ollama)
+- [x] Implement Agent 6 model picker (plan-gated)
+- [x] Implement 429 retry logic + local model fallback
 
 ### Phase 17 — RAG System
 
-- [ ] Set up ChromaDB
-- [ ] Build BM25 hybrid search layer
-- [ ] Populate knowledge base with HTML/CSS/JS patterns
+- [x] Set up ChromaDB
+- [x] Build BM25 hybrid search layer
+- [x] Populate knowledge base with HTML/CSS/JS patterns
 
 ### Phase 18 — Agents 1–3
 

@@ -8,15 +8,15 @@ _Which models power each agent, why, fallback logic, and plan-gated model routin
 
 | Agent | Primary Model | Provider | Fallback | Notes |
 |-------|--------------|----------|---------|-------|
-| Agent 1 — Business Analyst | deepseek-ai/deepseek-v4-flash | NVIDIA NIM | gemma4:e4b (Ollama) | Turns GBP data into site requirements |
+| Agent 1 — Business Analyst | z-ai/glm-5.1 | NVIDIA NIM | gemma4:e4b (Ollama) | Turns GBP data into site requirements |
 | Agent 2 — Content Writer | qwen3.5:9b | Ollama (local) | gemma4:e4b (Ollama) | Runs parallel with Agent 3 |
 | Agent 3 — Style Agent | qwen3.5:9b | Ollama (local) | gemma4:e4b (Ollama) | Produces design tokens |
-| Agent 4 — Planner | deepseek-ai/deepseek-v4-pro | NVIDIA NIM | gemma4:e4b (Ollama) | Creates component blueprint |
-| Agent 5 — Prompt Engineer | moonshotai/kimi-k2.6 | NVIDIA NIM | gemma4:e4b (Ollama) | Builds Agent 6 prompt |
-| Agent 6 — Code Generator | Plan-gated | NVIDIA NIM / direct API | deepseek-ai/deepseek-v4-flash, then gemma4:e4b | Generates complete index.html |
-| Agent 7 — Debugger | moonshotai/kimi-k2.6 | NVIDIA NIM | gemma4:e4b (Ollama) | Fixes complete HTML or returns PASS |
+| Agent 4 — Planner | z-ai/glm-5.1 | NVIDIA NIM | gemma4:e4b (Ollama) | Creates component blueprint |
+| Agent 5 — Prompt Engineer | z-ai/glm-5.1 | NVIDIA NIM | gemma4:e4b (Ollama) | Builds Agent 6 prompt |
+| Agent 6 — Code Generator | Plan-gated | NVIDIA NIM / direct API | meta/llama-4-maverick-17b-128e-instruct, then gemma4:e4b | Generates complete index.html |
+| Agent 7 — Debugger | z-ai/glm-5.1 | NVIDIA NIM | gemma4:e4b (Ollama) | Fixes complete HTML or returns PASS |
 | Agent 8 — SEO Agent | qwen3.5:9b | Ollama (local) | gemma4:e4b (Ollama) | Injects title, meta, OG, JSON-LD |
-| Agent 9 — QA Agent | deepseek-ai/deepseek-v4-pro | NVIDIA NIM | gemma4:e4b (Ollama) | PASS/FAIL quality gate |
+| Agent 9 — QA Agent | z-ai/glm-5.1 | NVIDIA NIM | gemma4:e4b (Ollama) | PASS/FAIL quality gate |
 | Agent 10 — Mobile Agent | qwen3.5:9b | Ollama (local) | gemma4:e4b (Ollama) | Produces mobile-optimized full HTML |
 | Supervisor | gemma4:e4b | Ollama (local) | qwen3.5:9b (Ollama) | Validates between steps; fallback uses primary local model only if Gemma fails |
 
@@ -28,7 +28,7 @@ _Which models power each agent, why, fallback logic, and plan-gated model routin
 
 - **Endpoint**: `https://integrate.api.nvidia.com/v1` (`NVIDIA_NIM_BASE_URL`)
 - **Auth**: `nvapi-...` key (`NVIDIA_NIM_API_KEY`)
-- **Models used**: `deepseek-ai/deepseek-v4-flash`, `deepseek-ai/deepseek-v4-pro`, `moonshotai/kimi-k2.6`
+- **Models used**: `z-ai/glm-5.1`, `meta/llama-4-maverick-17b-128e-instruct`
 - **Rate limit**: Free NIM tier — 40 RPM, 1000 RPD
 - **Context window**: 128K tokens
 - **When used**: Agents 1, 4, 5, 6, 7, 9
@@ -54,11 +54,18 @@ Agent 6 (Code Generator) uses different models based on the user's subscription 
 
 | Plan | Model | Provider | Rationale |
 |------|-------|----------|-----------|
-| Free / Trial | moonshotai/kimi-k2.6 | NVIDIA NIM | Default code generation, no user key needed |
+| Free / Trial | z-ai/glm-5.1 | NVIDIA NIM | Default code generation, no user key needed |
 | Starter | GitHub Copilot SDK selectable models | Copilot SDK | Student-plan models such as gpt-5.2-codex, gpt-4.1, gpt-4o |
-| Starter fallback | moonshotai/kimi-k2.6 | NVIDIA NIM | Used when Copilot SDK is unavailable or rate-limited |
+| Starter fallback | z-ai/glm-5.1 | NVIDIA NIM | Used when Copilot SDK is unavailable or rate-limited |
 | Pro | Claude or OpenAI model | User-provided API key | Better code quality for paying users; key stored encrypted |
-| Pro fallback | moonshotai/kimi-k2.6 | NVIDIA NIM | Used when user key is missing, invalid, or rate-limited |
+| Pro fallback | z-ai/glm-5.1 | NVIDIA NIM | Used when user key is missing, invalid, or rate-limited |
+
+Benchmark note: On June 14, 2026, local NIM benchmarking from the pipeline environment selected
+`meta/llama-4-maverick-17b-128e-instruct` as the slightly higher weighted-value model across task
+quality, reliability, and speed. `z-ai/glm-5.1` is the active primary route by user preference,
+with Llama 4 Maverick as the cloud fallback and `gemma4:e4b` as the local fallback. Older DeepSeek
+and Kimi routes were removed from the active default path because they timed out or produced
+inconsistent code-task output under the benchmark budget.
 
 - Plan read from `users.plan` and `users.is_trial` before pipeline start
 - Model selection passed into job config; Agent 6 reads from job config

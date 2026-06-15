@@ -46,9 +46,14 @@ The key grants access to all NIM-hosted models under the free tier.
 
 | Model | NIM ID | Use in Onara |
 |-------|--------|-------------|
-| DeepSeek V4 Flash | `deepseek-ai/deepseek-v4-flash` | Agent 1 and Agent 6 fallback |
-| DeepSeek V4 Pro | `deepseek-ai/deepseek-v4-pro` | Agents 4 and 9 |
-| Kimi K2.6 | `moonshotai/kimi-k2.6` | Agents 5, 6, and 7 |
+| GLM 5.1 | `z-ai/glm-5.1` | Main NIM model for Agents 1, 4, 5, 6, 7, and 9 |
+| Llama 4 Maverick | `meta/llama-4-maverick-17b-128e-instruct` | Cloud fallback before local Gemma |
+
+Benchmark note: On June 14, 2026, `meta/llama-4-maverick-17b-128e-instruct` scored slightly higher
+on weighted value from the pipeline environment. The score weights task quality, reliability, and
+speed. `z-ai/glm-5.1` is close enough on value and is the active primary route by user preference.
+DeepSeek V4 Flash/Pro repeatedly timed out under the benchmark budget, and Kimi K2.6 was
+inconsistent on the code-generation task.
 
 ---
 

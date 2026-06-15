@@ -9,7 +9,7 @@ _Stripe integration, plan tiers, trial flow, upgrade/downgrade logic, and webhoo
 | Plan | Price | Sites | Revisions/month | Code Download | Agent 6 Model |
 |------|-------|-------|-----------------|---------------|---------------|
 | Trial | $0 for 14 days | 3 during trial | Unlimited during trial | Yes during trial | Pro routing |
-| Free | $0 after trial | 1 preview site | 3 | No | moonshotai/kimi-k2.6 |
+| Free | $0 after trial | 1 preview site | 3 | No | z-ai/glm-5.1 |
 | Starter | $12/month or $99/year | 1 live site | 10 | No | GitHub Copilot SDK + NIM fallback |
 | Pro | $29/month | 3 live sites | Unlimited | Yes | Claude/OpenAI user-provided key + NIM fallback |
 

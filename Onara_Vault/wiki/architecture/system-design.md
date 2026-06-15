@@ -113,15 +113,15 @@ If Ollama remains on a separate PC while FastAPI runs on a mini PC, do not use `
 
 | Agent | Model | Provider |
 |-------|-------|---------|
-| Agent 1 — Analyst | `deepseek-ai/deepseek-v4-flash` | NVIDIA NIM |
+| Agent 1 — Analyst | `z-ai/glm-5.1` | NVIDIA NIM |
 | Agent 2 — Content Writer | `qwen3.5:9b` | Local Ollama |
 | Agent 3 — Style Agent | `qwen3.5:9b` | Local Ollama |
-| Agent 4 — Planner | `deepseek-ai/deepseek-v4-pro` | NVIDIA NIM |
-| Agent 5 — Prompt Engineer | `moonshotai/kimi-k2.6` | NVIDIA NIM |
+| Agent 4 — Planner | `z-ai/glm-5.1` | NVIDIA NIM |
+| Agent 5 — Prompt Engineer | `z-ai/glm-5.1` | NVIDIA NIM |
 | Agent 6 — Code Generator | NIM (Free/Trial), Copilot SDK (Starter), Claude/OpenAI user key (Pro) | Plan-gated |
-| Agent 7 — Debugger | `moonshotai/kimi-k2.6` | NVIDIA NIM |
+| Agent 7 — Debugger | `z-ai/glm-5.1` | NVIDIA NIM |
 | Agent 8 — SEO Agent | `qwen3.5:9b` | Local Ollama |
-| Agent 9 — QA Agent | `deepseek-ai/deepseek-v4-pro` | NVIDIA NIM |
+| Agent 9 — QA Agent | `z-ai/glm-5.1` | NVIDIA NIM |
 | Agent 10 — Mobile Agent | `qwen3.5:9b` | Local Ollama |
 | Supervisor | `gemma4:e4b` | Local Ollama |
 | Local fallback (NIM agents) | `gemma4:e4b` | Local Ollama |

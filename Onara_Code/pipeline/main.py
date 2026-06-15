@@ -8,6 +8,9 @@ from onara_pipeline.schemas import (
     HealthResponse,
     JobEnqueueResponse,
     JobStatusResponse,
+    RAGSearchRequest,
+    RAGSearchResponse,
+    RAGSearchResult,
 )
 
 app = FastAPI(title="Onara Pipeline Server", version="0.1.0")
@@ -77,6 +80,38 @@ async def pipeline_status(job_id: str) -> JobStatusResponse:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Job not found")
 
     return JobStatusResponse.from_job(job, queue_position=await queue.position(job_id))
+
+
+@app.post(
+    "/rag/search",
+    response_model=RAGSearchResponse,
+    dependencies=[Depends(verify_pipeline_secret)],
+)
+async def rag_search(
+    body: RAGSearchRequest,
+    settings: Settings = Depends(get_settings),
+) -> RAGSearchResponse:
+    try:
+        from onara_pipeline.rag import build_pattern_store
+
+        store = build_pattern_store(settings)
+        results = store.search(
+            query=body.query,
+            top_k=body.top_k,
+            vertical=body.vertical,
+            pattern_type=body.pattern_type,
+        )
+    except ImportError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="RAG dependency is not installed. Run: python -m pip install -r requirements.txt",
+        ) from exc
+
+    return RAGSearchResponse(
+        query=body.query,
+        count=len(results),
+        results=[RAGSearchResult(**result.model_dump()) for result in results],
+    )
 
 
 @app.get("/")

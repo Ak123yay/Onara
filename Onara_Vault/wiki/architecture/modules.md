@@ -107,7 +107,8 @@ Max 28 chars for project name. `onara-site-` = 11 chars, leaving 17 for the ID.
 
 ```
 Free / Starter:
-    → NVIDIA NIM: moonshotai/kimi-k2.6
+    → NVIDIA NIM: z-ai/glm-5.1
+    → Cloud fallback: meta/llama-4-maverick-17b-128e-instruct
     → Starter bonus: GitHub Copilot SDK (gpt-4.1, gpt-4o, gpt-5.2-codex)
 
 Pro:
