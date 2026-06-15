@@ -5,7 +5,10 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from onara_pipeline.agents.contracts import PlannerOutput, QAOutput
 from onara_pipeline.agents.json_utils import compact_json, parse_json_model
+from onara_pipeline.agents.onara_theme import ONARA_THEME_CONTRACT
+from onara_pipeline.agents.photos import prompt_photo_assets
 from onara_pipeline.agents.supervisor import SupervisorValidationError, validate_qa_output
+from onara_pipeline.agents.visual_quality import onara_theme_issues, professional_visual_issues
 from onara_pipeline.ai_client import AIClient, AIClientError, AIMessage, AIRequest, get_agent_model_route
 from onara_pipeline.config import Settings
 from onara_pipeline.job_queue import PipelineJob
@@ -19,8 +22,8 @@ Inspect the final generated contractor website after debugging and SEO.
 Strict rules:
 - Return valid JSON only.
 - Do not rewrite HTML.
-- Only mark status "fail" for concrete launch blockers.
-- Treat subjective design improvements as warnings, not blocking issues.
+- Mark status "fail" for concrete launch blockers, including low-effort visual composition.
+- Treat small subjective design improvements as warnings, but reject pages that look like generic centered templates or miss the Onara theme contract.
 - Check local contractor basics: complete document, mobile readiness, safe motion, SEO metadata, LocalBusiness schema, tap-to-call, and component completeness.
 - Do not invent missing data or require unsupported features."""
 
@@ -157,6 +160,13 @@ def audit_site(
     if missing_components:
         blocking.append(f"Missing data-component markers: {', '.join(missing_components[:6])}")
 
+    visual_issues = professional_visual_issues(html)
+    checks["professional_visual_system"] = not visual_issues
+    blocking.extend(visual_issues)
+
+    theme_issues = onara_theme_issues(html)
+    checks["onara_theme"] = not theme_issues
+
     unsafe_motion = "requestanimationframe" in lower or "setinterval(" in lower or "infinite" in lower
     checks["motion_safety"] = (
         "@keyframes" in lower
@@ -188,6 +198,14 @@ def audit_site(
     checks["tap_to_call"] = not _phone_digits(str(business_data.get("phone") or "")) or "tel:" in lower
     if not checks["tap_to_call"]:
         blocking.append("Missing tap-to-call link despite business phone")
+
+    photo_assets = prompt_photo_assets(business_data)
+    checks["photo_usage"] = not photo_assets or any(str(asset.get("src") or "") in html for asset in photo_assets)
+    if not checks["photo_usage"]:
+        blocking.append("Resolved business photos were available but not used in the generated HTML")
+    if "/api/places/photo" in lower or "localhost" in lower or re.search(r"src=[\"']places/", html, flags=re.IGNORECASE):
+        checks["photo_usage"] = False
+        blocking.append("Generated HTML uses non-deployable photo URLs")
 
     checks["mobile_basics"] = ("name=\"viewport\"" in lower or "name='viewport'" in lower) and "@media" in lower
     if not checks["mobile_basics"]:
@@ -226,6 +244,8 @@ Deterministic QA checks:
 
 Relevant RAG guidance:
 {_load_qa_patterns(settings)}
+
+{ONARA_THEME_CONTRACT}
 
 Return exactly this JSON:
 {{

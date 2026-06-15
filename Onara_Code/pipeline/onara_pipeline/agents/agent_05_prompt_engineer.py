@@ -1,7 +1,8 @@
-from onara_pipeline.agents.context import build_business_context
+from onara_pipeline.agents.context import build_business_context, photo_assets_for_prompt
 from onara_pipeline.agents.contracts import AnalystOutput, ContentOutput, PlannerOutput, PromptOutput, StyleOutput
 from onara_pipeline.agents.fallbacks import fallback_prompt
 from onara_pipeline.agents.json_utils import compact_json
+from onara_pipeline.agents.onara_theme import ONARA_THEME_CONTRACT
 from onara_pipeline.agents.supervisor import SupervisorValidationError, validate_prompt_output
 from onara_pipeline.ai_client import AIClient, AIClientError, AIMessage, AIRequest, get_agent_model_route
 from onara_pipeline.config import Settings
@@ -17,6 +18,9 @@ A good code generation prompt:
 - Provides the complete content so the model never needs to invent text
 - Defines the exact output format expected
 - Is specific enough that two different models would produce nearly identical output
+- Explicitly rejects generic centered brochure layouts, Tailwind-like sameness, weak pills, and empty whitespace
+- Requires a professional Onara-style local business composition: strong type, split hero, proof/contact panels, section contrast, and conversion-first mobile
+- Requires the Onara theme contract: paper/ink/terracotta palette, Fraunces headings, Inter UI copy, mono labels, low-radius surfaces
 
 Return the prompt as a plain string, not JSON."""
 
@@ -46,7 +50,18 @@ async def run_prompt_engineer(
                 max_tokens=4200,
                 messages=[
                     AIMessage(role="system", content=SYSTEM_PROMPT),
-                    AIMessage(role="user", content=_user_prompt(context.name, context.phone, analyst, content, style, planner)),
+                    AIMessage(
+                        role="user",
+                        content=_user_prompt(
+                            context.name,
+                            context.phone,
+                            photo_assets_for_prompt(context),
+                            analyst,
+                            content,
+                            style,
+                            planner,
+                        ),
+                    ),
                 ],
                 metadata={"agent_id": "agent_05_prompt_engineer", "job_id": job.job_id},
                 temperature=0.2,
@@ -60,6 +75,7 @@ async def run_prompt_engineer(
             analyst=analyst,
             business_name=context.name,
             content=content,
+            photo_assets=photo_assets_for_prompt(context),
             phone=context.phone,
             planner=planner,
             style=style,
@@ -71,6 +87,7 @@ async def run_prompt_engineer(
 def _user_prompt(
     business_name: str,
     phone: str,
+    photo_assets: list[dict[str, str]],
     analyst: AnalystOutput,
     content: ContentOutput,
     style: StyleOutput,
@@ -84,6 +101,9 @@ DESIGN SYSTEM: {compact_json(style.model_dump())}
 BUSINESS NAME: {business_name}
 PRIMARY CTA: {analyst.primaryCta}
 PHONE NUMBER: {phone or "Unknown"}
+RESOLVED PHOTO ASSETS: {compact_json(photo_assets)}
+
+{ONARA_THEME_CONTRACT}
 
 The generated site must:
 - Be a single self-contained index.html file
@@ -95,6 +115,19 @@ The generated site must:
 - Score 90+ on Lighthouse accessibility
 - Load in under 2 seconds (no external resources except Google Fonts)
 - Use {{FILE_MARKER_START}} and {{FILE_MARKER_END}} at start and end of the HTML file for parser extraction
+- Look professionally designed enough for a paying local business owner
+- Follow the Onara design contract exactly, including the required CSS variables in :root
+- Import or declare Fraunces, Inter, JetBrains Mono, and Caveat-compatible font stacks
+- Use warm paper background, ink text, terracotta CTAs, mono uppercase metadata, and low-radius paper cards
+- Avoid generic centered brochure templates; the desktop hero must not be only centered text, a badge, and one CTA
+- Use a split/asymmetrical hero with a proof, service, contact, image, or booking panel beside the copy
+- Use fluid display type with clamp(), CSS grid with grid-template-columns, and at least one atmospheric background treatment
+- Use low-radius cards, strong section contrast, practical local proof, and above-the-fold conversion structure
+- Avoid rounded SaaS pill clutter, excessive empty whitespace, stock-template spacing, and vague decorative sections
+- If RESOLVED PHOTO ASSETS is non-empty, include at least one real <img> above the fold or in a gallery/proof strip using an exact provided src.
+- Every <img> must have meaningful alt text. Preserve attribution text/link near Google-sourced images when provided.
+- Never use /api/places/photo, Google photo names, localhost URLs, or authenticated app routes in the deployed HTML.
+- If no resolved photo assets are available, do not emit broken image tags; use designed CSS visual panels or placeholders instead.
 
 Return only the final prompt string. Do not return JSON."""
 

@@ -72,6 +72,8 @@ class JobStatusResponse(BaseModel):
     mobile_fixes: list[str] = Field(default_factory=list)
     mobile_issues: list[str] = Field(default_factory=list)
     mobile_status: str | None = None
+    photo_count: int = 0
+    photo_resolution_status: str | None = None
     queue_position: int | None
     preview_html: str | None = None
     qa_blocking_issues: list[str] = Field(default_factory=list)
@@ -118,6 +120,9 @@ class JobStatusResponse(BaseModel):
         qa_checks: dict[str, bool] = {}
         qa_status = None
         qa_warnings: list[str] = []
+        photo_assets = job.blackboard.get("photo_assets")
+        photo_count = len(photo_assets) if isinstance(photo_assets, list) else 0
+        photo_resolution_status = _optional_str(job.business_data.get("photo_resolution_status"))
 
         if isinstance(mobile_output, dict):
             raw_checks = mobile_output.get("checks")
@@ -192,6 +197,8 @@ class JobStatusResponse(BaseModel):
             mobile_fixes=mobile_fixes,
             mobile_issues=mobile_issues,
             mobile_status=mobile_status,
+            photo_count=photo_count,
+            photo_resolution_status=photo_resolution_status,
             queue_position=queue_position,
             preview_html=preview_html if isinstance(preview_html, str) else None,
             qa_blocking_issues=qa_blocking_issues,

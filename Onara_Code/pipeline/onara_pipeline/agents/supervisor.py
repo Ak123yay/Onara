@@ -10,6 +10,7 @@ from onara_pipeline.agents.contracts import (
     SEOOutput,
     StyleOutput,
 )
+from onara_pipeline.agents.visual_quality import professional_visual_issues
 
 BANNED_COPY_PHRASES = (
     "solutions",
@@ -59,6 +60,10 @@ def validate_style_output(output: StyleOutput) -> None:
         raise SupervisorValidationError("Style output should use distinct heading and body fonts")
     if output.colors.primary == output.colors.background:
         raise SupervisorValidationError("Style output primary color cannot equal background color")
+    if output.typography.heading_font.strip().lower() != "fraunces":
+        raise SupervisorValidationError("Style output must use Onara heading font: Fraunces")
+    if output.typography.body_font.strip().lower() != "inter":
+        raise SupervisorValidationError("Style output must use Onara body font: Inter")
 
 
 def validate_planner_output(output: PlannerOutput) -> None:
@@ -79,6 +84,11 @@ def validate_prompt_output(output: PromptOutput) -> None:
     missing = [item for item in required if item not in prompt]
     if missing:
         raise SupervisorValidationError(f"Prompt output missing required instruction: {missing[0]}")
+    lower = prompt.lower()
+    theme_required = ("onara", "fraunces", "inter", "terracotta", "--paper", "--accent")
+    missing_theme = [item for item in theme_required if item not in lower]
+    if missing_theme:
+        raise SupervisorValidationError(f"Prompt output missing Onara theme instruction: {missing_theme[0]}")
 
 
 def validate_codegen_output(output: CodegenOutput) -> None:
@@ -107,6 +117,10 @@ def validate_codegen_output(output: CodegenOutput) -> None:
         raise SupervisorValidationError("Codegen output must not use infinite animations")
     if "opacity" not in lower or "transform" not in lower:
         raise SupervisorValidationError("Codegen animation must use opacity and transform")
+
+    visual_issues = professional_visual_issues(html)
+    if visual_issues:
+        raise SupervisorValidationError(f"Codegen output failed visual quality gate: {visual_issues[0]}")
 
 
 def validate_debugger_output(output: DebuggerOutput) -> None:
@@ -170,10 +184,13 @@ def validate_qa_output(output: QAOutput) -> None:
         "html_structure",
         "component_files",
         "component_markers",
+        "professional_visual_system",
+        "onara_theme",
         "motion_safety",
         "seo_metadata",
         "localbusiness_schema",
         "tap_to_call",
+        "photo_usage",
         "mobile_basics",
         "no_artifacts",
     )

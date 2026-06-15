@@ -147,7 +147,7 @@ Execution rule:
 
 - [x] Agent 1: Analyst (z-ai/glm-5.1)
 - [x] Agent 2: Content Writer (qwen3.5:9b) — parallel
-- [x] Agent 3: Style Agent (qwen3.5:9b) — parallel with Agent 2
+- [x] Agent 3: Style Agent (z-ai/glm-5.1) — parallel with Agent 2
 
 ### Phase 19 — Agents 4–5
 
@@ -204,6 +204,9 @@ Execution rule:
 
 ### Phase 27 — Architecture Hardening
 
+- [x] Generated-site visual quality gate: move Style Agent to GLM, reject generic centered brochure layouts, and require professional Onara-style local-business composition before deploy
+- [x] Generated-site photo resolver: convert Google Places photo references into deploy-safe image URLs and require photo usage when photos are available
+- [x] Generated-site Onara theme enforcement: require paper/ink/terracotta variables, Fraunces/Inter/mono typography, low-radius panels, and Onara QA gate before deploy
 - [ ] 11 production fixes (document each in wiki as identified)
 - [ ] PM2 setup on pipeline server
 - [ ] UptimeRobot monitoring on /health endpoint

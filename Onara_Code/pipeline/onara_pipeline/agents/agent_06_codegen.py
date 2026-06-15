@@ -13,6 +13,7 @@ from onara_pipeline.agents.contracts import (
 )
 from onara_pipeline.agents.fallbacks import fallback_codegen
 from onara_pipeline.agents.json_utils import compact_json
+from onara_pipeline.agents.onara_theme import ONARA_THEME_CONTRACT
 from onara_pipeline.agents.supervisor import SupervisorValidationError, validate_codegen_output
 from onara_pipeline.ai_client import AIClient, AIClientError, AIMessage, AIRequest, get_agent_model_route
 from onara_pipeline.config import Settings
@@ -30,6 +31,17 @@ HTML_DOCUMENT_RE = re.compile(
 SYSTEM_PROMPT = """You are Agent 6, Onara's senior frontend code generator.
 
 Generate production-ready contractor website code from the exact prompt and blueprint provided.
+
+Onara visual quality bar:
+- The output must look like a professionally designed local-business website, not a generic AI landing page.
+- The output must follow the Onara design contract: warm paper, ink text, terracotta accent, Fraunces display type, Inter UI copy, JetBrains Mono metadata, low-radius panels.
+- Do not create a centered brochure hero with a small badge, centered H1, centered paragraph, and one CTA as the whole fold.
+- Desktop hero must use a split/asymmetrical composition with a proof, service, image, booking, or contact panel beside the copy.
+- Use strong editorial type scale, low-radius cards, section contrast, atmospheric background treatment, and conversion-first CTAs.
+- Use CSS grid, grid-template-columns, minmax/repeat, clamp() typography, and at least one gradient/texture/shaped visual treatment.
+- Avoid Tailwind-looking defaults, oversized empty whitespace, generic rounded pills, and bland template symmetry.
+- If the prompt includes resolved photo assets, use exact provided `src` values in real <img> tags with meaningful alt text.
+- Never use raw Google Places photo names, /api/places/photo routes, localhost URLs, or authenticated app URLs in deployed HTML.
 
 Strict output rules:
 - Return exactly one self-contained index.html document.
@@ -136,11 +148,21 @@ def split_component_files(html: str, planner: PlannerOutput) -> dict[str, str]:
 def _user_prompt(business_name: str, planner: PlannerOutput, prompt: PromptOutput) -> str:
     return f"""{prompt.prompt}
 
+{ONARA_THEME_CONTRACT}
+
 Final Agent 6 requirements:
 - Business name: {business_name}
 - Root component IDs that must appear as data-component values: {", ".join(planner.component_order)}
 - Keep these CSS variables available in :root: {compact_json(planner.css_variables)}
 - Each root component should be independently extractable by data-component.
+- Build a professional Onara-style local-business page, not a generic centered brochure page.
+- Define and use the Onara theme variables in :root: --paper, --paper-2, --ink, --ink-2, --ink-3, --rule, --accent, --accent-ink, --serif, --ui, --mono.
+- Use Fraunces/var(--serif) for H1-H3, Inter/var(--ui) for body copy, and JetBrains Mono/var(--mono) for eyebrows, labels, metadata, and tiny proof text.
+- Use terracotta CTAs, paper cards, ink panels, low-radius borders, rule-line separators, and subtle paper texture.
+- The desktop hero must be a composed grid/split layout; do not set .hero to text-align:center unless there is still a designed side panel.
+- Include a proof/contact/service panel near the hero so the first fold has more than centered copy.
+- Include CSS grid with grid-template-columns, fluid typography with clamp(), and a visual atmosphere layer using gradients, texture, image framing, color-mix(), clip-path, or aspect-ratio panels.
+- Use resolved photo assets from the prompt when present; otherwise use designed CSS placeholder panels, not broken image tags.
 - Add polished, lightweight CSS motion: entry reveals, subtle CTA/card hover states, and staggered proof/card reveals.
 - Motion must animate only transform and opacity; no infinite loops, no layout-affecting animation, no JS animation.
 - Include @media (prefers-reduced-motion: reduce) that disables animations, transitions, and smooth scrolling.

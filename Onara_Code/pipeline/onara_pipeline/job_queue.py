@@ -118,6 +118,7 @@ class JobQueue:
                 ) -> None:
                     await self.record_progress(job.job_id, event, agent_id, message, extra)
 
+                await self._enrich_business_photos(job, settings, progress)
                 await self._run_supervised_phase(
                     job=job,
                     progress=progress,
@@ -422,6 +423,28 @@ class JobQueue:
                 }
             )
             return job
+
+    async def _enrich_business_photos(self, job: PipelineJob, settings: Settings, progress: Any) -> None:
+        from onara_pipeline.agents.photos import enrich_business_photos
+
+        original_status = str(job.business_data.get("photo_resolution_status") or "")
+        job.business_data = await enrich_business_photos(job.business_data, settings)
+        resolved = job.business_data.get("resolved_photos")
+        status = str(job.business_data.get("photo_resolution_status") or "none")
+        count = len(resolved) if isinstance(resolved, list) else 0
+
+        job.blackboard["photo_assets"] = resolved if isinstance(resolved, list) else []
+        if status != original_status or count:
+            await progress(
+                "business_data_enriched",
+                "photo_resolver",
+                f"Resolved {count} deploy-safe business photo{'s' if count != 1 else ''}.",
+                {
+                    "photo_count": count,
+                    "photo_resolution_status": status,
+                    "phase": "photo_resolution",
+                },
+            )
 
     async def record_progress(
         self,

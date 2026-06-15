@@ -114,7 +114,7 @@ Each phase maps to a section of TASKS.md. Phases are ordered by dependency — d
 ## Phase 18 — Agents 1–3
 - [x] Agent 1: Business Analyst (z-ai/glm-5.1 → JSON spec)
 - [x] Agent 2: Content Writer (qwen3.5:9b → copy JSON) — parallel
-- [x] Agent 3: Style Agent (qwen3.5:9b → design tokens) — parallel with Agent 2
+- [x] Agent 3: Style Agent (z-ai/glm-5.1 -> design tokens) — parallel with Agent 2
 - [x] Supervisor validation between each step
 
 ## Phase 19 — Agents 4–5
@@ -168,6 +168,9 @@ Current actionable phase.
 - [ ] Lead SMS notification on contact form submit (Twilio or similar)
 
 ## Phase 27 — Architecture Hardening
+- [x] Generated-site visual quality gate: GLM style routing, anti-generic layout QA, and professional composition checks
+- [x] Generated-site photo resolver: Google Places photo URLs, uploaded image support, and QA photo usage gate
+- [x] Generated-site Onara theme enforcement: paper/ink/terracotta tokens, Fraunces/Inter/mono typography, low-radius panels, and QA theme check
 - [ ] PM2 config: auto-restart FastAPI on crash, log to file
 - [ ] UptimeRobot: monitor `/health`, alert at 5-min downtime
 - [ ] AI blackboard reviewer: advisory-only model pass over blackboard outputs; deterministic supervisor remains final authority

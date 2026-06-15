@@ -41,6 +41,7 @@ class Settings(BaseSettings):
     github_repo_branch: str = Field(default="main", min_length=1, alias="GITHUB_REPO_BRANCH")
     github_repo_name: str = Field(default="onara-sites", min_length=1, alias="GITHUB_REPO_NAME")
     github_repo_owner: str | None = Field(default=None, alias="GITHUB_REPO_OWNER")
+    google_places_api_key: str | None = Field(default=None, alias="GOOGLE_PLACES_API_KEY")
     nvidia_nim_api_key: str | None = Field(default=None, alias="NVIDIA_NIM_API_KEY")
     nvidia_nim_base_url: str = Field(
         default="https://integrate.api.nvidia.com/v1",

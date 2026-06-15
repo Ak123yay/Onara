@@ -3,6 +3,15 @@ from typing import Any
 
 
 @dataclass(frozen=True, slots=True)
+class BusinessPhoto:
+    alt: str
+    src: str
+    source: str = ""
+    attribution_display: str = ""
+    attribution_uri: str = ""
+
+
+@dataclass(frozen=True, slots=True)
 class BusinessContext:
     address: str
     category: str
@@ -11,6 +20,7 @@ class BusinessContext:
     name: str
     notes: str
     phone: str
+    photos: list[BusinessPhoto]
     rating: float | None
     review_count: int | None
     services: list[str]
@@ -36,6 +46,7 @@ def build_business_context(business_data: dict[str, Any], style_preferences: dic
         name=_string_value(business_data, "name") or "Local Contractor",
         notes=_string_value(style_preferences, "notes"),
         phone=_string_value(business_data, "phone"),
+        photos=_photo_assets_from_business(business_data),
         rating=_number_value(business_data.get("rating")),
         review_count=_int_value(business_data.get("review_count")),
         services=_services_from_business(business_data),
@@ -84,6 +95,23 @@ def default_services(industry: str) -> list[str]:
     return defaults.get(industry, ["Service calls", "Repairs", "Maintenance", "Free estimates"])
 
 
+def photo_assets_for_prompt(context: BusinessContext, *, limit: int = 4) -> list[dict[str, str]]:
+    return [
+        {
+            key: value
+            for key, value in {
+                "alt": photo.alt,
+                "attribution_display": photo.attribution_display,
+                "attribution_uri": photo.attribution_uri,
+                "source": photo.source,
+                "src": photo.src,
+            }.items()
+            if value
+        }
+        for photo in context.photos[:limit]
+    ]
+
+
 def _services_from_business(business_data: dict[str, Any]) -> list[str]:
     raw = business_data.get("services")
     values = _string_list(raw)
@@ -92,6 +120,34 @@ def _services_from_business(business_data: dict[str, Any]) -> list[str]:
 
     category = _string_value(business_data, "category")
     return [category] if category else []
+
+
+def _photo_assets_from_business(business_data: dict[str, Any]) -> list[BusinessPhoto]:
+    raw = business_data.get("resolved_photos")
+    if not isinstance(raw, list):
+        return []
+
+    output: list[BusinessPhoto] = []
+    business_name = _string_value(business_data, "name") or "the business"
+    for item in raw:
+        if not isinstance(item, dict):
+            continue
+        src = _string_value(item, "src")
+        if not src.startswith(("https://", "data:image/")):
+            continue
+        output.append(
+            BusinessPhoto(
+                alt=_string_value(item, "alt") or f"Business photo for {business_name}",
+                attribution_display=_string_value(item, "attribution_display"),
+                attribution_uri=_string_value(item, "attribution_uri"),
+                source=_string_value(item, "source"),
+                src=src,
+            )
+        )
+        if len(output) >= 6:
+            break
+
+    return output
 
 
 def _string_value(data: dict[str, Any], key: str) -> str:

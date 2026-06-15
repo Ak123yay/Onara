@@ -93,7 +93,7 @@ def get_agent_model_route(
     routes: dict[AgentId, ModelRoute] = {
         "agent_01_analyst": cloud_route(BENCHMARKED_PRIMARY_MODEL, ollama_fallback_model),
         "agent_02_content": local_route(ollama_primary_model, ollama_fallback_model),
-        "agent_03_style": local_route(ollama_primary_model, ollama_fallback_model),
+        "agent_03_style": cloud_route(BENCHMARKED_PRIMARY_MODEL, ollama_fallback_model),
         "agent_04_planner": cloud_route(BENCHMARKED_PRIMARY_MODEL, ollama_fallback_model),
         "agent_05_prompt_engineer": cloud_route(BENCHMARKED_PRIMARY_MODEL, ollama_fallback_model),
         "agent_07_debugger": cloud_route(BENCHMARKED_PRIMARY_MODEL, ollama_fallback_model),

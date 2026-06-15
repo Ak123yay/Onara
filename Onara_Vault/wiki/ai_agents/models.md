@@ -10,7 +10,7 @@ _Which models power each agent, why, fallback logic, and plan-gated model routin
 |-------|--------------|----------|---------|-------|
 | Agent 1 — Business Analyst | z-ai/glm-5.1 | NVIDIA NIM | meta/llama-4-maverick-17b-128e-instruct, then gemma4:e4b | Turns GBP data into site requirements |
 | Agent 2 — Content Writer | qwen3.5:9b | Ollama (local) | gemma4:e4b (Ollama) | Runs parallel with Agent 3 |
-| Agent 3 — Style Agent | qwen3.5:9b | Ollama (local) | gemma4:e4b (Ollama) | Produces design tokens |
+| Agent 3 — Style Agent | z-ai/glm-5.1 | NVIDIA NIM | meta/llama-4-maverick-17b-128e-instruct, then gemma4:e4b | Produces higher-quality design tokens and visual direction |
 | Agent 4 — Planner | z-ai/glm-5.1 | NVIDIA NIM | meta/llama-4-maverick-17b-128e-instruct, then gemma4:e4b | Creates component blueprint |
 | Agent 5 — Prompt Engineer | z-ai/glm-5.1 | NVIDIA NIM | meta/llama-4-maverick-17b-128e-instruct, then gemma4:e4b | Builds Agent 6 prompt |
 | Agent 6 — Code Generator | Plan-gated | NVIDIA NIM / direct API | meta/llama-4-maverick-17b-128e-instruct, then gemma4:e4b | Generates complete index.html |
@@ -31,13 +31,13 @@ _Which models power each agent, why, fallback logic, and plan-gated model routin
 - **Models used**: `z-ai/glm-5.1`, `meta/llama-4-maverick-17b-128e-instruct`
 - **Rate limit**: Free NIM tier — 40 RPM, 1000 RPD
 - **Context window**: 128K tokens
-- **When used**: Agents 1, 4, 5, 6, 7, 9
+- **When used**: Agents 1, 3, 4, 5, 6, 7, 9
 - **Cost**: Free (NIM free tier covers all expected v1 traffic)
 - **Fallback**: If GLM 5.1 returns 429/503, try Llama 4 Maverick, then use the agent-specific Ollama fallback from the table above
 
 ### Ollama (Local)
 
-- **Primary model**: `qwen3.5:9b` (`OLLAMA_PRIMARY_MODEL`) — Agents 2, 3, 8, and 10
+- **Primary model**: `qwen3.5:9b` (`OLLAMA_PRIMARY_MODEL`) — Agents 2, 8, and 10
 - **Fallback / supervisor model**: `gemma4:e4b` (`OLLAMA_FALLBACK_MODEL`) — Supervisor and local fallback for cloud-primary agents
 - **Reason for refresh**: User-directed June 2026 model update. Ollama lists `qwen3.5:9b` as a current 9.65B local model, and `gemma4:e4b` as an 8B Apache-licensed model suited for reasoning, coding, and agentic fallback work.
 - **Endpoint**: `http://localhost:11434` when FastAPI and Ollama run on the same host
@@ -97,14 +97,14 @@ async def call_llm(prompt, route):
 
 ## Why Two Providers
 
-**NVIDIA NIM** for quality-critical agents (1, 4, 5, 6, 7, 9):
+**NVIDIA NIM** for quality-critical agents (1, 3, 4, 5, 6, 7, 9):
 - Larger cloud models produce better planning, prompting, code generation, debugging, and QA
 - Free tier eliminates cost at v1 scale
 
-**Ollama locally** for speed-critical agents (2, 3, 8, 10, Supervisor):
+**Ollama locally** for speed-critical agents (2, 8, 10, Supervisor):
 - No network hop
 - Free
-- Agents 2+3 run in parallel — local execution avoids NIM rate limit contention
+- Agent 2 still runs locally while Agent 3 uses NIM because visual direction is quality-critical
 - `qwen3.5:9b` is the local primary; `gemma4:e4b` is the independent under-10B fallback
 
 See `wiki/decisions/adr-001.md` for why LangChain was excluded despite multi-model routing.

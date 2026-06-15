@@ -41,19 +41,21 @@ Phase 18 through Phase 21 Agents 7-10 now run in the background after enqueue:
 
 - Agent 1 Analyst: `z-ai/glm-5.1` through NIM, with NIM/local fallback and deterministic repair fallback.
 - Agent 2 Content Writer: `qwen3.5:9b` through Ollama, runs in parallel with Agent 3.
-- Agent 3 Style Agent: `qwen3.5:9b` through Ollama, runs in parallel with Agent 2.
+- Agent 3 Style Agent: `z-ai/glm-5.1` through NIM, runs in parallel with Agent 2 and produces higher-quality design tokens.
 - Agent 4 Planner: `z-ai/glm-5.1` through NIM, converts copy and style into a component blueprint.
 - Agent 5 Prompt Engineer: `z-ai/glm-5.1` through NIM, converts the blueprint into the Agent 6 code prompt.
 - Agent 6 Code Generator: plan-gated model picker, FILE_MARKER extraction, component splitting, and deterministic HTML fallback.
 - Agent 7 Debugger: `z-ai/glm-5.1` through NIM, audits generated HTML/CSS/accessibility/motion, returns PASS or validated fixes, and falls back to deterministic cleanup.
 - Agent 8 SEO Agent: `qwen3.5:9b` through Ollama, injects title, meta description, Open Graph/Twitter tags, canonical placeholder, and LocalBusiness JSON-LD with deterministic fallback.
-- Agent 9 QA: `z-ai/glm-5.1` through NIM, validates launch blockers across document structure, component markers, mobile basics, SEO, schema, tap-to-call, and motion safety.
+- Agent 9 QA: `z-ai/glm-5.1` through NIM, validates launch blockers across document structure, component markers, professional visual system, Onara theme compliance, mobile basics, SEO, schema, tap-to-call, and motion safety.
 - Agent 10 Mobile: `qwen3.5:9b` through Ollama, hardens the final HTML for responsive layout, tap targets, flexible media, overflow prevention, fluid type, and reduced-motion safety.
 - Phase 22 Parser: normalizes final HTML, strips FILE_MARKER wrappers, splits atomic component files, and creates a deployment manifest.
 - Phase 22 GitHub backup: commits deployment files to `onara-sites/sites/{projectId}/` through GitHub App installation auth when GitHub env vars are configured.
 - Phase 22 Cloudflare Pages Direct Upload: creates/reuses a Pages project, uploads the public static files with Wrangler, and records the deployed `pages.dev` URL when Cloudflare env vars are configured.
 - Blackboard Supervisor inspects blackboard outputs after each phase and records whether to continue, rerun, route to debugger, or fail.
-- `/pipeline/status/{job_id}` exposes `current_agent`, `agents_completed`, `completed_agent_ids`, `preview_html`, `component_file_count`, `deployment_file_count`, `deployment_manifest`, `github_commit_status`, `github_commit_sha`, `github_commit_url`, `github_commit_path`, `github_repository`, `cloudflare_deployment_status`, `cloudflare_deployment_url`, `cloudflare_project_name`, `cloudflare_project_url`, `qa_status`, `qa_checks`, `qa_blocking_issues`, `qa_warnings`, `mobile_status`, `mobile_checks`, `mobile_issues`, `mobile_fixes`, `supervisor_decision`, `blackboard_keys`, and progress log entries.
+- Onara theme gate: generated sites must use paper/ink/terracotta variables, Fraunces/Inter/mono typography, low-radius panels, paper texture, and Onara-style split/proof compositions before deploy.
+- Photo resolver: resolves Google Places photo names into deploy-safe `photoUri` URLs when `GOOGLE_PLACES_API_KEY` is configured on the pipeline server; uploaded data URLs are preserved for the generated page.
+- `/pipeline/status/{job_id}` exposes `current_agent`, `agents_completed`, `completed_agent_ids`, `preview_html`, `component_file_count`, `deployment_file_count`, `deployment_manifest`, `github_commit_status`, `github_commit_sha`, `github_commit_url`, `github_commit_path`, `github_repository`, `cloudflare_deployment_status`, `cloudflare_deployment_url`, `cloudflare_project_name`, `cloudflare_project_url`, `photo_count`, `photo_resolution_status`, `qa_status`, `qa_checks`, `qa_blocking_issues`, `qa_warnings`, `mobile_status`, `mobile_checks`, `mobile_issues`, `mobile_fixes`, `supervisor_decision`, `blackboard_keys`, and progress log entries.
 
 ## AI Client Smoke Test
 

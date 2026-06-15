@@ -12,6 +12,7 @@ from onara_pipeline.agents.contracts import (
     StyleOutput,
 )
 from onara_pipeline.agents.json_utils import compact_json
+from onara_pipeline.agents.onara_theme import ONARA_FONT_IMPORT, ONARA_THEME_CONTRACT, ONARA_THEME_CSS
 
 
 def fallback_analyst(context: BusinessContext, style_preferences: dict[str, Any]) -> AnalystOutput:
@@ -116,7 +117,8 @@ def fallback_style(
             },
             "style_notes": (
                 f"{context.name} should feel {tone}, local, and easy to call. "
-                f"Use a {layout.replace('-', ' ')} layout with strong contrast and practical trust proof."
+                f"Use a {layout.replace('-', ' ')} layout with Onara paper texture, Fraunces display type, "
+                "terracotta CTAs, low-radius proof panels, and practical trust proof."
             ),
         }
     )
@@ -219,6 +221,18 @@ def fallback_planner(
         {
             "components": components,
             "css_variables": {
+                "--paper": "#fbfaf6",
+                "--paper-2": "#f3f0e8",
+                "--paper-3": "#ebe6dc",
+                "--ink": "#1a1a1a",
+                "--ink-2": "#3b3b3b",
+                "--ink-3": "#6a6a6a",
+                "--rule": "#d8d6cf",
+                "--accent": "#c76f35",
+                "--accent-ink": "#8a461f",
+                "--serif": "Fraunces",
+                "--ui": "Inter",
+                "--mono": "JetBrains Mono",
                 "--color-primary": style.colors.primary,
                 "--color-secondary": style.colors.secondary,
                 "--color-background": style.colors.background,
@@ -244,11 +258,13 @@ def fallback_prompt(
     *,
     analyst: AnalystOutput,
     content: ContentOutput,
+    photo_assets: list[dict[str, str]] | None = None,
     planner: PlannerOutput,
     style: StyleOutput,
     business_name: str,
     phone: str,
 ) -> PromptOutput:
+    photo_assets = photo_assets or []
     prompt = f"""You are generating the production-ready contractor website for {business_name}.
 
 Return exactly one self-contained index.html file wrapped with {{FILE_MARKER_START}} before <!doctype html> and {{FILE_MARKER_END}} after </html>. Return no markdown, no explanation, and no extra text outside the markers.
@@ -260,6 +276,9 @@ Hard requirements:
 - Mobile-first responsive CSS with one breakpoint at 768px.
 - Use CSS custom properties for every color, font, spacing token, and radius.
 - Include accessible focus states, visible labels, and alt text for any placeholder images.
+- If photo assets are available, include at least one real image using an exact provided src.
+- Never use raw Google Places photo names, /api/places/photo, localhost, or authenticated app URLs in deployed HTML.
+- Follow the Onara design contract exactly.
 - Include lightweight CSS-only animation using opacity and transform for entry reveals, CTA/card hover states, and proof/card stagger.
 - Include at least one @keyframes rule.
 - Include @media (prefers-reduced-motion: reduce) that disables animations, transitions, and smooth scrolling.
@@ -274,6 +293,11 @@ Business and content:
 
 Design system:
 {compact_json(style.model_dump())}
+
+{ONARA_THEME_CONTRACT}
+
+Resolved photo assets:
+{compact_json(photo_assets)}
 
 Component blueprint:
 {compact_json(planner.model_dump())}
@@ -315,6 +339,7 @@ def fallback_codegen(
     )
     if not trust_items:
         trust_items = "          <li>Local service area and clear contact details</li>"
+    hero_media = _hero_media_component(context, analyst)
 
     component_files = {
         "components/site_header.html": f"""<header class="site-header" data-component="site_header">
@@ -331,16 +356,12 @@ def fallback_codegen(
     <span class="eyebrow">{_escape(rating_line)}</span>
     <h1>{_escape(content.hero.headline)}</h1>
     <p>{_escape(content.hero.subheadline)}</p>
-    <div class="hero-actions">
+  <div class="hero-actions">
       <a class="primary-cta" href="{cta_href}">{_escape(content.hero.cta_button)}</a>
       <span>Serving {_escape(service_area)}</span>
     </div>
   </div>
-  <aside class="hero-card" aria-label="Fast contact">
-    <span>Phone-first contractor site</span>
-    <strong>{_escape(context.phone or "Call for estimate")}</strong>
-    <p>{_escape(analyst.targetKeyword)}</p>
-  </aside>
+{hero_media}
 </section>""",
         "components/services.html": f"""<section class="services section" data-component="services" id="services">
   <div class="section-head">
@@ -385,7 +406,10 @@ def fallback_codegen(
     <title>{_escape(context.name)} | {_escape(analyst.targetKeyword)}</title>
     <meta name="description" content="{_escape(content.hero.subheadline)}" />
     <style>
+      {ONARA_FONT_IMPORT}
+
       :root {{
+{_indent(ONARA_THEME_CSS, 8)}
         --color-primary: {style.colors.primary};
         --color-secondary: {style.colors.secondary};
         --color-background: {style.colors.background};
@@ -415,9 +439,9 @@ def fallback_codegen(
       html {{ scroll-behavior: smooth; }}
       body {{
         margin: 0;
-        background: var(--color-background);
-        color: var(--color-text);
-        font-family: var(--font-body);
+        background: var(--paper);
+        color: var(--ink);
+        font-family: var(--ui);
         font-size: {style.typography.base_size};
         line-height: 1.6;
       }}
@@ -425,8 +449,10 @@ def fallback_codegen(
       .site-shell {{
         min-height: 100vh;
         background:
-          radial-gradient(circle at 18% 10%, color-mix(in srgb, var(--color-secondary) 16%, transparent), transparent 32rem),
-          linear-gradient(180deg, var(--color-background), color-mix(in srgb, var(--color-surface) 72%, var(--color-background)));
+          radial-gradient(circle at 18% 10%, color-mix(in srgb, var(--accent) 16%, transparent), transparent 32rem),
+          radial-gradient(circle at 82% 18%, color-mix(in srgb, var(--leaf) 10%, transparent), transparent 30rem),
+          radial-gradient(circle at 25% 30%, rgba(0,0,0,0.012) 0, transparent 38rem),
+          linear-gradient(180deg, var(--paper), var(--paper-2));
       }}
       .site-header {{
         align-items: center;
@@ -440,22 +466,23 @@ def fallback_codegen(
         padding: 24px 20px;
       }}
       .brand {{
-        font-family: var(--font-heading);
+        font-family: var(--serif);
         font-size: clamp(1.35rem, 2vw, 1.85rem);
         font-weight: {style.typography.heading_weight};
         letter-spacing: -0.045em;
       }}
       nav {{ display: flex; gap: 20px; }}
       nav a, .eyebrow {{
-        color: var(--color-muted);
+        color: var(--ink-3);
+        font-family: var(--mono);
         font-size: 0.75rem;
-        font-weight: 800;
+        font-weight: 500;
         letter-spacing: 0.16em;
         text-transform: uppercase;
       }}
       .header-cta, .primary-cta {{
         align-items: center;
-        background: var(--color-secondary);
+        background: var(--accent);
         color: #fff;
         display: inline-flex;
         font-weight: 850;
@@ -479,7 +506,7 @@ def fallback_codegen(
       .hero-copy > :nth-child(3) {{ animation-delay: 140ms; }}
       .hero-copy > :nth-child(4) {{ animation-delay: 210ms; }}
       h1, h2, h3 {{
-        font-family: var(--font-heading);
+        font-family: var(--serif);
         font-weight: {style.typography.heading_weight};
         letter-spacing: -0.06em;
         line-height: 0.95;
@@ -489,24 +516,47 @@ def fallback_codegen(
       h2 {{ font-size: clamp(2.4rem, 5vw, 5rem); max-width: 12ch; }}
       h3 {{ font-size: 1.65rem; }}
       .hero-copy p, .section-head p, .trust p, .contact p {{
-        color: var(--color-muted);
+        color: var(--ink-3);
         font-size: clamp(1.05rem, 1.5vw, 1.25rem);
         max-width: 58ch;
       }}
       .hero-actions {{ align-items: center; display: flex; flex-wrap: wrap; gap: 16px; margin-top: 30px; }}
-      .hero-actions span {{ color: var(--color-muted); font-size: 0.95rem; }}
+      .hero-actions span {{ color: var(--ink-3); font-size: 0.95rem; }}
       .hero-card {{
         animation: onara-rise var(--motion-duration) var(--motion-ease) 220ms both;
         align-self: end;
-        background: var(--color-primary);
-        border: 1px solid color-mix(in srgb, var(--color-surface) 18%, transparent);
+        background: var(--ink);
+        border: 1px solid color-mix(in srgb, var(--paper) 18%, transparent);
         color: #fff;
         padding: clamp(28px, 4vw, 42px);
         transition: box-shadow 180ms ease, transform 180ms ease;
       }}
       .hero-card span {{ color: color-mix(in srgb, #fff 62%, transparent); font-size: 0.82rem; letter-spacing: 0.16em; text-transform: uppercase; }}
-      .hero-card strong {{ display: block; font-family: var(--font-heading); font-size: 2.2rem; line-height: 1; margin: 28px 0 16px; }}
+      .hero-card strong {{ display: block; font-family: var(--serif); font-size: 2.2rem; line-height: 1; margin: 28px 0 16px; }}
       .hero-card p {{ color: color-mix(in srgb, #fff 70%, transparent); margin: 0; }}
+      .hero-photo {{
+        animation: onara-rise var(--motion-duration) var(--motion-ease) 220ms both;
+        align-self: end;
+        background: var(--ink);
+        border: 1px solid color-mix(in srgb, var(--paper) 18%, transparent);
+        color: #fff;
+        margin: 0;
+        overflow: hidden;
+        padding: 14px;
+        transition: box-shadow 180ms ease, transform 180ms ease;
+      }}
+      .hero-photo img {{
+        aspect-ratio: 4 / 5;
+        display: block;
+        height: auto;
+        object-fit: cover;
+        width: 100%;
+      }}
+      .hero-photo figcaption {{
+        color: color-mix(in srgb, #fff 72%, transparent);
+        font-size: 0.9rem;
+        padding: 14px 4px 0;
+      }}
       .section {{ margin: 0 auto; max-width: var(--container); padding: 72px 20px; }}
       .section-head {{ display: grid; gap: 18px; margin-bottom: 28px; }}
       .service-grid {{
@@ -516,8 +566,8 @@ def fallback_codegen(
       }}
       .service-card {{
         animation: onara-rise var(--motion-duration) var(--motion-ease) both;
-        background: var(--color-surface);
-        border: 1px solid var(--color-border);
+        background: var(--paper);
+        border: 1px solid var(--rule);
         min-height: 220px;
         padding: 28px;
         transition: border-color 180ms ease, box-shadow 180ms ease, transform 180ms ease;
@@ -528,14 +578,15 @@ def fallback_codegen(
       .service-card:nth-child(5) {{ animation-delay: 280ms; }}
       .service-card:nth-child(6) {{ animation-delay: 350ms; }}
       .service-card span {{
-        color: var(--color-secondary);
+        color: var(--accent);
+        font-family: var(--mono);
         display: block;
         font-size: 0.75rem;
         font-weight: 900;
         letter-spacing: 0.2em;
         margin-bottom: 36px;
       }}
-      .service-card p {{ color: var(--color-muted); margin-bottom: 0; }}
+      .service-card p {{ color: var(--ink-3); margin-bottom: 0; }}
       .trust {{
         align-items: start;
         display: grid;
@@ -543,7 +594,7 @@ def fallback_codegen(
         grid-template-columns: minmax(0, 0.9fr) minmax(280px, 1.1fr);
       }}
       .trust-list {{
-        background: color-mix(in srgb, var(--color-primary) 94%, #000);
+        background: color-mix(in srgb, var(--ink) 94%, #000);
         color: #fff;
         display: grid;
         gap: 12px;
@@ -563,15 +614,15 @@ def fallback_codegen(
       .trust-list li:nth-child(5) {{ animation-delay: 280ms; }}
       .contact-card {{
         animation: onara-rise var(--motion-duration) var(--motion-ease) both;
-        background: var(--color-surface);
-        border: 1px solid var(--color-border);
+        background: var(--paper);
+        border: 1px solid var(--rule);
         display: grid;
         gap: 16px;
         padding: clamp(30px, 5vw, 58px);
       }}
       .site-footer {{
-        border-top: 1px solid var(--color-border);
-        color: var(--color-muted);
+        border-top: 1px solid var(--rule);
+        color: var(--ink-3);
         display: flex;
         gap: 16px;
         justify-content: space-between;
@@ -579,17 +630,18 @@ def fallback_codegen(
         max-width: var(--container);
         padding: 28px 20px;
       }}
-      .site-footer strong {{ color: var(--color-text); }}
-      :focus-visible {{ outline: 3px solid var(--color-secondary); outline-offset: 3px; }}
+      .site-footer strong {{ color: var(--ink); }}
+      :focus-visible {{ outline: 3px solid var(--accent); outline-offset: 3px; }}
       @media (hover: hover) {{
         .header-cta:hover,
         .primary-cta:hover {{
-          box-shadow: 0 16px 34px color-mix(in srgb, var(--color-secondary) 28%, transparent);
+          box-shadow: 0 16px 34px color-mix(in srgb, var(--accent) 28%, transparent);
           transform: translate3d(0, -2px, 0);
         }}
         .hero-card:hover,
+        .hero-photo:hover,
         .service-card:hover {{
-          box-shadow: 0 18px 44px color-mix(in srgb, var(--color-text) 12%, transparent);
+          box-shadow: 0 18px 44px color-mix(in srgb, var(--ink) 12%, transparent);
           transform: translate3d(0, -3px, 0);
         }}
         .trust-list li:hover {{
@@ -690,29 +742,12 @@ def _palette(style_preferences: dict[str, Any], industry: str) -> dict[str, str]
 
 
 def _typography(tone: str) -> dict[str, str]:
-    if tone == "premium":
-        return {
-            "heading_font": "Cormorant Garamond",
-            "body_font": "Manrope",
-            "heading_weight": "700",
-            "base_size": "16px",
-            "scale": "1.28",
-        }
-    if tone == "direct":
-        return {
-            "heading_font": "Archivo",
-            "body_font": "Source Sans 3",
-            "heading_weight": "800",
-            "base_size": "16px",
-            "scale": "1.22",
-        }
-
     return {
         "heading_font": "Fraunces",
-        "body_font": "Work Sans",
-        "heading_weight": "700",
+        "body_font": "Inter",
+        "heading_weight": "800" if tone == "direct" else "700",
         "base_size": "16px",
-        "scale": "1.25",
+        "scale": "1.28" if tone == "premium" else "1.25",
     }
 
 
@@ -737,6 +772,27 @@ def _ordered_component_html(planner: PlannerOutput, component_files: dict[str, s
             ordered.append(component)
 
     return "\n".join(_indent(component, 6) for component in ordered)
+
+
+def _hero_media_component(context: BusinessContext, analyst: AnalystOutput) -> str:
+    if context.photos:
+        photo = context.photos[0]
+        attribution = (
+            f"""<a href="{_escape(photo.attribution_uri)}" rel="nofollow noopener" target="_blank">{_escape(photo.attribution_display)}</a>"""
+            if photo.attribution_display and photo.attribution_uri
+            else _escape(photo.attribution_display)
+        )
+        caption = attribution or _escape(analyst.targetKeyword)
+        return f"""  <figure class="hero-photo" aria-label="Business photo">
+    <img src="{_escape(photo.src)}" alt="{_escape(photo.alt)}" loading="eager" decoding="async" />
+    <figcaption>{caption}</figcaption>
+  </figure>"""
+
+    return f"""  <aside class="hero-card" aria-label="Fast contact">
+    <span>Phone-first contractor site</span>
+    <strong>{_escape(context.phone or "Call for estimate")}</strong>
+    <p>{_escape(analyst.targetKeyword)}</p>
+  </aside>"""
 
 
 def _cta_href(phone: str) -> str:

@@ -22,7 +22,7 @@ _Environment variable reference. `[NEXT]` = Next.js `.env.local` | `[FAST]` = Fa
 
 | Variable | Target | Description |
 |----------|--------|-------------|
-| `GOOGLE_PLACES_API_KEY` | NEXT | Places API (New) key — server-side API route only; never `NEXT_PUBLIC_*` |
+| `GOOGLE_PLACES_API_KEY` | NEXT + PIPELINE | Places API (New) key — server-side only; used by Next.js search/photo preview and FastAPI photo resolution; never `NEXT_PUBLIC_*` |
 | `GOOGLE_OAUTH_CLIENT_ID` | NEXT | OAuth Client ID from Google Cloud Console |
 | `GOOGLE_OAUTH_CLIENT_SECRET` | NEXT | OAuth Client Secret |
 

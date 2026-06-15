@@ -3,6 +3,36 @@ from onara_pipeline.rag.types import PatternDocument
 
 DEFAULT_PATTERNS: list[PatternDocument] = [
     PatternDocument(
+        id="onara-paper-editorial-theme",
+        title="Onara Paper Editorial Theme",
+        vertical="local-business",
+        pattern_type="design-system",
+        tags=["onara", "theme", "paper", "fraunces", "terracotta", "visual-quality"],
+        summary="Mandatory Onara visual DNA for generated local business websites.",
+        content="""
+HTML: local-business pages should feel like Onara-designed editorial paper, not generic SaaS templates.
+CSS: define --paper, --paper-2, --paper-3, --ink, --ink-2, --ink-3, --rule, --accent, --accent-ink, --serif, --ui, and --mono in :root.
+Typography: use Fraunces-style serif headings, Inter-style body copy, and JetBrains Mono-style uppercase labels.
+Visuals: warm paper background, subtle radial/repeating texture, terracotta CTAs, ink panels, thin rule lines, low-radius cards, and practical proof/contact modules.
+Avoid: purple defaults, centered-only brochure heroes, excessive rounded pills, glossy gradients, empty whitespace, and interchangeable AI landing-page symmetry.
+Use for every generated site before codegen, debugger, QA, and deployment.
+""".strip(),
+    ),
+    PatternDocument(
+        id="professional-local-business-composition",
+        title="Professional Local Business Composition",
+        vertical="local-business",
+        pattern_type="layout",
+        tags=["visual-quality", "hero", "grid", "proof", "conversion", "onara"],
+        summary="Designed above-the-fold layout that avoids generic centered brochure pages.",
+        content="""
+HTML: header, then a split/asymmetrical hero with one side for headline/CTA and the other for proof, services, booking, image, or contact panel.
+CSS: low-radius cards, strong display type, grid-template-columns with minmax/repeat, fluid clamp() type, section contrast, and subtle atmosphere using gradients, color-mix, texture, or shaped panels.
+Avoid: text-align:center hero as the main desktop composition, one-badge/one-CTA centered folds, generic rounded pills, oversized empty whitespace, and weak SaaS-template symmetry.
+Use for every generated local business site before deployment.
+""".strip(),
+    ),
+    PatternDocument(
         id="hero-emergency-phone-first",
         title="Emergency Phone-First Hero",
         vertical="plumbing",
