@@ -875,7 +875,6 @@ export function LandingPage() {
             className="mono inline-flex items-center gap-2 rounded-full border border-rule-2 bg-paper px-4 py-2"
             data-gsap-hero-item
           >
-            <span className="size-1.5 rounded-full bg-leaf shadow-[0_0_0_3px_oklch(0.55_0.08_145_/_0.18)]" />
             Early access for DC and Northern Virginia contractors
           </div>
 

@@ -160,12 +160,13 @@ class JobQueue:
                 await run_phase_21(job, settings, progress)
                 await self._prepare_deployment_artifact(job, progress)
                 await self._commit_deployment_files_to_github(job, settings, progress)
+                await self._deploy_to_cloudflare_pages(job, settings, progress)
                 await self.record_progress(
                     job.job_id,
                     "phase_completed",
                     None,
-                    "Phase 22 GitHub backup step completed. Deployment files are ready for Cloudflare.",
-                    {"phase": "phase_22_github"},
+                    "Phase 22 Cloudflare deployment step completed.",
+                    {"phase": "phase_22_cloudflare"},
                 )
                 await self._mark_completed(job.job_id)
             except Exception as exc:
@@ -275,6 +276,78 @@ class JobQueue:
                 "GitHub commit failed; continuing because GitHub backup is non-critical.",
                 {"github_commit": result, "phase": "phase_22_github"},
             )
+
+    async def _deploy_to_cloudflare_pages(
+        self,
+        job: PipelineJob,
+        settings: Settings,
+        progress: Any,
+    ) -> None:
+        from onara_pipeline.deployment import (
+            CloudflarePagesDeploymentError,
+            cloudflare_project_name,
+            deploy_to_cloudflare_pages,
+            missing_cloudflare_settings,
+        )
+
+        files = job.blackboard.get("deployment_files")
+        if not isinstance(files, dict) or not files:
+            raise CloudflarePagesDeploymentError("Deployment files are missing; parser must run before Cloudflare deploy")
+
+        project_name = cloudflare_project_name(
+            job.project_id,
+            prefix=settings.cloudflare_pages_project_prefix,
+        )
+        missing = missing_cloudflare_settings(settings)
+        if missing:
+            result = {
+                "error": f"Missing Cloudflare deployment settings: {', '.join(missing)}",
+                "file_count": len(files),
+                "project_name": project_name,
+                "status": "skipped",
+            }
+            job.blackboard["cloudflare_deployment"] = result
+            await progress(
+                "deployment_skipped",
+                "cloudflare",
+                "Cloudflare Pages deployment skipped because credentials are not configured.",
+                {"cloudflare_deployment": result, "phase": "phase_22_cloudflare"},
+            )
+            return
+
+        try:
+            deployment = await deploy_to_cloudflare_pages(
+                files={str(path): str(content) for path, content in files.items()},
+                project_id=job.project_id,
+                settings=settings,
+            )
+            result = {
+                **deployment.to_dict(),
+                "status": "deployed",
+            }
+            job.blackboard["cloudflare_deployment"] = result
+            job.blackboard["public_url"] = deployment.deployment_url
+            await progress(
+                "phase_completed",
+                "cloudflare",
+                "Deployed generated site to Cloudflare Pages.",
+                {"cloudflare_deployment": result, "phase": "phase_22_cloudflare"},
+            )
+        except CloudflarePagesDeploymentError as exc:
+            result = {
+                "error": str(exc),
+                "file_count": len(files),
+                "project_name": project_name,
+                "status": "failed",
+            }
+            job.blackboard["cloudflare_deployment"] = result
+            await progress(
+                "deployment_failed",
+                "cloudflare",
+                "Cloudflare Pages deployment failed.",
+                {"cloudflare_deployment": result, "phase": "phase_22_cloudflare"},
+            )
+            raise
 
     async def _run_supervised_phase(
         self,
@@ -393,8 +466,8 @@ class JobQueue:
             job.progress_log.append(
                 {
                     "event": "pipeline_completed",
-                    "message": "Phase 22 GitHub backup step completed. Deployment files are ready for Cloudflare.",
-                    "phase": "phase_22_github",
+                    "message": "Phase 22 Cloudflare deployment step completed.",
+                    "phase": "phase_22_cloudflare",
                     "timestamp": now.isoformat(),
                 }
             )

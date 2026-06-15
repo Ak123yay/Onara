@@ -141,7 +141,7 @@ Each phase maps to a section of TASKS.md. Phases are ordered by dependency — d
 Current actionable phase.
 - [x] HTML parser: extract final HTML from FILE_MARKER wrapper
 - [x] GitHub commit: push to `onara-sites/sites/{projectId}/index.html`
-- [ ] Cloudflare Pages Direct Upload (create project if new, then deploy)
+- [x] Cloudflare Pages Direct Upload (create project if new, then deploy)
 - [ ] Supabase storage: save to `site-html` bucket
 - [ ] Update `projects` record with `public_url`, `status = 'live'`, `last_deployed_at`
 
@@ -170,6 +170,7 @@ Current actionable phase.
 ## Phase 27 — Architecture Hardening
 - [ ] PM2 config: auto-restart FastAPI on crash, log to file
 - [ ] UptimeRobot: monitor `/health`, alert at 5-min downtime
+- [ ] AI blackboard reviewer: advisory-only model pass over blackboard outputs; deterministic supervisor remains final authority
 - [ ] PostHog analytics: instrument key events (see `wiki/operations/monitoring.md`)
 - [ ] Rate limiting on Next.js API routes (Upstash Redis or Vercel middleware)
 - [ ] Structured error logging to `pipeline_errors` table

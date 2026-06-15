@@ -14,6 +14,24 @@ class Settings(BaseSettings):
     ai_retry_base_delay: float = Field(default=0.5, ge=0, le=10, alias="AI_RETRY_BASE_DELAY")
     chroma_collection_name: str = Field(default="onara_patterns", min_length=1, alias="CHROMA_COLLECTION_NAME")
     chroma_persist_path: str = Field(default="./chroma_db", min_length=1, alias="CHROMA_PERSIST_PATH")
+    cloudflare_account_id: str | None = Field(default=None, alias="CLOUDFLARE_ACCOUNT_ID")
+    cloudflare_api_token: str | None = Field(default=None, alias="CLOUDFLARE_API_TOKEN")
+    cloudflare_api_url: str = Field(
+        default="https://api.cloudflare.com/client/v4",
+        min_length=1,
+        alias="CLOUDFLARE_API_URL",
+    )
+    cloudflare_pages_branch: str = Field(default="main", min_length=1, alias="CLOUDFLARE_PAGES_BRANCH")
+    cloudflare_pages_project_prefix: str = Field(
+        default="onara-site",
+        min_length=1,
+        alias="CLOUDFLARE_PAGES_PROJECT_PREFIX",
+    )
+    cloudflare_wrangler_command: str = Field(
+        default="npx --yes wrangler",
+        min_length=1,
+        alias="CLOUDFLARE_WRANGLER_COMMAND",
+    )
     copilot_base_directory: str = Field(default="./.copilot_runtime", min_length=1, alias="COPILOT_BASE_DIRECTORY")
     copilot_github_token: str | None = Field(default=None, alias="COPILOT_GITHUB_TOKEN")
     github_api_url: str = Field(default="https://api.github.com", min_length=1, alias="GITHUB_API_URL")
@@ -35,7 +53,14 @@ class Settings(BaseSettings):
     pipeline_max_concurrency: int = Field(default=1, ge=1, le=10, alias="PIPELINE_MAX_CONCURRENCY")
     pipeline_job_timeout: int = Field(default=300, ge=30, le=3600, alias="PIPELINE_JOB_TIMEOUT")
 
-    @field_validator("nvidia_nim_base_url", "ollama_base_url", "app_url", "github_api_url", mode="before")
+    @field_validator(
+        "nvidia_nim_base_url",
+        "ollama_base_url",
+        "app_url",
+        "github_api_url",
+        "cloudflare_api_url",
+        mode="before",
+    )
     @classmethod
     def strip_trailing_slash(cls, value: Any) -> Any:
         if isinstance(value, str):

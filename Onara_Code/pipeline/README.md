@@ -51,8 +51,9 @@ Phase 18 through Phase 21 Agents 7-10 now run in the background after enqueue:
 - Agent 10 Mobile: `qwen3.5:9b` through Ollama, hardens the final HTML for responsive layout, tap targets, flexible media, overflow prevention, fluid type, and reduced-motion safety.
 - Phase 22 Parser: normalizes final HTML, strips FILE_MARKER wrappers, splits atomic component files, and creates a deployment manifest.
 - Phase 22 GitHub backup: commits deployment files to `onara-sites/sites/{projectId}/` through GitHub App installation auth when GitHub env vars are configured.
+- Phase 22 Cloudflare Pages Direct Upload: creates/reuses a Pages project, uploads the public static files with Wrangler, and records the deployed `pages.dev` URL when Cloudflare env vars are configured.
 - Blackboard Supervisor inspects blackboard outputs after each phase and records whether to continue, rerun, route to debugger, or fail.
-- `/pipeline/status/{job_id}` exposes `current_agent`, `agents_completed`, `completed_agent_ids`, `preview_html`, `component_file_count`, `deployment_file_count`, `deployment_manifest`, `github_commit_status`, `github_commit_sha`, `github_commit_url`, `github_commit_path`, `github_repository`, `qa_status`, `qa_checks`, `qa_blocking_issues`, `qa_warnings`, `mobile_status`, `mobile_checks`, `mobile_issues`, `mobile_fixes`, `supervisor_decision`, `blackboard_keys`, and progress log entries.
+- `/pipeline/status/{job_id}` exposes `current_agent`, `agents_completed`, `completed_agent_ids`, `preview_html`, `component_file_count`, `deployment_file_count`, `deployment_manifest`, `github_commit_status`, `github_commit_sha`, `github_commit_url`, `github_commit_path`, `github_repository`, `cloudflare_deployment_status`, `cloudflare_deployment_url`, `cloudflare_project_name`, `cloudflare_project_url`, `qa_status`, `qa_checks`, `qa_blocking_issues`, `qa_warnings`, `mobile_status`, `mobile_checks`, `mobile_issues`, `mobile_fixes`, `supervisor_decision`, `blackboard_keys`, and progress log entries.
 
 ## AI Client Smoke Test
 

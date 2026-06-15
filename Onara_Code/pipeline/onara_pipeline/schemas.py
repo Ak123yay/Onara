@@ -53,6 +53,12 @@ class JobStatusResponse(BaseModel):
     agents_total: int
     completed_agent_ids: list[str] = Field(default_factory=list)
     component_file_count: int = 0
+    cloudflare_deployment_error: str | None = None
+    cloudflare_deployment_status: str | None = None
+    cloudflare_deployment_url: str | None = None
+    cloudflare_file_count: int = 0
+    cloudflare_project_name: str | None = None
+    cloudflare_project_url: str | None = None
     deployment_file_count: int = 0
     deployment_manifest: dict[str, Any] | None = None
     github_commit_error: str | None = None
@@ -83,6 +89,7 @@ class JobStatusResponse(BaseModel):
     def from_job(cls, job: Any, queue_position: int | None) -> "JobStatusResponse":
         preview_html = job.blackboard.get("generated_html")
         component_files = job.blackboard.get("component_files")
+        cloudflare_deployment = job.blackboard.get("cloudflare_deployment")
         deployment_artifact = job.blackboard.get("deployment_artifact")
         github_commit = job.blackboard.get("github_commit")
         mobile_output = job.blackboard.get("mobile_output")
@@ -90,6 +97,12 @@ class JobStatusResponse(BaseModel):
         project_id = str(job.project_id)
         deployment_file_count = 0
         deployment_manifest = None
+        cloudflare_deployment_error = None
+        cloudflare_deployment_status = None
+        cloudflare_deployment_url = None
+        cloudflare_file_count = 0
+        cloudflare_project_name = None
+        cloudflare_project_url = None
         github_commit_error = None
         github_commit_file_count = 0
         github_commit_path = None
@@ -122,6 +135,15 @@ class JobStatusResponse(BaseModel):
             deployment_file_count = raw_file_count if isinstance(raw_file_count, int) else 0
             deployment_manifest = raw_manifest if isinstance(raw_manifest, dict) else None
 
+        if isinstance(cloudflare_deployment, dict):
+            raw_file_count = cloudflare_deployment.get("file_count")
+            cloudflare_deployment_error = _optional_str(cloudflare_deployment.get("error"))
+            cloudflare_deployment_status = _optional_str(cloudflare_deployment.get("status"))
+            cloudflare_deployment_url = _optional_str(cloudflare_deployment.get("deployment_url"))
+            cloudflare_file_count = raw_file_count if isinstance(raw_file_count, int) else 0
+            cloudflare_project_name = _optional_str(cloudflare_deployment.get("project_name"))
+            cloudflare_project_url = _optional_str(cloudflare_deployment.get("project_url"))
+
         if isinstance(github_commit, dict):
             raw_file_count = github_commit.get("file_count")
             github_commit_error = _optional_str(github_commit.get("error"))
@@ -151,6 +173,12 @@ class JobStatusResponse(BaseModel):
             agents_total=job.agents_total,
             completed_agent_ids=sorted(job.completed_agent_ids),
             component_file_count=len(component_files) if isinstance(component_files, dict) else 0,
+            cloudflare_deployment_error=cloudflare_deployment_error,
+            cloudflare_deployment_status=cloudflare_deployment_status,
+            cloudflare_deployment_url=cloudflare_deployment_url,
+            cloudflare_file_count=cloudflare_file_count,
+            cloudflare_project_name=cloudflare_project_name,
+            cloudflare_project_url=cloudflare_project_url,
             deployment_file_count=deployment_file_count,
             deployment_manifest=deployment_manifest,
             github_commit_error=github_commit_error,

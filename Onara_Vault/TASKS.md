@@ -174,7 +174,7 @@ Execution rule:
 
 - [x] HTML parser: split output into atomic component files
 - [x] GitHub commit: push to onara-sites/sites/{projectId}/
-- [ ] Cloudflare Pages Direct Upload deployment
+- [x] Cloudflare Pages Direct Upload deployment
 - [ ] Store project record in Supabase
 
 ### Phase 23 — Revision System
@@ -207,6 +207,7 @@ Execution rule:
 - [ ] 11 production fixes (document each in wiki as identified)
 - [ ] PM2 setup on pipeline server
 - [ ] UptimeRobot monitoring on /health endpoint
+- [ ] AI blackboard reviewer: optional advisory model pass over blackboard outputs that suggests warnings/reruns, while deterministic supervisor remains the final pass/fail authority
 - [ ] Curated RAG learning loop: save only QA-approved generated components/patterns back into ChromaDB so future builds improve without storing bad or duplicate sites
 - [ ] Training data pipeline: add user consent fields and `training_examples` storage for QA-approved, redacted generation examples that can feed RAG now and future model fine-tuning later
 
@@ -244,6 +245,7 @@ Execution rule:
 - v2.5 Moat 1: Continuous Google Sync (auto-detect GBP changes)
 - v2.5 Moat 2: Visual Style DNA (vision model extracts colors from business photos)
 - v2.5 Moat 3: Instant SEO landing pages per location/niche
+- v3: Pro user code download/export from Onara dashboard
 - v3: Custom domain via Cloudflare API
 - v3: SEO scoring dashboard
 - v3: White-label for agencies
