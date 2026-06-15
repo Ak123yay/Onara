@@ -107,6 +107,49 @@ Use on every generated mobile contractor site unless the business has no phone n
 """.strip(),
     ),
     PatternDocument(
+        id="accessible-entry-motion",
+        title="Accessible Entry Motion",
+        vertical="contractor",
+        pattern_type="animation",
+        tags=["animation", "accessibility", "prefers-reduced-motion", "opacity", "transform"],
+        summary="Safe page-entry motion for generated contractor sites.",
+        content="""
+HTML: no extra wrapper is required; apply reveal classes or scoped selectors to hero copy, service cards, trust rows, and contact cards.
+CSS: define short @keyframes using only opacity and translate3d transform, then stagger delays in 70ms steps.
+Accessibility: always include @media (prefers-reduced-motion: reduce) that disables animation, transitions, and smooth scrolling.
+Use when Agent 6 needs polish without JavaScript, layout shift, infinite motion, heavy filters, or scroll-jacking.
+""".strip(),
+    ),
+    PatternDocument(
+        id="contractor-cta-hover-motion",
+        title="Contractor CTA Hover Motion",
+        vertical="contractor",
+        pattern_type="animation",
+        tags=["animation", "cta", "hover", "phone", "conversion", "transform"],
+        summary="Subtle CTA and card hover motion that keeps phone-first actions clear.",
+        content="""
+HTML: primary phone CTA, estimate CTA, service cards, and trust cards remain normal links or cards with accessible focus states.
+CSS: use @media (hover: hover) before hover effects; animate transform translate3d and box-shadow only.
+Behavior: CTAs can lift 2px, service cards can lift 3px, and trust rows can shift 4px horizontally for tactile feedback.
+Avoid: color-only state changes, hover-only information, long transitions, animation on mobile tap, and JavaScript-driven loops.
+""".strip(),
+    ),
+    PatternDocument(
+        id="mobile-safe-staggered-proof",
+        title="Mobile-Safe Staggered Proof",
+        vertical="contractor",
+        pattern_type="animation",
+        tags=["animation", "mobile", "reviews", "trust", "services", "performance"],
+        summary="Staggered card/proof animation that stays performant on phones.",
+        content="""
+HTML: service cards, review proof, license proof, and service-area chips should be independently readable before animation runs.
+CSS: stagger nth-child animation-delay values from 70ms to 350ms; keep durations near 600ms and use a single easing curve token.
+Performance: animate only opacity and transform, do not animate width, height, top, left, filter, or box-shadow on load.
+Reduced motion: collapse delays and durations to 1ms and force scroll-behavior auto inside prefers-reduced-motion.
+Use when generated pages need organized reveal sequencing without hurting mobile responsiveness.
+""".strip(),
+    ),
+    PatternDocument(
         id="contractor-faq-local-seo",
         title="Contractor Local SEO FAQ",
         vertical="contractor",

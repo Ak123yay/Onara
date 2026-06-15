@@ -31,7 +31,6 @@ Each phase maps to a section of TASKS.md. Phases are ordered by dependency — d
 - [ ] Stripe live mode payout setup (deferred to launch; does not block dev)
 
 ## Phase 3 — Dev Environment (PC)
-Current actionable phase.
 
 - [x] Pull and verify current Ollama models: `qwen3.5:9b` primary and `gemma4:e4b` fallback
 - [x] Confirm Node.js installed (`v22.22.1`)
@@ -110,7 +109,7 @@ Current actionable phase.
 - [ ] Set up ChromaDB at `./chroma_db`
 - [ ] Seed collection from `raw/10_rag_seed_content.md` (~60 patterns)
 - [ ] Implement metadata-filtered query (by business category + section type)
-- [ ] Wire RAG into Agent 7 (Debugger) and Agent 9 (QA)
+- [x] Wire RAG into Agent 7 (Debugger) and Agent 9 (QA)
 
 ## Phase 18 — Agents 1–3
 - [x] Agent 1: Business Analyst (z-ai/glm-5.1 → JSON spec)
@@ -129,16 +128,20 @@ Current actionable phase.
 - [x] Stream partial output to preview iframe
 
 ## Phase 21 — Agents 7–10
-- [ ] Agent 7: Debugger (z-ai/glm-5.1 → fixed HTML or PASS)
-- [ ] Agent 8: SEO Agent (qwen3.5:9b → SEO-injected HTML)
-- [ ] Agent 9: QA (z-ai/glm-5.1 → PASS or blocking issues JSON)
-- [ ] Agent 10: Mobile (qwen3.5:9b → mobile-optimized HTML)
+- [x] Blackboard Supervisor: inspect blackboard outputs/errors and decide continue, rerun, route to debugger, or fail
+- [x] Agent 6 animation pass with lightweight CSS animations, `prefers-reduced-motion`, and mobile/performance validation
+- [x] RAG animation patterns for accessible motion and mobile-safe staggered reveals
+- [x] Agent 7: Debugger (z-ai/glm-5.1 → fixed HTML or PASS)
+- [x] Agent 8: SEO Agent (qwen3.5:9b → SEO-injected HTML)
+- [x] Agent 9: QA (z-ai/glm-5.1 → PASS or blocking issues JSON)
+- [x] Agent 10: Mobile (qwen3.5:9b → mobile-optimized HTML)
 - [ ] Full pipeline integration test end-to-end
 
 ## Phase 22 — Deployment Pipeline
-- [ ] HTML parser: extract final HTML from FILE_MARKER wrapper
+Current actionable phase.
+- [x] HTML parser: extract final HTML from FILE_MARKER wrapper
+- [x] GitHub commit: push to `onara-sites/sites/{projectId}/index.html`
 - [ ] Cloudflare Pages Direct Upload (create project if new, then deploy)
-- [ ] GitHub commit: push to `onara-sites/sites/{projectId}/index.html`
 - [ ] Supabase storage: save to `site-html` bucket
 - [ ] Update `projects` record with `public_url`, `status = 'live'`, `last_deployed_at`
 

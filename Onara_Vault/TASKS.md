@@ -29,7 +29,7 @@ _This file is the single source of truth for all work. Claude updates this after
 
 ## 🔥 Active
 
-Current actionable phase: **Phase 21 — Agents 7–10**.
+Current actionable phase: **Phase 22 — Deployment Pipeline**.
 
 Note: Mini PC FastAPI runs under PM2. The named Cloudflare Tunnel serves `https://pipeline.onara.tech`.
 
@@ -162,17 +162,18 @@ Execution rule:
 
 ### Phase 21 — Agents 7–10
 
-- [ ] Blackboard Supervisor: inspect blackboard outputs/errors and decide continue, rerun an agent, route to debugger, or fail with a useful message
-- [ ] Agent 6 animation pass: add lightweight CSS animations to generated sites, require `prefers-reduced-motion`, and have Agent 10 validate mobile/performance safety
-- [ ] Agent 7: Debugger (z-ai/glm-5.1)
-- [ ] Agent 8: SEO Agent (qwen3.5:9b)
-- [ ] Agent 9: QA (z-ai/glm-5.1)
-- [ ] Agent 10: Mobile / responsive check (qwen3.5:9b)
+- [x] Blackboard Supervisor: inspect blackboard outputs/errors and decide continue, rerun an agent, route to debugger, or fail with a useful message
+- [x] Agent 6 animation pass: add lightweight CSS animations to generated sites, require `prefers-reduced-motion`, and have Agent 10 validate mobile/performance safety
+- [x] RAG animation patterns: add accessible motion guidance to ChromaDB seed library
+- [x] Agent 7: Debugger (z-ai/glm-5.1)
+- [x] Agent 8: SEO Agent (qwen3.5:9b)
+- [x] Agent 9: QA (z-ai/glm-5.1)
+- [x] Agent 10: Mobile / responsive check (qwen3.5:9b)
 
 ### Phase 22 — Deployment Pipeline
 
-- [ ] HTML parser: split output into atomic component files
-- [ ] GitHub commit: push to onara-sites/sites/{projectId}/
+- [x] HTML parser: split output into atomic component files
+- [x] GitHub commit: push to onara-sites/sites/{projectId}/
 - [ ] Cloudflare Pages Direct Upload deployment
 - [ ] Store project record in Supabase
 
@@ -212,6 +213,8 @@ Execution rule:
 ### Phase 28 — Pre-Launch
 
 - [ ] Privacy policy + terms of service
+- [ ] Add `support@onara.tech` across the website and app surfaces (footer, account/help areas, auth emails, billing/contact copy)
+- [ ] Support email AI responder: keep forwarding `support@onara.tech` to Aarush, but add an inbound email worker/webhook that uses an NVIDIA NIM model to send the first support reply, log the thread, and escalate billing/security/account issues to human review
 - [ ] Training-data consent copy, opt-out/delete handling, and privacy-policy disclosure for using approved generated sites/edits/feedback to improve Onara models
 - [ ] Error monitoring (Sentry or equivalent)
 - [ ] Security review: RLS audit, API key rotation

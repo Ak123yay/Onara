@@ -107,3 +107,56 @@ class CodegenOutput(AgentContract):
     provider: str = Field(min_length=1)
     fallback_used: bool = False
     used_fallback_template: bool = False
+
+
+class DebuggerOutput(AgentContract):
+    status: Literal["pass", "fixed"]
+    issues: list[str] = Field(default_factory=list)
+    fixes: list[str] = Field(default_factory=list)
+    raw_output: str = Field(min_length=1)
+    html: str = Field(min_length=500)
+    component_files: dict[str, str] = Field(default_factory=dict)
+    model: str = Field(min_length=1)
+    provider: str = Field(min_length=1)
+    fallback_used: bool = False
+    used_deterministic_fallback: bool = False
+
+
+class SEOOutput(AgentContract):
+    title: str = Field(min_length=8, max_length=80)
+    meta_description: str = Field(min_length=40, max_length=180)
+    canonical_placeholder: str = Field(default="Set final canonical URL during deployment.")
+    json_ld: dict = Field(default_factory=dict)
+    raw_output: str = Field(min_length=1)
+    html: str = Field(min_length=500)
+    component_files: dict[str, str] = Field(default_factory=dict)
+    model: str = Field(min_length=1)
+    provider: str = Field(min_length=1)
+    fallback_used: bool = False
+    used_deterministic_fallback: bool = False
+
+
+class QAOutput(AgentContract):
+    status: Literal["pass", "fail"]
+    blocking_issues: list[str] = Field(default_factory=list)
+    warnings: list[str] = Field(default_factory=list)
+    checks: dict[str, bool] = Field(default_factory=dict)
+    raw_output: str = Field(min_length=1)
+    model: str = Field(min_length=1)
+    provider: str = Field(min_length=1)
+    fallback_used: bool = False
+    used_deterministic_fallback: bool = False
+
+
+class MobileOutput(AgentContract):
+    status: Literal["pass", "fixed"]
+    issues: list[str] = Field(default_factory=list)
+    fixes: list[str] = Field(default_factory=list)
+    checks: dict[str, bool] = Field(default_factory=dict)
+    raw_output: str = Field(min_length=1)
+    html: str = Field(min_length=500)
+    component_files: dict[str, str] = Field(default_factory=dict)
+    model: str = Field(min_length=1)
+    provider: str = Field(min_length=1)
+    fallback_used: bool = False
+    used_deterministic_fallback: bool = False

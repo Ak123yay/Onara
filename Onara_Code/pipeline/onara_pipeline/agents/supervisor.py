@@ -2,8 +2,12 @@ from onara_pipeline.agents.contracts import (
     AnalystOutput,
     CodegenOutput,
     ContentOutput,
+    DebuggerOutput,
+    MobileOutput,
     PlannerOutput,
     PromptOutput,
+    QAOutput,
+    SEOOutput,
     StyleOutput,
 )
 
@@ -93,3 +97,131 @@ def validate_codegen_output(output: CodegenOutput) -> None:
         raise SupervisorValidationError("Codegen HTML is too short for a complete contractor site")
     if not output.component_files.get("index.html"):
         raise SupervisorValidationError("Codegen output must include index.html in component_files")
+    if "@keyframes" not in lower:
+        raise SupervisorValidationError("Codegen output must include lightweight CSS keyframes")
+    if "prefers-reduced-motion" not in lower:
+        raise SupervisorValidationError("Codegen output must include prefers-reduced-motion safety")
+    if "requestanimationframe" in lower or "setinterval(" in lower:
+        raise SupervisorValidationError("Codegen output must not use JavaScript-driven animation loops")
+    if "infinite" in lower:
+        raise SupervisorValidationError("Codegen output must not use infinite animations")
+    if "opacity" not in lower or "transform" not in lower:
+        raise SupervisorValidationError("Codegen animation must use opacity and transform")
+
+
+def validate_debugger_output(output: DebuggerOutput) -> None:
+    validate_codegen_output(
+        CodegenOutput(
+            component_files=output.component_files,
+            fallback_used=output.fallback_used,
+            html=output.html,
+            model=output.model,
+            provider=output.provider,
+            raw_output=output.raw_output,
+            used_fallback_template=output.used_deterministic_fallback,
+        )
+    )
+
+    if output.status == "fixed" and not output.fixes:
+        raise SupervisorValidationError("Debugger output marked fixed but included no fixes")
+    if output.status == "pass" and output.fixes:
+        raise SupervisorValidationError("Debugger output marked pass but included fixes")
+
+
+def validate_seo_output(output: SEOOutput) -> None:
+    validate_codegen_output(
+        CodegenOutput(
+            component_files=output.component_files,
+            fallback_used=output.fallback_used,
+            html=output.html,
+            model=output.model,
+            provider=output.provider,
+            raw_output=output.raw_output,
+            used_fallback_template=output.used_deterministic_fallback,
+        )
+    )
+
+    lower = output.html.lower()
+    required = (
+        "<title>",
+        'name="description"',
+        'property="og:title"',
+        'property="og:description"',
+        'property="og:type"',
+        'name="twitter:card"',
+        'application/ld+json',
+        "onara canonical placeholder",
+    )
+    missing = [item for item in required if item not in lower]
+    if missing:
+        raise SupervisorValidationError(f"SEO output missing required metadata: {missing[0]}")
+    if len(output.title) > 80:
+        raise SupervisorValidationError("SEO title is too long")
+    if len(output.meta_description) > 180:
+        raise SupervisorValidationError("SEO meta description is too long")
+    if output.json_ld.get("@context") != "https://schema.org":
+        raise SupervisorValidationError("SEO JSON-LD must use schema.org context")
+    if "localbusiness" not in str(output.json_ld.get("@type", "")).lower():
+        raise SupervisorValidationError("SEO JSON-LD must describe a LocalBusiness")
+
+
+def validate_qa_output(output: QAOutput) -> None:
+    required_checks = (
+        "html_structure",
+        "component_files",
+        "component_markers",
+        "motion_safety",
+        "seo_metadata",
+        "localbusiness_schema",
+        "tap_to_call",
+        "mobile_basics",
+        "no_artifacts",
+    )
+    missing_checks = [check for check in required_checks if check not in output.checks]
+    if missing_checks:
+        raise SupervisorValidationError(f"QA output missing required check: {missing_checks[0]}")
+
+    failed_checks = [check for check in required_checks if output.checks.get(check) is False]
+    if output.status == "pass" and failed_checks:
+        raise SupervisorValidationError(f"QA output passed despite failed check: {failed_checks[0]}")
+    if output.status == "fail" and not output.blocking_issues:
+        raise SupervisorValidationError("QA output failed but included no blocking issues")
+    if output.status == "pass" and output.blocking_issues:
+        raise SupervisorValidationError("QA output passed but included blocking issues")
+
+
+def validate_mobile_output(output: MobileOutput) -> None:
+    validate_codegen_output(
+        CodegenOutput(
+            component_files=output.component_files,
+            fallback_used=output.fallback_used,
+            html=output.html,
+            model=output.model,
+            provider=output.provider,
+            raw_output=output.raw_output,
+            used_fallback_template=output.used_deterministic_fallback,
+        )
+    )
+
+    required_checks = (
+        "viewport",
+        "responsive_media_query",
+        "overflow_guard",
+        "flexible_media",
+        "tap_targets",
+        "fluid_type",
+        "reduced_motion",
+        "safe_motion",
+        "seo_preserved",
+    )
+    missing_checks = [check for check in required_checks if check not in output.checks]
+    if missing_checks:
+        raise SupervisorValidationError(f"Mobile output missing required check: {missing_checks[0]}")
+
+    failed_checks = [check for check in required_checks if output.checks.get(check) is False]
+    if failed_checks:
+        raise SupervisorValidationError(f"Mobile output failed required check: {failed_checks[0]}")
+    if output.status == "fixed" and not output.fixes:
+        raise SupervisorValidationError("Mobile output marked fixed but included no fixes")
+    if output.status == "pass" and output.fixes:
+        raise SupervisorValidationError("Mobile output marked pass but included fixes")

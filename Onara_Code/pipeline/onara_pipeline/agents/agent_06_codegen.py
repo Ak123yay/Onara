@@ -39,7 +39,10 @@ Strict output rules:
 - Use no frameworks and no external JavaScript.
 - Every root component from the planner must include data-component="<component_id>".
 - Preserve the planner component order and exact business copy.
-- Make the page mobile-first, accessible, phone-first, and visually polished."""
+- Make the page mobile-first, accessible, phone-first, and visually polished.
+- Add lightweight CSS-only motion using opacity and transform for page entry, cards, CTAs, and trust proof.
+- Include at least one @keyframes rule and a @media (prefers-reduced-motion: reduce) block that disables animation, transitions, and smooth scrolling.
+- Do not use JavaScript animations, infinite loops, layout-shifting animation, or heavy filters."""
 
 
 async def run_codegen(
@@ -138,6 +141,9 @@ Final Agent 6 requirements:
 - Root component IDs that must appear as data-component values: {", ".join(planner.component_order)}
 - Keep these CSS variables available in :root: {compact_json(planner.css_variables)}
 - Each root component should be independently extractable by data-component.
+- Add polished, lightweight CSS motion: entry reveals, subtle CTA/card hover states, and staggered proof/card reveals.
+- Motion must animate only transform and opacity; no infinite loops, no layout-affecting animation, no JS animation.
+- Include @media (prefers-reduced-motion: reduce) that disables animations, transitions, and smooth scrolling.
 - Do not invent extra pages, pricing sections, SaaS UI, or unrelated copy.
 
 Return only:

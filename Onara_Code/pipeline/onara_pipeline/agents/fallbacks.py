@@ -260,6 +260,10 @@ Hard requirements:
 - Mobile-first responsive CSS with one breakpoint at 768px.
 - Use CSS custom properties for every color, font, spacing token, and radius.
 - Include accessible focus states, visible labels, and alt text for any placeholder images.
+- Include lightweight CSS-only animation using opacity and transform for entry reveals, CTA/card hover states, and proof/card stagger.
+- Include at least one @keyframes rule.
+- Include @media (prefers-reduced-motion: reduce) that disables animations, transitions, and smooth scrolling.
+- Do not use JavaScript animation, infinite animation loops, layout-shifting animation, or heavy visual filters.
 - Use at least one phone-first CTA. The phone value is: {phone or "not provided"}.
 - Primary CTA text: {analyst.primaryCta}.
 - Target local SEO keyword: {analyst.targetKeyword}.
@@ -393,6 +397,18 @@ def fallback_codegen(
         --font-body: "{_css_escape(style.typography.body_font)}", Arial, sans-serif;
         --radius: {style.spacing.border_radius};
         --container: {style.spacing.container_max};
+        --motion-duration: 620ms;
+        --motion-ease: cubic-bezier(0.2, 0.65, 0.2, 1);
+      }}
+
+      @keyframes onara-rise {{
+        from {{ opacity: 0; transform: translate3d(0, 18px, 0); }}
+        to {{ opacity: 1; transform: translate3d(0, 0, 0); }}
+      }}
+
+      @keyframes onara-fade-in {{
+        from {{ opacity: 0; }}
+        to {{ opacity: 1; }}
       }}
 
       * {{ box-sizing: border-box; }}
@@ -414,6 +430,7 @@ def fallback_codegen(
       }}
       .site-header {{
         align-items: center;
+        animation: onara-fade-in 460ms var(--motion-ease) both;
         border-bottom: 1px solid var(--color-border);
         display: flex;
         gap: 22px;
@@ -445,6 +462,7 @@ def fallback_codegen(
         justify-content: center;
         min-height: 48px;
         padding: 0 22px;
+        transition: background 180ms ease, box-shadow 180ms ease, transform 180ms ease;
       }}
       .hero {{
         display: grid;
@@ -454,6 +472,12 @@ def fallback_codegen(
         max-width: var(--container);
         padding: clamp(58px, 8vw, 112px) 20px;
       }}
+      .hero-copy > * {{
+        animation: onara-rise var(--motion-duration) var(--motion-ease) both;
+      }}
+      .hero-copy > :nth-child(2) {{ animation-delay: 70ms; }}
+      .hero-copy > :nth-child(3) {{ animation-delay: 140ms; }}
+      .hero-copy > :nth-child(4) {{ animation-delay: 210ms; }}
       h1, h2, h3 {{
         font-family: var(--font-heading);
         font-weight: {style.typography.heading_weight};
@@ -472,11 +496,13 @@ def fallback_codegen(
       .hero-actions {{ align-items: center; display: flex; flex-wrap: wrap; gap: 16px; margin-top: 30px; }}
       .hero-actions span {{ color: var(--color-muted); font-size: 0.95rem; }}
       .hero-card {{
+        animation: onara-rise var(--motion-duration) var(--motion-ease) 220ms both;
         align-self: end;
         background: var(--color-primary);
         border: 1px solid color-mix(in srgb, var(--color-surface) 18%, transparent);
         color: #fff;
         padding: clamp(28px, 4vw, 42px);
+        transition: box-shadow 180ms ease, transform 180ms ease;
       }}
       .hero-card span {{ color: color-mix(in srgb, #fff 62%, transparent); font-size: 0.82rem; letter-spacing: 0.16em; text-transform: uppercase; }}
       .hero-card strong {{ display: block; font-family: var(--font-heading); font-size: 2.2rem; line-height: 1; margin: 28px 0 16px; }}
@@ -489,11 +515,18 @@ def fallback_codegen(
         grid-template-columns: repeat(3, minmax(0, 1fr));
       }}
       .service-card {{
+        animation: onara-rise var(--motion-duration) var(--motion-ease) both;
         background: var(--color-surface);
         border: 1px solid var(--color-border);
         min-height: 220px;
         padding: 28px;
+        transition: border-color 180ms ease, box-shadow 180ms ease, transform 180ms ease;
       }}
+      .service-card:nth-child(2) {{ animation-delay: 70ms; }}
+      .service-card:nth-child(3) {{ animation-delay: 140ms; }}
+      .service-card:nth-child(4) {{ animation-delay: 210ms; }}
+      .service-card:nth-child(5) {{ animation-delay: 280ms; }}
+      .service-card:nth-child(6) {{ animation-delay: 350ms; }}
       .service-card span {{
         color: var(--color-secondary);
         display: block;
@@ -519,10 +552,17 @@ def fallback_codegen(
         padding: 28px;
       }}
       .trust-list li {{
+        animation: onara-rise var(--motion-duration) var(--motion-ease) both;
         border: 1px solid color-mix(in srgb, #fff 18%, transparent);
         padding: 16px;
+        transition: background 180ms ease, transform 180ms ease;
       }}
+      .trust-list li:nth-child(2) {{ animation-delay: 70ms; }}
+      .trust-list li:nth-child(3) {{ animation-delay: 140ms; }}
+      .trust-list li:nth-child(4) {{ animation-delay: 210ms; }}
+      .trust-list li:nth-child(5) {{ animation-delay: 280ms; }}
       .contact-card {{
+        animation: onara-rise var(--motion-duration) var(--motion-ease) both;
         background: var(--color-surface);
         border: 1px solid var(--color-border);
         display: grid;
@@ -541,6 +581,33 @@ def fallback_codegen(
       }}
       .site-footer strong {{ color: var(--color-text); }}
       :focus-visible {{ outline: 3px solid var(--color-secondary); outline-offset: 3px; }}
+      @media (hover: hover) {{
+        .header-cta:hover,
+        .primary-cta:hover {{
+          box-shadow: 0 16px 34px color-mix(in srgb, var(--color-secondary) 28%, transparent);
+          transform: translate3d(0, -2px, 0);
+        }}
+        .hero-card:hover,
+        .service-card:hover {{
+          box-shadow: 0 18px 44px color-mix(in srgb, var(--color-text) 12%, transparent);
+          transform: translate3d(0, -3px, 0);
+        }}
+        .trust-list li:hover {{
+          background: color-mix(in srgb, #fff 8%, transparent);
+          transform: translate3d(4px, 0, 0);
+        }}
+      }}
+      @media (prefers-reduced-motion: reduce) {{
+        *,
+        *::before,
+        *::after {{
+          animation-delay: 0ms !important;
+          animation-duration: 1ms !important;
+          animation-iteration-count: 1 !important;
+          scroll-behavior: auto !important;
+          transition-duration: 1ms !important;
+        }}
+      }}
       @media (max-width: 768px) {{
         .site-header {{ align-items: stretch; flex-direction: column; }}
         nav {{ justify-content: space-between; }}

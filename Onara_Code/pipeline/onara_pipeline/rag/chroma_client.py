@@ -6,7 +6,7 @@ from onara_pipeline.rag.embeddings import MiniLMEmbeddingFunction
 from onara_pipeline.rag.patterns import DEFAULT_PATTERNS
 from onara_pipeline.rag.types import PatternDocument, PatternSearchResult
 
-PATTERN_LIBRARY_VERSION = "2026-06-14.2"
+PATTERN_LIBRARY_VERSION = "2026-06-15.1"
 
 
 class PatternStore:

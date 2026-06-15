@@ -16,6 +16,13 @@ class Settings(BaseSettings):
     chroma_persist_path: str = Field(default="./chroma_db", min_length=1, alias="CHROMA_PERSIST_PATH")
     copilot_base_directory: str = Field(default="./.copilot_runtime", min_length=1, alias="COPILOT_BASE_DIRECTORY")
     copilot_github_token: str | None = Field(default=None, alias="COPILOT_GITHUB_TOKEN")
+    github_api_url: str = Field(default="https://api.github.com", min_length=1, alias="GITHUB_API_URL")
+    github_app_id: str | None = Field(default=None, alias="GITHUB_APP_ID")
+    github_app_installation_id: str | None = Field(default=None, alias="GITHUB_APP_INSTALLATION_ID")
+    github_app_private_key: str | None = Field(default=None, alias="GITHUB_APP_PRIVATE_KEY")
+    github_repo_branch: str = Field(default="main", min_length=1, alias="GITHUB_REPO_BRANCH")
+    github_repo_name: str = Field(default="onara-sites", min_length=1, alias="GITHUB_REPO_NAME")
+    github_repo_owner: str | None = Field(default=None, alias="GITHUB_REPO_OWNER")
     nvidia_nim_api_key: str | None = Field(default=None, alias="NVIDIA_NIM_API_KEY")
     nvidia_nim_base_url: str = Field(
         default="https://integrate.api.nvidia.com/v1",
@@ -28,11 +35,20 @@ class Settings(BaseSettings):
     pipeline_max_concurrency: int = Field(default=1, ge=1, le=10, alias="PIPELINE_MAX_CONCURRENCY")
     pipeline_job_timeout: int = Field(default=300, ge=30, le=3600, alias="PIPELINE_JOB_TIMEOUT")
 
-    @field_validator("nvidia_nim_base_url", "ollama_base_url", "app_url", mode="before")
+    @field_validator("nvidia_nim_base_url", "ollama_base_url", "app_url", "github_api_url", mode="before")
     @classmethod
     def strip_trailing_slash(cls, value: Any) -> Any:
         if isinstance(value, str):
             return value.rstrip("/")
+
+        return value
+
+    @field_validator("github_app_private_key", mode="before")
+    @classmethod
+    def normalize_github_private_key(cls, value: Any) -> Any:
+        if isinstance(value, str):
+            stripped = value.strip().strip('"').strip("'")
+            return stripped.replace("\\n", "\n")
 
         return value
 
