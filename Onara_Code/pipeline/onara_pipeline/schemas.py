@@ -51,7 +51,10 @@ class JobStatusResponse(BaseModel):
     current_agent: str | None
     agents_completed: int
     agents_total: int
+    component_file_count: int = 0
     queue_position: int | None
+    preview_html: str | None = None
+    site_id: str | None = None
     created_at: datetime
     error_message: str | None = None
     updated_at: datetime
@@ -59,6 +62,10 @@ class JobStatusResponse(BaseModel):
 
     @classmethod
     def from_job(cls, job: Any, queue_position: int | None) -> "JobStatusResponse":
+        preview_html = job.blackboard.get("generated_html")
+        component_files = job.blackboard.get("component_files")
+        project_id = str(job.project_id)
+
         return cls(
             blackboard_keys=list(job.blackboard.keys()),
             job_id=job.job_id,
@@ -66,7 +73,10 @@ class JobStatusResponse(BaseModel):
             current_agent=job.current_agent,
             agents_completed=job.agents_completed,
             agents_total=job.agents_total,
+            component_file_count=len(component_files) if isinstance(component_files, dict) else 0,
             queue_position=queue_position,
+            preview_html=preview_html if isinstance(preview_html, str) else None,
+            site_id=project_id if not project_id.startswith("pending:") else f"draft-{job.job_id[:8]}",
             created_at=job.created_at,
             error_message=job.error_message,
             updated_at=job.updated_at,

@@ -29,7 +29,7 @@ _This file is the single source of truth for all work. Claude updates this after
 
 ## 🔥 Active
 
-Current actionable phase: **Phase 19 — Agents 4–5**.
+Current actionable phase: **Phase 21 — Agents 7–10**.
 
 Note: Mini PC FastAPI runs under PM2. The named Cloudflare Tunnel serves `https://pipeline.onara.tech`.
 
@@ -151,17 +151,19 @@ Execution rule:
 
 ### Phase 19 — Agents 4–5
 
-- [ ] Agent 4: Planner (z-ai/glm-5.1)
-- [ ] Agent 5: Prompt Engineer (z-ai/glm-5.1)
+- [x] Agent 4: Planner (z-ai/glm-5.1)
+- [x] Agent 5: Prompt Engineer (z-ai/glm-5.1)
 
 ### Phase 20 — Agent 6
 
-- [ ] Agent 6: Code Generator with model picker
-- [ ] Atomic component generation per Planner blueprint
-- [ ] Stream output to preview iframe
+- [x] Agent 6: Code Generator with model picker
+- [x] Atomic component generation per Planner blueprint
+- [x] Stream output to preview iframe
 
 ### Phase 21 — Agents 7–10
 
+- [ ] Blackboard Supervisor: inspect blackboard outputs/errors and decide continue, rerun an agent, route to debugger, or fail with a useful message
+- [ ] Agent 6 animation pass: add lightweight CSS animations to generated sites, require `prefers-reduced-motion`, and have Agent 10 validate mobile/performance safety
 - [ ] Agent 7: Debugger (z-ai/glm-5.1)
 - [ ] Agent 8: SEO Agent (qwen3.5:9b)
 - [ ] Agent 9: QA (z-ai/glm-5.1)
@@ -204,10 +206,13 @@ Execution rule:
 - [ ] 11 production fixes (document each in wiki as identified)
 - [ ] PM2 setup on pipeline server
 - [ ] UptimeRobot monitoring on /health endpoint
+- [ ] Curated RAG learning loop: save only QA-approved generated components/patterns back into ChromaDB so future builds improve without storing bad or duplicate sites
+- [ ] Training data pipeline: add user consent fields and `training_examples` storage for QA-approved, redacted generation examples that can feed RAG now and future model fine-tuning later
 
 ### Phase 28 — Pre-Launch
 
 - [ ] Privacy policy + terms of service
+- [ ] Training-data consent copy, opt-out/delete handling, and privacy-policy disclosure for using approved generated sites/edits/feedback to improve Onara models
 - [ ] Error monitoring (Sentry or equivalent)
 - [ ] Security review: RLS audit, API key rotation
 - [ ] Publish Google OAuth app (remove testing mode)

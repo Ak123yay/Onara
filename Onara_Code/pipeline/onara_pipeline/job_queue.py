@@ -107,7 +107,7 @@ class JobQueue:
                 return
 
             try:
-                from onara_pipeline.agents import run_phase_18
+                from onara_pipeline.agents import run_phase_18, run_phase_19, run_phase_20
 
                 async def progress(
                     event: str,
@@ -118,6 +118,22 @@ class JobQueue:
                     await self.record_progress(job.job_id, event, agent_id, message, extra)
 
                 await run_phase_18(job, settings, progress)
+                await self.record_progress(
+                    job.job_id,
+                    "phase_completed",
+                    None,
+                    "Phase 18 completed. Agents 1-3 outputs are ready.",
+                    {"phase": "phase_18"},
+                )
+                await run_phase_19(job, settings, progress)
+                await self.record_progress(
+                    job.job_id,
+                    "phase_completed",
+                    None,
+                    "Phase 19 completed. Agents 4-5 outputs are ready.",
+                    {"phase": "phase_19"},
+                )
+                await run_phase_20(job, settings, progress)
                 await self._mark_completed(job.job_id)
             except Exception as exc:
                 await self._mark_failed(job.job_id, exc)
@@ -134,7 +150,7 @@ class JobQueue:
             job.progress_log.append(
                 {
                     "event": "pipeline_started",
-                    "message": "Phase 18 worker started.",
+                    "message": "Phase 18-20 worker started.",
                     "timestamp": job.updated_at.isoformat(),
                 }
             )
@@ -181,8 +197,8 @@ class JobQueue:
             job.progress_log.append(
                 {
                     "event": "phase_completed",
-                    "message": "Phase 18 completed. Agents 1-3 outputs are ready for Phase 19.",
-                    "phase": "phase_18",
+                    "message": "Phase 20 completed. Agent 6 draft is ready for Phase 21.",
+                    "phase": "phase_20",
                     "timestamp": now.isoformat(),
                 }
             )
@@ -199,7 +215,7 @@ class JobQueue:
                 {
                     "event": "pipeline_failed",
                     "message": str(exc),
-                    "phase": "phase_18",
+                    "phase": "phase_18_20",
                     "timestamp": now.isoformat(),
                 }
             )

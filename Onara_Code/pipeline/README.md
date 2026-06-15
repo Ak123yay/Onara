@@ -37,12 +37,15 @@ curl http://localhost:8000/pipeline/status/$jobId `
   -UseBasicParsing
 ```
 
-Phase 18 now runs in the background after enqueue:
+Phase 18 through Phase 20 now run in the background after enqueue:
 
 - Agent 1 Analyst: `z-ai/glm-5.1` through NIM, with NIM/local fallback and deterministic repair fallback.
 - Agent 2 Content Writer: `qwen3.5:9b` through Ollama, runs in parallel with Agent 3.
 - Agent 3 Style Agent: `qwen3.5:9b` through Ollama, runs in parallel with Agent 2.
-- `/pipeline/status/{job_id}` exposes `current_agent`, `agents_completed`, `blackboard_keys`, and progress log entries.
+- Agent 4 Planner: `z-ai/glm-5.1` through NIM, converts copy and style into a component blueprint.
+- Agent 5 Prompt Engineer: `z-ai/glm-5.1` through NIM, converts the blueprint into the Agent 6 code prompt.
+- Agent 6 Code Generator: plan-gated model picker, FILE_MARKER extraction, component splitting, and deterministic HTML fallback.
+- `/pipeline/status/{job_id}` exposes `current_agent`, `agents_completed`, `preview_html`, `component_file_count`, `blackboard_keys`, and progress log entries.
 
 ## AI Client Smoke Test
 

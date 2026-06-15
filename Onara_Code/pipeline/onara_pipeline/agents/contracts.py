@@ -75,3 +75,35 @@ class StyleOutput(AgentContract):
     typography: TypographyTokens
     spacing: SpacingTokens
     style_notes: str = Field(min_length=1)
+
+
+class ComponentSpec(AgentContract):
+    id: str = Field(min_length=1, pattern=r"^[a-z][a-z0-9_]*$")
+    type: Literal["section", "header", "footer", "nav"]
+    order: int = Field(ge=1)
+    html_structure: str = Field(min_length=20)
+    css_classes: list[str] = Field(min_length=1)
+    content_mapping: dict[str, str] = Field(default_factory=dict)
+    responsive_changes: str = Field(min_length=1)
+    interactive: str | None = None
+
+
+class PlannerOutput(AgentContract):
+    components: list[ComponentSpec] = Field(min_length=1)
+    css_variables: dict[str, str] = Field(min_length=1)
+    component_order: list[str] = Field(min_length=1)
+    special_notes: str = Field(min_length=1)
+
+
+class PromptOutput(AgentContract):
+    prompt: str = Field(min_length=500)
+
+
+class CodegenOutput(AgentContract):
+    raw_output: str = Field(min_length=1)
+    html: str = Field(min_length=500)
+    component_files: dict[str, str] = Field(default_factory=dict)
+    model: str = Field(min_length=1)
+    provider: str = Field(min_length=1)
+    fallback_used: bool = False
+    used_fallback_template: bool = False

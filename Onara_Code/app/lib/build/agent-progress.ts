@@ -22,7 +22,7 @@ export type AgentStatus = "pending" | "active" | "retry" | "done";
 export const AGENT_STEPS: AgentStep[] = [
   {
     id: "analyst",
-    model: "DeepSeek",
+    model: "GLM 5.1",
     name: "Business Analyst",
     task: "Reading Google facts, services, and service area",
   },
@@ -40,25 +40,25 @@ export const AGENT_STEPS: AgentStep[] = [
   },
   {
     id: "planner",
-    model: "DeepSeek Pro",
+    model: "GLM 5.1",
     name: "Planner",
     task: "Turning copy and style into a component blueprint",
   },
   {
     id: "prompt",
-    model: "Kimi",
+    model: "GLM 5.1",
     name: "Prompt Engineer",
     task: "Writing exact build instructions for the code agent",
   },
   {
     id: "code",
-    model: "Copilot",
+    model: "Model picker",
     name: "Code Generator",
     task: "Generating HTML, CSS, and interaction hooks",
   },
   {
     id: "debug",
-    model: "Kimi + RAG",
+    model: "GLM 5.1 + RAG",
     name: "Debugger",
     task: "Fixing broken markup, spacing, and responsive bugs",
   },
@@ -70,7 +70,7 @@ export const AGENT_STEPS: AgentStep[] = [
   },
   {
     id: "qa",
-    model: "DeepSeek Pro",
+    model: "GLM 5.1",
     name: "QA Agent",
     task: "Checking calls to action, missing data, and launch blockers",
   },

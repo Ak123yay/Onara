@@ -119,14 +119,14 @@ Current actionable phase.
 - [x] Supervisor validation between each step
 
 ## Phase 19 — Agents 4–5
-- [ ] Agent 4: Planner (z-ai/glm-5.1 → component blueprint JSON)
-- [ ] Agent 5: Prompt Engineer (z-ai/glm-5.1 → optimized code-gen prompt string)
+- [x] Agent 4: Planner (z-ai/glm-5.1 → component blueprint JSON)
+- [x] Agent 5: Prompt Engineer (z-ai/glm-5.1 → optimized code-gen prompt string)
 
 ## Phase 20 — Agent 6
-- [ ] Agent 6: Code Generator with plan-gated model picker
-- [ ] Atomic component generation per Planner blueprint
-- [ ] FILE_MARKER extraction with regex parser
-- [ ] Stream partial output to preview iframe
+- [x] Agent 6: Code Generator with plan-gated model picker
+- [x] Atomic component generation per Planner blueprint
+- [x] FILE_MARKER extraction with regex parser
+- [x] Stream partial output to preview iframe
 
 ## Phase 21 — Agents 7–10
 - [ ] Agent 7: Debugger (z-ai/glm-5.1 → fixed HTML or PASS)

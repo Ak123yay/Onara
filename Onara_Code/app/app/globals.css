@@ -4285,6 +4285,9 @@ textarea.confirm-manual-control {
 }
 
 .dashboard-empty-redesign {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
   max-width: none;
   margin-top: 28px;
   border: 1px solid var(--rule-2);
@@ -4293,7 +4296,7 @@ textarea.confirm-manual-control {
     radial-gradient(circle at 15% 20%, oklch(0.62 0.13 50 / 10%), transparent 28%),
     var(--paper);
   padding: 44px;
-  text-align: left;
+  text-align: center;
 }
 
 .dashboard-empty-redesign .empty-sites-icon {
@@ -4309,19 +4312,23 @@ textarea.confirm-manual-control {
 }
 
 .dashboard-empty-redesign h2 {
+  width: min(100%, 760px);
   max-width: 700px;
-  margin: 8px 0 0;
+  margin: 8px auto 0;
   font-size: clamp(36px, 5vw, 58px);
   letter-spacing: -0.04em;
   line-height: 0.98;
+  text-align: center;
 }
 
 .dashboard-empty-redesign p:not(.eyebrow) {
+  width: min(100%, 680px);
   max-width: 680px;
-  margin: 18px 0 24px;
+  margin: 18px auto 24px;
   color: var(--ink-3);
   font-size: 15px;
   line-height: 1.7;
+  text-align: center;
 }
 
 .sites-list {
