@@ -25,7 +25,7 @@ GitHub App uses hourly-expiring installation tokens. More secure than long-lived
 14 days full Pro access, no credit card. Core value (live URL) disappears on downgrade → loss aversion. Converts at 4–12% vs. 2–5% for standard freemium.
 
 **Agent 6 model gated by plan**
-Free uses NIM `kimi-k2.6`; Starter can use GitHub Copilot SDK models with NIM fallback; Pro can use customer-provided Claude/OpenAI keys with NIM fallback. Higher-quality code generation is a meaningful paid-plan differentiator.
+Free uses NIM `z-ai/glm-5.1` with `meta/llama-4-maverick-17b-128e-instruct` as cloud fallback; Starter can use GitHub Copilot SDK models (`gemini-3.1-pro-preview`, `gpt-5.4-mini`) with NIM fallback; Pro can use customer-provided Claude/OpenAI keys with NIM fallback once those provider clients exist. Higher-quality code generation is a meaningful paid-plan differentiator.
 
 **GitHub PAT scopes: Copilot read-only**
 The Copilot PAT is for Copilot SDK access only. It must not be used for repository writes; deployment writes use the GitHub App.

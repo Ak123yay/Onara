@@ -58,23 +58,23 @@ Pre-launch. Architecture fully defined. Development not yet begun. This repo + w
 
 |Agent|Name|Model|Job|
 |---|---|---|---|
-|1|Analyst|deepseek-ai/deepseek-v4-flash (NIM)|Parse GBP data, extract business facts|
+|1|Analyst|z-ai/glm-5.1 (NIM)|Parse GBP data, extract business facts|
 |2|Content Writer|qwen3.5:9b (local)|Write all copy for the site|
 |3|Style Agent|qwen3.5:9b (local)|Choose colors, fonts, layout|
-|4|Planner|deepseek-ai/deepseek-v4-pro (NIM)|Break site into atomic components|
-|5|Prompt Engineer|moonshotai/kimi-k2.6 (NIM)|Write code-gen prompts per component|
-|6|Code Generator|kimi-k2.6 / plan-gated model picker|Generate HTML/CSS/JS per component|
-|7|Debugger|moonshotai/kimi-k2.6 (NIM)|Fix errors in generated code|
+|4|Planner|z-ai/glm-5.1 (NIM)|Break site into atomic components|
+|5|Prompt Engineer|z-ai/glm-5.1 (NIM)|Write code-gen prompts per component|
+|6|Code Generator|z-ai/glm-5.1 / plan-gated model picker|Generate HTML/CSS/JS per component|
+|7|Debugger|z-ai/glm-5.1 (NIM)|Fix errors in generated code|
 |8|SEO Agent|qwen3.5:9b (local)|Write meta tags, structured data|
-|9|QA|deepseek-ai/deepseek-v4-pro (NIM)|Validate output quality|
+|9|QA|z-ai/glm-5.1 (NIM)|Validate output quality|
 |10|Mobile|qwen3.5:9b (local)|Ensure responsive layout|
 
-Agents 2 and 3 run in **parallel** — this is non-negotiable for hitting 60s. Supervisor + all cloud fallbacks: gemma4:e4b (local)
+Agents 2 and 3 run in **parallel** — this is non-negotiable for hitting 60s. Cloud fallback: meta/llama-4-maverick-17b-128e-instruct. Supervisor + final local fallback: gemma4:e4b (local)
 
 ### Agent 6 Model Picker (Plan-Gated)
 
-- Free: NIM kimi-k2.6 (default, no user key needed)
-- Starter: + GitHub Copilot SDK (gpt-5.2-codex, gpt-4.1, gpt-4o)
+- Free: NIM z-ai/glm-5.1 with meta/llama-4-maverick-17b-128e-instruct fallback (default, no user key needed)
+- Starter: + GitHub Copilot SDK (gemini-3.1-pro, gpt-5.4-mini)
 - Pro: + Claude API (sonnet/opus) + OpenAI API (gpt-5.4)
 
 ---

@@ -118,12 +118,13 @@ If Ollama remains on a separate PC while FastAPI runs on a mini PC, do not use `
 | Agent 3 — Style Agent | `qwen3.5:9b` | Local Ollama |
 | Agent 4 — Planner | `z-ai/glm-5.1` | NVIDIA NIM |
 | Agent 5 — Prompt Engineer | `z-ai/glm-5.1` | NVIDIA NIM |
-| Agent 6 — Code Generator | NIM (Free/Trial), Copilot SDK (Starter), Claude/OpenAI user key (Pro) | Plan-gated |
+| Agent 6 — Code Generator | Onara default (Free), Pro-equivalent (Trial), Copilot options (Starter), Claude/OpenAI options (Pro) | Plan-gated; unavailable provider routes fall back safely |
 | Agent 7 — Debugger | `z-ai/glm-5.1` | NVIDIA NIM |
 | Agent 8 — SEO Agent | `qwen3.5:9b` | Local Ollama |
 | Agent 9 — QA Agent | `z-ai/glm-5.1` | NVIDIA NIM |
 | Agent 10 — Mobile Agent | `qwen3.5:9b` | Local Ollama |
 | Supervisor | `gemma4:e4b` | Local Ollama |
+| Cloud fallback (NIM agents) | `meta/llama-4-maverick-17b-128e-instruct` | NVIDIA NIM |
 | Local fallback (NIM agents) | `gemma4:e4b` | Local Ollama |
 
 ---

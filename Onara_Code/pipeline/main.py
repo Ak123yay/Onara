@@ -1,5 +1,6 @@
 from fastapi import Depends, FastAPI, Header, HTTPException, Response, status
 
+from onara_pipeline.ai_client import get_agent_6_model_selection
 from onara_pipeline.config import Settings, get_settings
 from onara_pipeline.health import build_health_response
 from onara_pipeline.job_queue import JobQueue
@@ -48,8 +49,18 @@ async def health(settings: Settings = Depends(get_settings)) -> HealthResponse:
 async def generate(body: GenerateRequest) -> JobEnqueueResponse:
     enqueue_result = await queue.enqueue(body)
     job = enqueue_result.job
+    settings = get_settings()
+    agent_6_selection = get_agent_6_model_selection(
+        requested_option_id=job.agent_6_model,
+        is_trial=job.is_trial,
+        ollama_fallback_model=settings.ollama_fallback_model,
+        user_plan=job.user_plan,
+    )
 
     return JobEnqueueResponse(
+        agent_6_model=agent_6_selection.selected_option_id,
+        agent_6_model_reason=agent_6_selection.selection_reason,
+        agent_6_model_requested=agent_6_selection.requested_option_id,
         job_id=job.job_id,
         queued=job.status == "queued",
         deduped=enqueue_result.deduped,

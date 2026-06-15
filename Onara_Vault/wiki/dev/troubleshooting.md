@@ -38,10 +38,10 @@ ollama list
 - Check current usage at build.nvidia.com → API Keys → Usage
 - Agent 6 hits NIM most frequently — reduce concurrent jobs if hitting limits
 
-**`deepseek-v4-flash` / `deepseek-v4-pro` not found**
+**`z-ai/glm-5.1` / `meta/llama-4-maverick-17b-128e-instruct` not found**
 - Model IDs change as NVIDIA updates their catalog
 - Check current model IDs at: `https://integrate.api.nvidia.com/v1/models`
-- Update `NVIDIA_NIM_MODEL_*` env vars if model IDs changed
+- Update the model IDs in `Onara_Code/pipeline/onara_pipeline/ai_client/model_picker.py` if NIM model IDs changed
 
 ---
 

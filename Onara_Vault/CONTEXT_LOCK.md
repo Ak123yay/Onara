@@ -30,7 +30,7 @@ _These rules are permanent. Claude must obey them in every session without excep
 
 - **60-second generation is the non-negotiable benchmark.** Every pipeline change is evaluated against it.
 - **Agents 2 and 3 always run in parallel.** Never serialize them.
-- **Agent 6 model picker is plan-gated.** Free tier gets NIM kimi-k2.6 only. Do not expose paid models to free users.
+- **Agent 6 model picker is plan-gated.** Free tier gets NIM `z-ai/glm-5.1` with `meta/llama-4-maverick-17b-128e-instruct` fallback only. Do not expose paid models to free users.
 
 ## Billing Rules
 

@@ -99,7 +99,7 @@ Revisions:    4 / 10 used this month | Resets Jun 15
 
 **Manage billing button**: Opens Stripe Customer Portal via `POST /api/billing/portal`. Available after first paid subscription. Allows plan changes, cancellation, invoice downloads.
 
-**Agent 6 model tier**: Shows which Agent 6 model route the user's plan uses. Starter users can use GitHub Copilot SDK routing; Pro users can paste their own OpenAI or Anthropic API key to use the highest-capability models.
+**Agent 6 model tier**: Shows which Agent 6 model route the user's plan uses. Active trial users are treated as Pro for model gating. Starter users can use GitHub Copilot SDK options when `COPILOT_GITHUB_TOKEN` is configured. Pro users can see OpenAI/Anthropic options, but those provider routes stay disabled until their backend clients exist.
 
 ---
 

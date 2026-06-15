@@ -61,6 +61,12 @@ type PlacesSearchResponse = {
 };
 
 type GenerateApiResponse = {
+  agent6Model?: string;
+  agent6ModelReason?: string | null;
+  agent6ModelRequested?: string | null;
+  agent_6_model?: string;
+  agent_6_model_reason?: string | null;
+  agent_6_model_requested?: string | null;
   error?: string;
   jobId?: string;
   job_id?: string;
@@ -71,15 +77,24 @@ type GenerateApiResponse = {
 
 type BusinessSearchFlowProps = {
   initialQuery?: string | null;
+  isTrial: boolean;
   userEmail: string;
   userName?: string | null;
+  userPlan: UserPlan;
 };
 
+type UserPlan = "free" | "starter" | "pro";
 type PaletteChoice = "emergency" | "trust" | "clean" | "custom";
 type LayoutChoice = "phone-first" | "trust-led" | "service-grid" | "split-hero";
 type ToneChoice = "direct" | "professional" | "friendly" | "premium";
 type CtaChoice = "call-now" | "free-estimate" | "emergency" | "book-online";
 type SectionChoice = "reviews" | "license" | "service-area" | "gallery" | "faq" | "financing";
+type Agent6ModelChoice =
+  | "onara-default"
+  | "copilot-gemini-3.1-pro"
+  | "copilot-gpt-5.4-mini"
+  | "openai-gpt-5.4"
+  | "claude-sonnet-4";
 
 type CustomPalette = {
   accent: string;
@@ -99,9 +114,21 @@ type StylePreferences = {
 };
 
 type GenerationPackage = {
+  agent_6_model: Agent6ModelChoice;
   business: PlaceSearchResult;
   created_at: string;
   style: StylePreferences;
+};
+
+type Agent6ModelOption = {
+  description: string;
+  executable: boolean;
+  id: Agent6ModelChoice;
+  label: string;
+  minimumPlan: UserPlan;
+  model: string;
+  provider: string;
+  unavailableReason?: string;
 };
 
 const defaultStylePreferences: StylePreferences = {
@@ -259,7 +286,63 @@ const sectionOptions: Array<{
   { description: "Mention financing or payment options if relevant.", id: "financing", label: "Financing" },
 ];
 
-export function BusinessSearchFlow({ initialQuery, userEmail, userName }: BusinessSearchFlowProps) {
+const planRank: Record<UserPlan, number> = {
+  free: 0,
+  starter: 1,
+  pro: 2,
+};
+
+const agent6ModelOptions: Agent6ModelOption[] = [
+  {
+    description: "Current production-safe route: GLM 5.1, then Llama 4 Maverick, then local Gemma 4.",
+    executable: true,
+    id: "onara-default",
+    label: "Onara default",
+    minimumPlan: "free",
+    model: "GLM 5.1 -> Maverick -> Gemma 4",
+    provider: "NVIDIA NIM + local fallback",
+  },
+  {
+    description: "Highest-quality Copilot route through the backend SDK, with Onara fallback if Copilot is unavailable.",
+    executable: true,
+    id: "copilot-gemini-3.1-pro",
+    label: "Copilot Gemini 3.1 Pro",
+    minimumPlan: "starter",
+    model: "gemini-3.1-pro-preview",
+    provider: "GitHub Copilot SDK",
+  },
+  {
+    description: "Faster Copilot route through the backend SDK, with Onara fallback if Copilot is unavailable.",
+    executable: true,
+    id: "copilot-gpt-5.4-mini",
+    label: "Copilot GPT 5.4 Mini",
+    minimumPlan: "starter",
+    model: "gpt-5.4-mini",
+    provider: "GitHub Copilot SDK",
+  },
+  {
+    description: "Reserved for Pro users after user key storage and provider clients exist.",
+    executable: false,
+    id: "openai-gpt-5.4",
+    label: "OpenAI GPT-5.4",
+    minimumPlan: "pro",
+    model: "gpt-5.4",
+    provider: "User OpenAI key",
+    unavailableReason: "OpenAI user-key storage and client are not wired yet.",
+  },
+  {
+    description: "Reserved for Pro users after user key storage and provider clients exist.",
+    executable: false,
+    id: "claude-sonnet-4",
+    label: "Claude Sonnet 4",
+    minimumPlan: "pro",
+    model: "claude-sonnet-4",
+    provider: "User Anthropic key",
+    unavailableReason: "Anthropic user-key storage and client are not wired yet.",
+  },
+];
+
+export function BusinessSearchFlow({ initialQuery, isTrial, userEmail, userName, userPlan }: BusinessSearchFlowProps) {
   const normalizedInitialQuery = initialQuery?.trim().slice(0, 200) ?? "";
   const initialSearchStarted = useRef(false);
   const [query, setQuery] = useState(normalizedInitialQuery);
@@ -271,6 +354,7 @@ export function BusinessSearchFlow({ initialQuery, userEmail, userName }: Busine
   const [generationPackage, setGenerationPackage] = useState<GenerationPackage | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isSearching, setIsSearching] = useState(false);
+  const effectivePlan: UserPlan = isTrial ? "pro" : userPlan;
 
   useEffect(() => {
     if (!normalizedInitialQuery || initialSearchStarted.current) {
@@ -476,6 +560,7 @@ export function BusinessSearchFlow({ initialQuery, userEmail, userName }: Busine
                 }}
                 onContinue={() => {
                   setGenerationPackage({
+                    agent_6_model: defaultAgent6ModelForPlan(effectivePlan),
                     business: confirmedBusiness,
                     created_at: new Date().toISOString(),
                     style: stylePreferences,
@@ -484,7 +569,9 @@ export function BusinessSearchFlow({ initialQuery, userEmail, userName }: Busine
               />
             ) : (
               <GenerateStep
+                effectivePlan={effectivePlan}
                 generationPackage={generationPackage}
+                isTrial={isTrial}
                 onBack={() => setGenerationPackage(null)}
               />
             )}
@@ -977,16 +1064,23 @@ function StylePreview({
 }
 
 function GenerateStep({
+  effectivePlan,
   generationPackage,
+  isTrial,
   onBack,
 }: {
+  effectivePlan: UserPlan;
   generationPackage: GenerationPackage;
+  isTrial: boolean;
   onBack: () => void;
 }) {
   const router = useRouter();
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isStarting, setIsStarting] = useState(false);
   const [prepared, setPrepared] = useState(false);
+  const [agent6Model, setAgent6Model] = useState<Agent6ModelChoice>(
+    generationPackage.agent_6_model,
+  );
   const palette = paletteOptions.find((option) => option.id === generationPackage.style.palette);
   const layout = layoutOptions.find((option) => option.id === generationPackage.style.layout);
   const tone = toneOptions.find((option) => option.id === generationPackage.style.tone);
@@ -1006,15 +1100,20 @@ function GenerateStep({
     setIsStarting(true);
 
     try {
+      const selectedGenerationPackage = {
+        ...generationPackage,
+        agent_6_model: agent6Model,
+      };
       const response = await fetch("/api/pipeline/generate", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          business_data: generationPackage.business,
-          generation_package: generationPackage,
-          style_preferences: generationPackage.style,
+          agent_6_model: agent6Model,
+          business_data: selectedGenerationPackage.business,
+          generation_package: selectedGenerationPackage,
+          style_preferences: selectedGenerationPackage.style,
         }),
       });
       const payload = (await response.json()) as GenerateApiResponse;
@@ -1030,8 +1129,15 @@ function GenerateStep({
         return;
       }
 
-      window.sessionStorage.setItem(`onara:generation:${jobId}`, JSON.stringify(generationPackage));
-      window.sessionStorage.setItem("onara:last-generation-package", JSON.stringify(generationPackage));
+      const savedPackage = {
+        ...selectedGenerationPackage,
+        agent_6_model: (payload.agent6Model ?? payload.agent_6_model ?? agent6Model) as Agent6ModelChoice,
+        agent_6_model_reason: payload.agent6ModelReason ?? payload.agent_6_model_reason ?? null,
+        agent_6_model_requested: payload.agent6ModelRequested ?? payload.agent_6_model_requested ?? agent6Model,
+      };
+
+      window.sessionStorage.setItem(`onara:generation:${jobId}`, JSON.stringify(savedPackage));
+      window.sessionStorage.setItem("onara:last-generation-package", JSON.stringify(savedPackage));
       setPrepared(true);
       router.push(`/dashboard/build/progress?jobId=${encodeURIComponent(jobId)}`);
     } catch {
@@ -1086,6 +1192,13 @@ function GenerateStep({
           />
         </div>
 
+        <Agent6ModelSelector
+          effectivePlan={effectivePlan}
+          isTrial={isTrial}
+          onChange={setAgent6Model}
+          selected={agent6Model}
+        />
+
         <div className={`generate-status ${prepared ? "generate-status-ready" : ""}`}>
           <Rocket size={16} aria-hidden="true" />
           <span>
@@ -1116,6 +1229,75 @@ function GenerateStep({
         </button>
       </div>
     </div>
+  );
+}
+
+function Agent6ModelSelector({
+  effectivePlan,
+  isTrial,
+  onChange,
+  selected,
+}: {
+  effectivePlan: UserPlan;
+  isTrial: boolean;
+  onChange: (model: Agent6ModelChoice) => void;
+  selected: Agent6ModelChoice;
+}) {
+  const planLabel = isTrial ? "Pro trial" : `${effectivePlan.charAt(0).toUpperCase()}${effectivePlan.slice(1)} plan`;
+
+  return (
+    <section className="agent6-selector" aria-labelledby="agent6-selector-title">
+      <div className="agent6-selector-head">
+        <div>
+          <p className="mono">Agent 6 model</p>
+          <h3 id="agent6-selector-title" className="serif">
+            Choose the code generator route.
+          </h3>
+        </div>
+        <span>{planLabel}</span>
+      </div>
+
+      <div className="agent6-option-list">
+        {agent6ModelOptions.map((option) => {
+          const allowed = planAllows(effectivePlan, option.minimumPlan);
+          const enabled = allowed && option.executable;
+          const active = selected === option.id;
+          const reason = agent6OptionReason(option, allowed);
+
+          return (
+            <button
+              aria-pressed={active}
+              className={[
+                "agent6-option",
+                active ? "agent6-option-active" : "",
+                enabled ? "" : "agent6-option-disabled",
+              ].join(" ")}
+              disabled={!enabled}
+              key={option.id}
+              onClick={() => onChange(option.id)}
+              type="button"
+            >
+              <span className="agent6-option-main">
+                <span>
+                  <strong>{option.label}</strong>
+                  <small>{option.description}</small>
+                </span>
+                <span className="agent6-option-model">{option.model}</span>
+              </span>
+              <span className="agent6-option-meta">
+                <span>{option.provider}</span>
+                <span>{enabled ? "Ready" : reason}</span>
+              </span>
+            </button>
+          );
+        })}
+      </div>
+
+      <p className="agent6-selector-note">
+        Server-side validation still decides the final route. If a locked or unavailable model is sent,
+        FastAPI falls back to Onara default instead of failing the build.
+      </p>
+    </section>
   );
 }
 
@@ -1504,6 +1686,22 @@ function activePaletteColors(preferences: StylePreferences): CustomPalette {
 
 function textColorForPalette(palette: PaletteChoice) {
   return palette === "trust" ? "#10263a" : "#ffffff";
+}
+
+function defaultAgent6ModelForPlan(_plan: UserPlan): Agent6ModelChoice {
+  return "onara-default";
+}
+
+function planAllows(userPlan: UserPlan, minimumPlan: UserPlan) {
+  return planRank[userPlan] >= planRank[minimumPlan];
+}
+
+function agent6OptionReason(option: Agent6ModelOption, allowed: boolean) {
+  if (!allowed) {
+    return `Requires ${option.minimumPlan}`;
+  }
+
+  return option.unavailableReason ?? "Not available yet";
 }
 
 function normalizeHexInput(rawValue: string, fallback: string) {

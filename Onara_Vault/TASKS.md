@@ -145,14 +145,14 @@ Execution rule:
 
 ### Phase 18 — Agents 1–3
 
-- [ ] Agent 1: Analyst (deepseek-v4-flash)
+- [ ] Agent 1: Analyst (z-ai/glm-5.1)
 - [ ] Agent 2: Content Writer (qwen3.5:9b) — parallel
 - [ ] Agent 3: Style Agent (qwen3.5:9b) — parallel with Agent 2
 
 ### Phase 19 — Agents 4–5
 
-- [ ] Agent 4: Planner (deepseek-v4-pro)
-- [ ] Agent 5: Prompt Engineer (kimi-k2.6)
+- [ ] Agent 4: Planner (z-ai/glm-5.1)
+- [ ] Agent 5: Prompt Engineer (z-ai/glm-5.1)
 
 ### Phase 20 — Agent 6
 
@@ -162,9 +162,9 @@ Execution rule:
 
 ### Phase 21 — Agents 7–10
 
-- [ ] Agent 7: Debugger (kimi-k2.6)
+- [ ] Agent 7: Debugger (z-ai/glm-5.1)
 - [ ] Agent 8: SEO Agent (qwen3.5:9b)
-- [ ] Agent 9: QA (deepseek-v4-pro)
+- [ ] Agent 9: QA (z-ai/glm-5.1)
 - [ ] Agent 10: Mobile / responsive check (qwen3.5:9b)
 
 ### Phase 22 — Deployment Pipeline

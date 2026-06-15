@@ -14,6 +14,7 @@ _Environment variable reference. `[NEXT]` = Next.js `.env.local` | `[FAST]` = Fa
 | `GITHUB_REPO_OWNER` | FAST | Username owning `onara-sites` repo |
 | `GITHUB_REPO_NAME` | FAST | Always `onara-sites` |
 | `COPILOT_GITHUB_TOKEN` | FAST | Fine-grained PAT for Copilot SDK — Copilot read-only scope only |
+| `COPILOT_BASE_DIRECTORY` | FAST | Local Copilot SDK runtime/session state path; default `./.copilot_runtime` |
 
 ---
 

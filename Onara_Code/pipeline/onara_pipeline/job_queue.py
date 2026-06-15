@@ -11,6 +11,8 @@ JobStatus = Literal["queued", "running", "completed", "failed"]
 
 @dataclass(slots=True)
 class PipelineJob:
+    agent_6_model: str | None
+    is_trial: bool
     job_id: str
     project_id: str
     user_id: str
@@ -50,6 +52,8 @@ class JobQueue:
 
             job_id = request.job_id or str(uuid4())
             job = PipelineJob(
+                agent_6_model=request.agent_6_model,
+                is_trial=request.is_trial,
                 job_id=job_id,
                 project_id=project_id,
                 user_id=request.user_id,

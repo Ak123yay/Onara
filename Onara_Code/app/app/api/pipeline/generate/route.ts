@@ -4,8 +4,10 @@ import { createClient } from "@/lib/supabase/server";
 export const runtime = "nodejs";
 
 type GenerateRequestBody = {
+  agent_6_model?: unknown;
   business_data?: unknown;
   generation_package?: {
+    agent_6_model?: unknown;
     business?: unknown;
     style?: unknown;
   };
@@ -14,6 +16,9 @@ type GenerateRequestBody = {
 };
 
 type PipelineStartResponse = {
+  agent_6_model?: string;
+  agent_6_model_reason?: string | null;
+  agent_6_model_requested?: string | null;
   deduped?: boolean;
   job_id?: string;
   queue_position?: number | null;
@@ -67,6 +72,7 @@ export async function POST(request: Request) {
     .maybeSingle<UserProfile>();
 
   const userPlan = planForPipeline(profile);
+  const agent6Model = agent6ModelFromBody(body);
   const projectId = typeof body.project_id === "string" && body.project_id.trim()
     ? body.project_id.trim()
     : undefined;
@@ -83,7 +89,9 @@ export async function POST(request: Request) {
         "X-Pipeline-Secret": pipelineSecret,
       },
       body: JSON.stringify({
+        agent_6_model: agent6Model,
         business_data: businessData,
+        is_trial: Boolean(profile?.is_trial),
         place_id: placeId,
         project_id: projectId,
         style_preferences: isPlainObject(stylePreferences) ? stylePreferences : {},
@@ -118,6 +126,12 @@ export async function POST(request: Request) {
 
   return NextResponse.json(
     {
+      agent6Model: payload.agent_6_model,
+      agent6ModelReason: payload.agent_6_model_reason ?? null,
+      agent6ModelRequested: payload.agent_6_model_requested ?? null,
+      agent_6_model: payload.agent_6_model,
+      agent_6_model_reason: payload.agent_6_model_reason ?? null,
+      agent_6_model_requested: payload.agent_6_model_requested ?? null,
       deduped: Boolean(payload.deduped),
       jobId: payload.job_id,
       job_id: payload.job_id,
@@ -128,6 +142,21 @@ export async function POST(request: Request) {
     },
     { status: 202 },
   );
+}
+
+function agent6ModelFromBody(body: GenerateRequestBody) {
+  if (typeof body.agent_6_model === "string" && body.agent_6_model.trim()) {
+    return body.agent_6_model.trim();
+  }
+
+  if (
+    typeof body.generation_package?.agent_6_model === "string" &&
+    body.generation_package.agent_6_model.trim()
+  ) {
+    return body.generation_package.agent_6_model.trim();
+  }
+
+  return "onara-default";
 }
 
 function businessDataFromBody(body: GenerateRequestBody) {

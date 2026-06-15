@@ -113,14 +113,14 @@ Current actionable phase.
 - [ ] Wire RAG into Agent 7 (Debugger) and Agent 9 (QA)
 
 ## Phase 18 — Agents 1–3
-- [ ] Agent 1: Business Analyst (deepseek-v4-flash → JSON spec)
+- [ ] Agent 1: Business Analyst (z-ai/glm-5.1 → JSON spec)
 - [ ] Agent 2: Content Writer (qwen3.5:9b → copy JSON) — parallel
 - [ ] Agent 3: Style Agent (qwen3.5:9b → design tokens) — parallel with Agent 2
 - [ ] Supervisor validation between each step
 
 ## Phase 19 — Agents 4–5
-- [ ] Agent 4: Planner (deepseek-v4-pro → component blueprint JSON)
-- [ ] Agent 5: Prompt Engineer (kimi-k2.6 → optimized code-gen prompt string)
+- [ ] Agent 4: Planner (z-ai/glm-5.1 → component blueprint JSON)
+- [ ] Agent 5: Prompt Engineer (z-ai/glm-5.1 → optimized code-gen prompt string)
 
 ## Phase 20 — Agent 6
 - [ ] Agent 6: Code Generator with plan-gated model picker
@@ -129,9 +129,9 @@ Current actionable phase.
 - [ ] Stream partial output to preview iframe
 
 ## Phase 21 — Agents 7–10
-- [ ] Agent 7: Debugger (kimi-k2.6 → fixed HTML or PASS)
+- [ ] Agent 7: Debugger (z-ai/glm-5.1 → fixed HTML or PASS)
 - [ ] Agent 8: SEO Agent (qwen3.5:9b → SEO-injected HTML)
-- [ ] Agent 9: QA (deepseek-v4-pro → PASS or blocking issues JSON)
+- [ ] Agent 9: QA (z-ai/glm-5.1 → PASS or blocking issues JSON)
 - [ ] Agent 10: Mobile (qwen3.5:9b → mobile-optimized HTML)
 - [ ] Full pipeline integration test end-to-end
 

@@ -7,6 +7,7 @@ from onara_pipeline.ai_client.errors import (
     AIRateLimitError,
     AIServiceUnavailableError,
 )
+from onara_pipeline.ai_client.copilot import CopilotSDKClient
 from onara_pipeline.ai_client.model_picker import ModelProvider, ModelRoute
 from onara_pipeline.ai_client.nim import NIMClient
 from onara_pipeline.ai_client.ollama import OllamaClient
@@ -21,11 +22,13 @@ class AIClient:
     def __init__(
         self,
         *,
+        copilot: CopilotSDKClient,
         max_retries: int,
         nim: NIMClient,
         ollama: OllamaClient,
         retry_base_delay: float,
     ) -> None:
+        self.copilot = copilot
         self.max_retries = max_retries
         self.nim = nim
         self.ollama = ollama
@@ -79,7 +82,9 @@ class AIClient:
             raise last_error
         raise AIProviderError(f"{provider} failed without an explicit provider error")
 
-    def _provider(self, provider: ModelProvider) -> NIMClient | OllamaClient:
+    def _provider(self, provider: ModelProvider) -> NIMClient | OllamaClient | CopilotSDKClient:
+        if provider == "copilot":
+            return self.copilot
         if provider == "nim":
             return self.nim
         if provider == "ollama":
@@ -89,6 +94,11 @@ class AIClient:
 
 def build_ai_client(settings: Settings) -> AIClient:
     return AIClient(
+        copilot=CopilotSDKClient(
+            base_directory=settings.copilot_base_directory,
+            github_token=settings.copilot_github_token,
+            timeout=settings.ai_request_timeout,
+        ),
         max_retries=settings.ai_max_retries,
         nim=NIMClient(
             api_key=settings.nvidia_nim_api_key,

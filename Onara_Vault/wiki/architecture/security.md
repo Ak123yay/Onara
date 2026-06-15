@@ -49,7 +49,7 @@ Every table in the Supabase database has RLS enabled. Users can only read/write 
 - Gates:
   - Site limit: Free 1 preview site, Starter 1 live site, Pro 3 live sites
   - Code download: `FEATURE_CODE_DOWNLOAD` flag + Pro check
-  - Agent 6 model: Free/Trial → NIM `kimi-k2.6`; Starter → GitHub Copilot SDK; Pro → user-provided Claude/OpenAI key
+  - Agent 6 model: Free -> Onara default NIM route; Trial -> effective Pro access; Starter -> Copilot options when implemented; Pro -> user-provided Claude/OpenAI options when implemented; unavailable routes fall back to Onara default
 
 ---
 

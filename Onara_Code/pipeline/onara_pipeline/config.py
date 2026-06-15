@@ -14,6 +14,8 @@ class Settings(BaseSettings):
     ai_retry_base_delay: float = Field(default=0.5, ge=0, le=10, alias="AI_RETRY_BASE_DELAY")
     chroma_collection_name: str = Field(default="onara_patterns", min_length=1, alias="CHROMA_COLLECTION_NAME")
     chroma_persist_path: str = Field(default="./chroma_db", min_length=1, alias="CHROMA_PERSIST_PATH")
+    copilot_base_directory: str = Field(default="./.copilot_runtime", min_length=1, alias="COPILOT_BASE_DIRECTORY")
+    copilot_github_token: str | None = Field(default=None, alias="COPILOT_GITHUB_TOKEN")
     nvidia_nim_api_key: str | None = Field(default=None, alias="NVIDIA_NIM_API_KEY")
     nvidia_nim_base_url: str = Field(
         default="https://integrate.api.nvidia.com/v1",

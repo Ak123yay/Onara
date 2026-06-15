@@ -19,7 +19,7 @@ Job received by FastAPI
 [QUEUE MANAGER] — dedup by project_id, assign position
     │
     ▼
-[AGENT 1 — Analyst]          deepseek-v4-flash (NIM)
+[AGENT 1 — Analyst]          z-ai/glm-5.1 (NIM)
     │ → blackboard.analyst_output
     ▼
 ┌──── PARALLEL ────┐
@@ -30,22 +30,22 @@ qwen3.5:9b        qwen3.5:9b
     │                │
     └───────┬─────────┘
             ▼
-[AGENT 4 — Planner]          deepseek-v4-pro (NIM)
+[AGENT 4 — Planner]          z-ai/glm-5.1 (NIM)
     │ → blackboard.planner_output
     ▼
-[AGENT 5 — Prompt Engineer]  kimi-k2.6 (NIM)
+[AGENT 5 — Prompt Engineer]  z-ai/glm-5.1 (NIM)
     │ → blackboard.prompt_output
     ▼
-[AGENT 6 — Code Generator]   kimi-k2.6 / Claude (Pro)
+[AGENT 6 — Code Generator]   z-ai/glm-5.1 / Claude (Pro)
     │ → blackboard.raw_code
     ▼
-[AGENT 7 — Debugger]         kimi-k2.6 (NIM)
+[AGENT 7 — Debugger]         z-ai/glm-5.1 (NIM)
     │ → blackboard.debugged_code
     ▼
 [AGENT 8 — SEO Agent]        qwen3.5:9b (Ollama)
     │ → blackboard.seo_code
     ▼
-[AGENT 9 — QA Agent]         deepseek-v4-pro (NIM)
+[AGENT 9 — QA Agent]         z-ai/glm-5.1 (NIM)
     │ FAIL → retry from Agent 6 (max 2)
     │ PASS → blackboard.qa_result
     ▼

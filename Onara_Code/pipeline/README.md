@@ -20,6 +20,8 @@ $secret = (Select-String -Path .env -Pattern '^PIPELINE_API_SECRET=').Line.Split
 $body = @{
   user_id = "dev-user"
   user_plan = "pro"
+  is_trial = $true
+  agent_6_model = "onara-default"
   business_data = @{ name = "Demo Contractor" }
   style_preferences = @{ palette = "onara" }
 } | ConvertTo-Json -Depth 5
@@ -71,6 +73,13 @@ Current active route:
 - Main cloud model: `z-ai/glm-5.1`
 - Cloud fallback: `meta/llama-4-maverick-17b-128e-instruct`
 - Final fallback: local `gemma4:e4b`
+
+Agent 6 selector:
+
+- `onara-default`: executable today; uses `z-ai/glm-5.1 -> meta/llama-4-maverick-17b-128e-instruct -> gemma4:e4b`.
+- `copilot-gemini-3.1-pro`, `copilot-gpt-5.4-mini`: Starter+ Copilot SDK options. Uses Copilot model IDs `gemini-3.1-pro-preview` and `gpt-5.4-mini`. Requires `COPILOT_GITHUB_TOKEN` and `github-copilot-sdk`; if Copilot is missing, unauthenticated, rate-limited, or unavailable, Agent 6 falls back to `z-ai/glm-5.1 -> meta/llama-4-maverick-17b-128e-instruct -> gemma4:e4b`.
+- `openai-gpt-5.4`, `claude-sonnet-4`: Pro options, listed by the selector but disabled until user API-key storage and provider clients exist.
+- Active trial users are treated as effective `pro` for Agent 6 gating.
 
 Value score weighting: 55% task quality, 30% reliability, 15% speed.
 

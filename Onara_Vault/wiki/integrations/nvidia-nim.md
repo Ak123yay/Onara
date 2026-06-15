@@ -10,7 +10,7 @@ Agents 1, 4, 5, 6, 7, and 9 use NVIDIA NIM or NIM-compatible routing for higher-
 - Agent 1 — Business Analyst
 - Agent 4 — Planner
 - Agent 5 — Prompt Engineer
-- Agent 6 — Code Generator (Free/Trial routing, plus fallback for paid tiers)
+- Agent 6 — Code Generator (Free default routing, plus fallback for paid tiers; Trial is effective Pro for model gating)
 - Agent 7 — Debugger
 - Agent 9 — QA Agent
 

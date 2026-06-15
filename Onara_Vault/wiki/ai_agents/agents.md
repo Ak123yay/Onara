@@ -15,7 +15,8 @@ _All 10 agents: model, job, input, output, retry logic. Source: raw/03_agent_pro
 | | |
 |---|---|
 | **Model** | `z-ai/glm-5.1` (NVIDIA NIM) |
-| **Fallback** | `gemma4:e4b` (Ollama local) |
+| **Fallback 1** | `meta/llama-4-maverick-17b-128e-instruct` (NVIDIA NIM) |
+| **Fallback 2** | `gemma4:e4b` (Ollama local) |
 | **Input** | Google Business Profile data |
 | **Output** | Structured JSON site requirements |
 
@@ -64,7 +65,8 @@ Output sections: `colors`, `typography`, `spacing`, `style_notes`
 | | |
 |---|---|
 | **Model** | `z-ai/glm-5.1` (NVIDIA NIM) |
-| **Fallback** | `gemma4:e4b` (Ollama local) |
+| **Fallback 1** | `meta/llama-4-maverick-17b-128e-instruct` (NVIDIA NIM) |
+| **Fallback 2** | `gemma4:e4b` (Ollama local) |
 | **Input** | Agents 1, 2, and 3 outputs |
 | **Output** | HTML/CSS component blueprint (JSON) |
 
@@ -79,7 +81,8 @@ Output fields: `components[]`, `css_variables`, `component_order[]`, `special_no
 | | |
 |---|---|
 | **Model** | `z-ai/glm-5.1` (NVIDIA NIM) |
-| **Fallback** | `gemma4:e4b` (Ollama local) |
+| **Fallback 1** | `meta/llama-4-maverick-17b-128e-instruct` (NVIDIA NIM) |
+| **Fallback 2** | `gemma4:e4b` (Ollama local) |
 | **Input** | Agent 4 blueprint |
 | **Output** | Optimized code generation prompt (plain string) |
 
@@ -91,9 +94,10 @@ Converts the blueprint into the most effective single prompt for Agent 6. Output
 
 | | |
 |---|---|
-| **Model (Free/Trial)** | `z-ai/glm-5.1` (NVIDIA NIM) |
-| **Model (Starter)** | GitHub Copilot SDK selectable model, with NIM fallback |
-| **Model (Pro)** | Claude or OpenAI model (user-provided key), with NIM fallback |
+| **Model (Free)** | Onara default: `z-ai/glm-5.1` (NVIDIA NIM) |
+| **Model (Trial)** | Same access as Pro |
+| **Model (Starter)** | GitHub Copilot SDK options: `gemini-3.1-pro`, `gpt-5.4-mini` |
+| **Model (Pro)** | Claude/OpenAI options listed but disabled until user-key storage and provider clients are implemented |
 | **Fallback 1** | `meta/llama-4-maverick-17b-128e-instruct` (NVIDIA NIM) |
 | **Fallback 2** | `gemma4:e4b` (Ollama local) |
 | **Input** | Agent 5 prompt |
@@ -115,7 +119,8 @@ html = re.search(pattern, output, re.DOTALL).group(1).strip()
 | | |
 |---|---|
 | **Model** | `z-ai/glm-5.1` (NVIDIA NIM) |
-| **Fallback** | `gemma4:e4b` (Ollama local) |
+| **Fallback 1** | `meta/llama-4-maverick-17b-128e-instruct` (NVIDIA NIM) |
+| **Fallback 2** | `gemma4:e4b` (Ollama local) |
 | **Input** | HTML from Agent 6 + validation error list |
 | **Output** | Fixed HTML (wrapped in markers) or string `"PASS"` |
 
@@ -140,7 +145,8 @@ Injects: `<title>` replacement, meta description (150–160 chars), Open Graph t
 | | |
 |---|---|
 | **Model** | `z-ai/glm-5.1` (NVIDIA NIM) |
-| **Fallback** | `gemma4:e4b` (Ollama local) |
+| **Fallback 1** | `meta/llama-4-maverick-17b-128e-instruct` (NVIDIA NIM) |
+| **Fallback 2** | `gemma4:e4b` (Ollama local) |
 | **Input** | HTML after SEO injection |
 | **Output** | JSON verdict: `PASS` or `FAIL` + blocking issues |
 

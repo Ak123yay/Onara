@@ -46,14 +46,14 @@ See `wiki/ai_agents/workflows.md` for full sequence. Summary:
 
 | Step | Agent | Model | Output |
 |------|-------|-------|--------|
-| 1 | Business Analyst | NVIDIA NIM deepseek-v4-flash | Site requirements JSON |
+| 1 | Business Analyst | NVIDIA NIM z-ai/glm-5.1 | Site requirements JSON |
 | 2+3 | Content Writer + Style Agent (parallel) | Ollama qwen3.5:9b | Copy JSON + design tokens |
-| 4 | Planner | NVIDIA NIM deepseek-v4-pro | Component blueprint |
-| 5 | Prompt Engineer | NVIDIA NIM kimi-k2.6 | Code-generation prompt |
+| 4 | Planner | NVIDIA NIM z-ai/glm-5.1 | Component blueprint |
+| 5 | Prompt Engineer | NVIDIA NIM z-ai/glm-5.1 | Code-generation prompt |
 | 6 | Code Generator | Plan-gated model | Complete index.html |
-| 7 | Debugger | NVIDIA NIM kimi-k2.6 | Fixed HTML or PASS |
+| 7 | Debugger | NVIDIA NIM z-ai/glm-5.1 | Fixed HTML or PASS |
 | 8 | SEO Agent | Ollama qwen3.5:9b | SEO-injected HTML |
-| 9 | QA Agent | NVIDIA NIM deepseek-v4-pro | PASS/FAIL report |
+| 9 | QA Agent | NVIDIA NIM z-ai/glm-5.1 | PASS/FAIL report |
 | 10 | Mobile Agent | Ollama qwen3.5:9b | Final mobile-optimized HTML |
 
 - Supervisor runs between each agent step, validating output

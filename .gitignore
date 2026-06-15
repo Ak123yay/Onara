@@ -15,4 +15,5 @@ Onara_Vault/raw/onara-credentials.md
 Onara_Vault/raw/onara_credentials.txt
 Onara_Code/app/.env.local
 Onara_Code/pipeline/.env
+Onara_Code/pipeline/.copilot_runtime/
 *.pem

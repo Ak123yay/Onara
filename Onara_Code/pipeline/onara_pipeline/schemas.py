@@ -9,6 +9,8 @@ PlanType = Literal["free", "starter", "pro"]
 class GenerateRequest(BaseModel):
     model_config = ConfigDict(str_strip_whitespace=True)
 
+    agent_6_model: str | None = Field(default=None, max_length=80)
+    is_trial: bool = False
     job_id: str | None = None
     project_id: str | None = None
     place_id: str | None = None
@@ -19,6 +21,9 @@ class GenerateRequest(BaseModel):
 
 
 class JobEnqueueResponse(BaseModel):
+    agent_6_model: str
+    agent_6_model_reason: str | None = None
+    agent_6_model_requested: str | None = None
     job_id: str
     queued: bool
     deduped: bool
