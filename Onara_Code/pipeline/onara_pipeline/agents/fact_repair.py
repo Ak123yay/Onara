@@ -42,6 +42,9 @@ def onara_typography_issues(html: str) -> list[str]:
     lower = html.lower()
     issues: list[str] = []
 
+    if "onara-typography-lock" not in lower:
+        issues.append("Generated page is missing the Onara typography lock for light Fraunces display headings")
+
     required_font_names = ("fraunces", "inter", "jetbrains")
     if "fonts.googleapis.com/css2" not in lower or not all(name in lower for name in required_font_names):
         issues.append("Generated page does not import the Onara Google font bundle")
@@ -775,17 +778,49 @@ ONARA_TYPOGRAPHY_LOCK_CSS = """
       .serif-italic,
       .display,
       .hero h1,
+      .hero-copy h1,
+      .hero-title,
+      .headline,
+      [data-component="hero"] h1,
+      [data-component="hero"] .display,
       .section-head h2 {
-        font-family: var(--serif);
+        font-family: var(--serif) !important;
         font-optical-sizing: auto;
-        font-weight: 400;
-        letter-spacing: -0.045em;
-        line-height: 0.92;
+        font-synthesis: none;
+        font-variation-settings: "wght" 400, "opsz" 72;
+        font-weight: 400 !important;
+        letter-spacing: -0.04em !important;
+        line-height: 0.95 !important;
         text-wrap: balance;
+      }
+
+      h1 *,
+      h2 *,
+      h3 *,
+      .serif *,
+      .display *,
+      .hero h1 *,
+      .hero-copy h1 *,
+      [data-component="hero"] h1 * {
+        font-weight: inherit !important;
+      }
+
+      .serif-italic,
+      h1 em,
+      h2 em,
+      .display em,
+      [data-component="hero"] h1 em {
+        font-style: italic;
+        font-variation-settings: "wght" 300, "opsz" 72;
+        font-weight: 300 !important;
       }
 
       h1,
       .hero h1,
+      .hero-copy h1,
+      .hero-title,
+      .headline,
+      [data-component="hero"] h1,
       .display {
         font-size: clamp(4rem, 8.5vw, 7.5rem);
         max-width: 12ch;

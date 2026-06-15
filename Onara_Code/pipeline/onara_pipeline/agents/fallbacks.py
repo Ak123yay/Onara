@@ -562,8 +562,8 @@ def fallback_codegen(
       .brand {{
         font-family: var(--serif);
         font-size: clamp(1.35rem, 2vw, 1.85rem);
-        font-weight: {style.typography.heading_weight};
-        letter-spacing: -0.045em;
+        font-weight: 500;
+        letter-spacing: -0.025em;
       }}
       nav {{ display: flex; gap: 20px; }}
       nav a, .eyebrow {{
@@ -601,10 +601,21 @@ def fallback_codegen(
       .hero-copy > :nth-child(4) {{ animation-delay: 210ms; }}
       h1, h2, h3 {{
         font-family: var(--serif);
-        font-weight: {style.typography.heading_weight};
-        letter-spacing: -0.06em;
+        font-optical-sizing: auto;
+        font-synthesis: none;
+        font-variation-settings: "wght" 400, "opsz" 72;
+        font-weight: 400;
+        letter-spacing: -0.04em;
         line-height: 0.95;
         margin: 0;
+      }}
+      h1 *, h2 *, h3 * {{
+        font-weight: inherit;
+      }}
+      h1 em, h2 em, h3 em, .serif-italic {{
+        font-style: italic;
+        font-variation-settings: "wght" 300, "opsz" 72;
+        font-weight: 300;
       }}
       h1 {{ font-size: clamp(3.5rem, 8vw, 7.8rem); max-width: 11ch; }}
       h2 {{ font-size: clamp(2.4rem, 5vw, 5rem); max-width: 12ch; }}

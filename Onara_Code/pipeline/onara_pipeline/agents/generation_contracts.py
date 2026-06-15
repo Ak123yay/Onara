@@ -8,6 +8,7 @@ Onara generation quality contract:
 - Canonical Onara tokens are protected. Define --paper, --paper-2, --paper-3, --ink, --ink-2, --ink-3, --rule, --accent, --accent-ink, --leaf, --serif, --ui, and --mono once from the Onara theme. Do not redeclare them later for a selected palette.
 - Selected palettes must be expressed through secondary tokens such as --choice-primary, --choice-accent, --choice-background, --choice-surface, --choice-text, --choice-muted, and --choice-border, or through local component styling. They must not flatten the warm paper/ink aesthetic.
 - The page must render real business facts that are available in the input: name, address, phone, service area, hours, rating/review count, listed services, website, and resolved photos.
+- Display headings must use the Onara landing-page weight: Fraunces 400, italic accents at 300, and tight readable tracking. Do not use bold/black hero headings.
 - Never ship generic filler cards. Repeated review/proof text, placeholder trust claims, or three identical cards are launch blockers.
 - Do not fabricate credentials. If license or insurance details are selected but not supplied, omit the visible license/credential section entirely. Do not show "pending", "verification-needed", or "credential status" cards on public drafts.
 - If hours are supplied, show them in a named hours-card or local detail panel above the fold or in a clearly labeled local details section.

@@ -33,6 +33,7 @@ ONARA_THEME_CONTRACT = f"""
 Onara design contract:
 - Use the Onara paper aesthetic: warm paper background, subtle radial/repeating texture, visible rule lines, and restrained shadows.
 - Use Onara typography: Fraunces-style serif display headings, Inter-style UI body copy, and JetBrains Mono-style uppercase labels/eyebrows.
+- Display headings must match the Onara landing-page feel: Fraunces 400, italic accents at 300, tight but readable tracking around -0.04em. Do not use bold/black hero headings.
 - Use Onara colors: warm paper/ink neutrals plus the selected palette as secondary action/detail colors.
 - Terracotta remains the canonical Onara --accent; selected palettes may influence CTA/detail styling through --choice-* tokens.
 - Canonical variables are protected. Do not redeclare --paper, --paper-2, --paper-3, --ink, --ink-2, --ink-3, --rule, --accent, --accent-ink, or --leaf after the Onara definitions. Put user palette values in --choice-primary, --choice-accent, --choice-background, --choice-surface, --choice-text, --choice-muted, and --choice-border instead.
