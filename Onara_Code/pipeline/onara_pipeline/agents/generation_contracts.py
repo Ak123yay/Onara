@@ -9,7 +9,7 @@ Onara generation quality contract:
 - Selected palettes must be expressed through secondary tokens such as --choice-primary, --choice-accent, --choice-background, --choice-surface, --choice-text, --choice-muted, and --choice-border, or through local component styling. They must not flatten the warm paper/ink aesthetic.
 - The page must render real business facts that are available in the input: name, address, phone, service area, hours, rating/review count, listed services, website, and resolved photos.
 - Never ship generic filler cards. Repeated review/proof text, placeholder trust claims, or three identical cards are launch blockers.
-- Do not fabricate credentials. If license or insurance details are selected but not supplied, show an honest verification-needed card instead of claiming the business is licensed, insured, bonded, or certified.
+- Do not fabricate credentials. If license or insurance details are selected but not supplied, omit the visible license/credential section entirely. Do not show "pending", "verification-needed", or "credential status" cards on public drafts.
 - If hours are supplied, show them in a named hours-card or local detail panel above the fold or in a clearly labeled local details section.
 - If a service area section is selected, it must include the actual service area and either the address, city/state, or a map/search reference. A single generic paragraph is not enough.
 - If resolved photo assets are supplied, at least one exact photo src must appear in the hero, gallery, or proof section. If no photos are supplied, use designed CSS visual panels instead of broken image tags.
@@ -45,5 +45,5 @@ Rendering requirements for these facts:
 - Render supplied phone as a tap-to-call link when available.
 - Use rating and review count only when present; do not invent review quotes.
 - Use owner notes as the only source for license numbers, insurance claims, guarantees, or special offers.
-- If selected sections require data that is missing, render a transparent "not supplied yet" or "verify before publishing" state instead of fake proof.
+- If selected sections require data that is missing, omit the visible section unless the missing-state copy is useful to customers. For license, insurance, bonded, or certification proof, missing-state copy is not useful; omit it.
 """.strip()

@@ -1041,7 +1041,7 @@ def _optional_component_specs(
         },
         "license": {
             "id": "license_proof",
-            "html_structure": "Create a license and insurance proof section with concise confidence cards.",
+            "html_structure": "Create a license and insurance proof section only when owner-supplied credentials exist; otherwise keep this component hidden.",
             "css_classes": ["optional-section", "license-proof", "proof-grid", "proof-card"],
             "content_mapping": {"trustSignals": ", ".join(analyst.trustSignals)},
         },
@@ -1119,7 +1119,8 @@ def _optional_component_files(
 
     if "license" in sections:
         trust_items = _license_cards(context, analyst, rating_line)
-        files["components/license_proof.html"] = f"""<section class="optional-section license-proof" data-component="license_proof" id="license-proof">
+        if trust_items:
+            files["components/license_proof.html"] = f"""<section class="optional-section license-proof" data-component="license_proof" id="license-proof">
   <div class="section-head">
     <span class="eyebrow">{_escape(SECTION_LABELS["license"])}</span>
     <h2>Proof before the phone call.</h2>
@@ -1128,6 +1129,11 @@ def _optional_component_files(
 {trust_items}
   </div>
 </section>"""
+        else:
+            files["components/license_proof.html"] = (
+                '<section class="optional-section license-proof" data-component="license_proof" '
+                'id="license-proof" hidden aria-hidden="true"></section>'
+            )
 
     if "service-area" in sections:
         service_area_cards = _service_area_cards(context, analyst, service_area)
@@ -1239,20 +1245,8 @@ def _license_cards(context: BusinessContext, analyst: AnalystOutput, rating_line
             ("Review proof", rating_line),
         ]
     else:
-        cards = [
-            (
-                "Credential status",
-                "License or insurance details were not supplied in the business data or owner notes.",
-            ),
-            (
-                "Business identity",
-                context.address or f"{context.name} is listed as {context.category}.",
-            ),
-            (
-                "Before publishing",
-                "Add a license number, insurance note, or certification only after the business verifies it.",
-            ),
-        ]
+        return ""
+
     return "\n".join(
         f"""    <article class="proof-card"><strong>{_escape(title)}</strong><p>{_escape(body)}</p></article>"""
         for title, body in cards[:3]

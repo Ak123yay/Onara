@@ -135,17 +135,19 @@ def ensure_review_and_license_integrity(
         if changed:
             fixes.append("Replaced unsupported review cards with honest aggregate Google review proof")
 
+    credentials_supplied = _credentials_supplied(context, business_data)
     license_issues = license_integrity_issues(
         fixed,
         business_data=business_data,
         style_preferences=style_preferences,
     )
-    if license_issues and not _credentials_supplied(context, business_data):
-        fixed, changed = _replace_component_section(fixed, "license_proof", _license_status_section(context))
+    if not credentials_supplied and (_component_section(fixed, "license_proof") or license_issues):
+        fixed, changed = _replace_component_section(fixed, "license_proof", _hidden_component_marker("license_proof"))
         if changed:
-            fixes.append("Replaced unsupported license proof with a verification-needed credential card")
+            fixes.append("Removed visible license proof section because no credential data was supplied")
 
-        stripped = _strip_unsupplied_credential_claims(fixed)
+        stripped = _remove_unsupplied_credential_blocks(fixed)
+        stripped = _strip_unsupplied_credential_claims(stripped)
         if stripped != fixed:
             fixed = stripped
             fixes.append("Removed unsupported license, insurance, bonded, or certified trust claims")
@@ -370,23 +372,6 @@ def _aggregate_review_section(context: BusinessContext) -> str:
 """.rstrip()
 
 
-def _license_status_section(context: BusinessContext) -> str:
-    service_area = html_lib.escape(context.service_area)
-    return f"""
-    <section class="optional-section license-proof" data-component="license_proof" id="license-proof">
-      <div class="section-head">
-        <span class="eyebrow">Credential status</span>
-        <h2>Credential details need owner verification.</h2>
-        <p>No credential details were supplied for this draft.</p>
-      </div>
-      <div class="proof-card credential-status-card">
-        <strong>Verify before publishing</strong>
-        <p>Add real credential details for {service_area} before publishing regulated trust claims.</p>
-      </div>
-    </section>
-""".rstrip()
-
-
 def _component_section(html: str, component_id: str) -> str:
     match = re.search(_component_section_pattern(component_id), html, flags=re.IGNORECASE | re.DOTALL)
     return match.group(0) if match else ""
@@ -512,6 +497,7 @@ def _credentials_supplied(context: BusinessContext, business_data: dict[str, Any
         or "insurance" in str(key).lower()
         or "bond" in str(key).lower()
         or "cert" in str(key).lower()
+        or str(key).lower() in {"notes", "owner_notes", "additional_notes"}
     )
     combined = f"{context.notes} {data_text}"
     return bool(
@@ -526,6 +512,10 @@ def _has_credential_claim(lower: str) -> bool:
     return any(
         phrase in lower
         for phrase in (
+            "credential status",
+            "credential details pending",
+            "credential details need",
+            "verify before publishing",
             "license verification card",
             "license verification",
             "licensed and insured",
@@ -538,17 +528,39 @@ def _has_credential_claim(lower: str) -> bool:
     )
 
 
+def _remove_unsupplied_credential_blocks(html: str) -> str:
+    fixed = html
+
+    def remove_if_credential(match: re.Match[str]) -> str:
+        text = _visible_text(match.group(0)).lower()
+        return "" if _has_credential_claim(text) else match.group(0)
+
+    fixed = re.sub(
+        r"<(?:article|li)\b[^>]*>.*?</(?:article|li)>",
+        remove_if_credential,
+        fixed,
+        flags=re.IGNORECASE | re.DOTALL,
+    )
+    fixed = re.sub(
+        r"<div\b(?=[^>]*class=[\"'][^\"']*(?:card|proof)[^\"']*[\"'])[^>]*>.*?</div>",
+        remove_if_credential,
+        fixed,
+        flags=re.IGNORECASE | re.DOTALL,
+    )
+    return fixed
+
+
 def _strip_unsupplied_credential_claims(html: str) -> str:
     replacements = (
-        (r"\blicense verification card\s*\([^)]*\)", "credential status card"),
-        (r"\blicense verification card\b", "credential status card"),
-        (r"\blicense verification\b", "credential status"),
-        (r"\blicensed and insured\b", "credential details pending"),
-        (r"\bfully insured\b", "credential details pending"),
-        (r"\bbonded\b", "credential details pending"),
+        (r"\blicense verification card\s*\([^)]*\)", ""),
+        (r"\blicense verification card\b", ""),
+        (r"\blicense verification\b", ""),
+        (r"\blicensed and insured\b", ""),
+        (r"\bfully insured\b", ""),
+        (r"\bbonded\b", ""),
         (r"\blicense\s*#\s*[\w-]+", "license detail not supplied"),
         (r"\blic\s*#\s*[\w-]+", "license detail not supplied"),
-        (r"\bcertified\b", "credential details pending"),
+        (r"\bcertified\b", ""),
     )
     fixed = html
     for pattern, replacement in replacements:
