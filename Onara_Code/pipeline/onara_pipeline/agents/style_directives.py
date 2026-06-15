@@ -84,17 +84,18 @@ def style_directive_text(style_preferences: dict[str, Any] | None) -> str:
 - Conversion goal: {CTA_LABELS[preferences["cta"]]} ({preferences["cta"]}). {cta_directive(preferences)}
 - Include on page: {selected_sections}. Required component IDs for selected sections: {required_components}.
 - Additional owner notes: {preferences["notes"] or "None"}.
+- Theme constraint: keep canonical Onara paper/ink/accent variables intact. Express palette choices through --choice-* tokens and component accents; do not redeclare --paper, --ink, --accent, or --leaf after the Onara theme.
 These directives are not suggestions. The generated site must visibly change when these values change."""
 
 
 def palette_directive(preferences: dict[str, Any]) -> str:
     palette = str(preferences.get("palette") or "emergency")
     if palette == "trust":
-        return "Use cream paper, blue-green proof accents, quieter CTAs, license/review proof, and confidence-first contrast."
+        return "Use blue-green proof accents, quieter CTAs, license/review proof, and confidence-first contrast while preserving Onara warm paper and ink tokens."
     if palette == "clean":
-        return "Use charcoal ink, sand paper, copper accents, practical maintenance framing, and calm planned-work spacing."
+        return "Use copper and charcoal as secondary component accents, practical maintenance framing, and calm planned-work spacing while preserving Onara warm paper and ink tokens."
     if palette == "custom":
-        return "Use the custom palette values exactly for primary, accent, background, and text while keeping Onara typography."
+        return "Use the custom palette values as --choice-* tokens for component accents and previews while keeping Onara typography, paper, ink, and protected base variables."
     return "Use navy/ink contrast, urgent orange CTAs, an emergency/action strip, and high-contrast phone-first surfaces."
 
 

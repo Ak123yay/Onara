@@ -3,6 +3,10 @@ from pydantic import ValidationError
 from onara_pipeline.agents.context import build_business_context, photo_assets_for_prompt
 from onara_pipeline.agents.contracts import AnalystOutput, ContentOutput, PlannerOutput, StyleOutput
 from onara_pipeline.agents.fallbacks import fallback_planner
+from onara_pipeline.agents.generation_contracts import (
+    ONARA_GENERATION_QUALITY_CONTRACT,
+    business_fact_contract,
+)
 from onara_pipeline.agents.json_utils import compact_json, parse_json_model
 from onara_pipeline.agents.onara_theme import ONARA_THEME_CONTRACT
 from onara_pipeline.agents.style_directives import (
@@ -99,12 +103,16 @@ CONTENT: {compact_json(content.model_dump())}
 SITE REQUIREMENTS: {compact_json(analyst.model_dump())}
 {style_directive_text(job.style_preferences)}
 
+{business_fact_contract(context, job.style_preferences)}
+{ONARA_GENERATION_QUALITY_CONTRACT}
+
 {ONARA_THEME_CONTRACT}
 
 The site must use semantic HTML5. All styles use CSS custom properties defined in :root.
 No external CSS libraries. No JavaScript frameworks. Vanilla HTML, CSS, and minimal JS only.
 Desktop visual requirements:
 - Use Onara CSS variables for paper, ink, rule, accent, accent-ink, serif, ui, and mono tokens.
+- Do not plan palette overrides for --paper, --ink, --accent, or --leaf. Use --choice-* variables for selected palette details.
 - Use mono uppercase labels, serif H1/H2 display type, selected-palette CTAs, paper cards, and low-radius browser/proof panels.
 - Hero must be asymmetrical or split-composition, not a centered single-column brochure hero.
 - Include one proof/contact/service panel in the hero or directly adjacent to it.

@@ -48,6 +48,7 @@ def professional_visual_issues(html: str) -> list[str]:
 
     issues.extend(composition_depth_issues(html))
     issues.extend(onara_theme_issues(html))
+    issues.extend(content_quality_issues(html))
 
     return _unique(issues)
 
@@ -139,6 +140,29 @@ def onara_theme_issues(html: str) -> list[str]:
     if missing_vars:
         issues.append(f"Page is missing required Onara theme variables: {', '.join(missing_vars[:4])}")
 
+    protected_vars = (
+        "--paper",
+        "--paper-2",
+        "--paper-3",
+        "--ink",
+        "--ink-2",
+        "--ink-3",
+        "--rule",
+        "--accent",
+        "--accent-ink",
+        "--leaf",
+    )
+    duplicate_vars = [
+        variable
+        for variable in protected_vars
+        if len(re.findall(rf"{re.escape(variable)}\s*:", lower)) > 1
+    ]
+    if duplicate_vars:
+        issues.append(
+            "CSS variable overrides break the Onara theme contract: "
+            f"{', '.join(duplicate_vars[:5])} are redeclared after the canonical definitions"
+        )
+
     serif_markers = ("fraunces", "var(--serif)")
     ui_markers = ("inter", "var(--ui)")
     mono_markers = ("jetbrains mono", "var(--mono)", "font-family: var(--mono)")
@@ -162,10 +186,60 @@ def onara_theme_issues(html: str) -> list[str]:
     return _unique(issues)
 
 
+def content_quality_issues(html: str) -> list[str]:
+    lower = html.lower()
+    issues: list[str] = []
+
+    filler_phrases = (
+        "clear trust proof for homeowners comparing local providers",
+        "review proof is visible before the final call action",
+        "visitors see proof before they have to make a decision",
+        "lorem ipsum",
+        "your service area here",
+    )
+    used_filler = [phrase for phrase in filler_phrases if phrase in lower]
+    if used_filler:
+        issues.append(f"Generated page still contains generic filler copy: {used_filler[0]}")
+
+    service_card_count = _class_instance_count(html, "service-card")
+    if 'data-component="services"' in lower and service_card_count < 3:
+        issues.append("Services section is too thin; render at least three distinct service cards")
+
+    repeated_card_text = _repeated_card_text(html)
+    if repeated_card_text:
+        issues.append(f"Proof/review cards repeat the same filler text: {repeated_card_text[:90]}")
+
+    return _unique(issues)
+
+
 def _css_rule(lower_html: str, selector: str) -> str:
     escaped = re.escape(selector)
     match = re.search(rf"{escaped}\s*\{{(?P<body>.*?)\}}", lower_html, flags=re.DOTALL)
     return match.group("body") if match else ""
+
+
+def _class_instance_count(html: str, class_name: str) -> int:
+    escaped = re.escape(class_name)
+    return len(re.findall(rf"class=[\"'][^\"']*\b{escaped}\b[^\"']*[\"']", html, flags=re.IGNORECASE))
+
+
+def _repeated_card_text(html: str) -> str:
+    matches = re.findall(
+        r"<(?:article|div)\b[^>]*class=[\"'][^\"']*\b(?:review-card|proof-card)\b[^\"']*[\"'][^>]*>(.*?)</(?:article|div)>",
+        html,
+        flags=re.IGNORECASE | re.DOTALL,
+    )
+    seen: set[str] = set()
+    for match in matches:
+        text = re.sub(r"<[^>]+>", " ", match)
+        text = re.sub(r"\s+", " ", text).strip()
+        normalized = text.lower()
+        if len(normalized) < 40:
+            continue
+        if normalized in seen:
+            return text
+        seen.add(normalized)
+    return ""
 
 
 def _unique(values: list[str]) -> list[str]:

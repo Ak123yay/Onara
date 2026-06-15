@@ -12,6 +12,10 @@ from onara_pipeline.agents.contracts import (
     StyleOutput,
 )
 from onara_pipeline.agents.fallbacks import fallback_codegen
+from onara_pipeline.agents.generation_contracts import (
+    ONARA_GENERATION_QUALITY_CONTRACT,
+    business_fact_contract,
+)
 from onara_pipeline.agents.json_utils import compact_json
 from onara_pipeline.agents.onara_theme import ONARA_THEME_CONTRACT
 from onara_pipeline.agents.style_directives import style_directive_text
@@ -35,7 +39,8 @@ Generate production-ready contractor website code from the exact prompt and blue
 
 Onara visual quality bar:
 - The output must look like a professionally designed local-business website, not a generic AI landing page.
-- The output must follow the Onara design contract: warm paper, ink text, selected palette accent, Fraunces display type, Inter UI copy, JetBrains Mono metadata, low-radius panels.
+- The output must follow the Onara design contract: warm paper, ink text, selected palette details through --choice-* tokens, Fraunces display type, Inter UI copy, JetBrains Mono metadata, low-radius panels.
+- Define protected Onara theme variables once. Do not redeclare --paper, --ink, --accent, or --leaf after the canonical theme block.
 - Do not create a centered brochure hero with a small badge, centered H1, centered paragraph, and one CTA as the whole fold.
 - Desktop hero must use a split/asymmetrical composition with a proof, service, image, booking, or contact panel beside the copy.
 - First fold must include at least four Onara composition surfaces such as hero-side, panel-stack, proof-strip, proof-grid, service-menu, local-card, hours-card, detail-card, review-card, or contact-card.
@@ -87,7 +92,7 @@ async def run_codegen(
                 max_tokens=12000,
                 messages=[
                     AIMessage(role="system", content=SYSTEM_PROMPT),
-                    AIMessage(role="user", content=_user_prompt(context.name, job.style_preferences, planner, prompt)),
+                    AIMessage(role="user", content=_user_prompt(context, job.style_preferences, planner, prompt)),
                 ],
                 metadata={
                     "agent_id": "agent_06_codegen",
@@ -150,7 +155,7 @@ def split_component_files(html: str, planner: PlannerOutput) -> dict[str, str]:
 
 
 def _user_prompt(
-    business_name: str,
+    context,
     style_preferences: dict,
     planner: PlannerOutput,
     prompt: PromptOutput,
@@ -159,14 +164,17 @@ def _user_prompt(
 
 {ONARA_THEME_CONTRACT}
 {style_directive_text(style_preferences)}
+{business_fact_contract(context, style_preferences)}
+{ONARA_GENERATION_QUALITY_CONTRACT}
 
 Final Agent 6 requirements:
-- Business name: {business_name}
+- Business name: {context.name}
 - Root component IDs that must appear as data-component values: {", ".join(planner.component_order)}
 - Keep these CSS variables available in :root: {compact_json(planner.css_variables)}
 - Each root component should be independently extractable by data-component.
 - Build a professional Onara-style local-business page, not a generic centered brochure page.
 - Define and use the Onara theme variables in :root: --paper, --paper-2, --ink, --ink-2, --ink-3, --rule, --accent, --accent-ink, --serif, --ui, --mono.
+- Do not redeclare protected Onara variables after the canonical theme definitions; use --choice-* variables for selected palette details.
 - Use Fraunces/var(--serif) for H1-H3, Inter/var(--ui) for body copy, and JetBrains Mono/var(--mono) for eyebrows, labels, metadata, and tiny proof text.
 - Use the selected palette for CTAs and accents, while keeping Onara paper cards, ink panels, low-radius borders, rule-line separators, and subtle paper texture.
 - The desktop hero must be a composed grid/split layout; do not set .hero to text-align:center unless there is still a designed side panel.

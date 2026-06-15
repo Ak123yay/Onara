@@ -4,7 +4,12 @@ from typing import Any, Literal
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from onara_pipeline.agents.agent_06_codegen import split_component_files
+from onara_pipeline.agents.context import build_business_context
 from onara_pipeline.agents.contracts import MobileOutput, PlannerOutput
+from onara_pipeline.agents.generation_contracts import (
+    ONARA_GENERATION_QUALITY_CONTRACT,
+    business_fact_contract,
+)
 from onara_pipeline.agents.json_utils import compact_json, parse_json_model
 from onara_pipeline.agents.supervisor import SupervisorValidationError, validate_mobile_output
 from onara_pipeline.ai_client import AIClient, AIClientError, AIMessage, AIRequest, get_agent_model_route
@@ -169,10 +174,13 @@ def _user_prompt(
     planner: PlannerOutput,
     settings: Settings,
 ) -> str:
+    context = build_business_context(job.business_data, job.style_preferences)
     return f"""Fix mobile/responsive issues in this generated contractor website.
 
 Business data:
 {compact_json(job.business_data)}
+{business_fact_contract(context, job.style_preferences)}
+{ONARA_GENERATION_QUALITY_CONTRACT}
 
 Planner component order:
 {compact_json(planner.component_order)}

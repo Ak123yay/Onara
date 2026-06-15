@@ -1,7 +1,15 @@
 import argparse
 import asyncio
+import os
+import sys
+from pathlib import Path
 
 import httpx
+
+PIPELINE_ROOT = Path(__file__).resolve().parents[1]
+if str(PIPELINE_ROOT) not in sys.path:
+    sys.path.insert(0, str(PIPELINE_ROOT))
+os.chdir(PIPELINE_ROOT)
 
 from onara_pipeline.config import get_settings
 from onara_pipeline.deployment.github import (

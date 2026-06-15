@@ -4,7 +4,12 @@ from typing import Any, Literal
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from onara_pipeline.agents.agent_06_codegen import extract_index_html, split_component_files
+from onara_pipeline.agents.context import build_business_context
 from onara_pipeline.agents.contracts import DebuggerOutput, PlannerOutput
+from onara_pipeline.agents.generation_contracts import (
+    ONARA_GENERATION_QUALITY_CONTRACT,
+    business_fact_contract,
+)
 from onara_pipeline.agents.json_utils import compact_json, parse_json_model
 from onara_pipeline.agents.onara_theme import ONARA_THEME_CONTRACT
 from onara_pipeline.agents.photos import prompt_photo_assets
@@ -26,7 +31,7 @@ Strict rules:
 - Preserve the business copy, content order, component IDs, and visual direction.
 - Fix broken or risky HTML/CSS/accessibility/performance issues.
 - If the deterministic audit flags generic visual composition or off-theme Onara styling, redesign the layout while preserving copy and component IDs.
-- Enforce the Onara design contract: paper/ink/selected-accent variables, Fraunces headings, Inter body copy, mono labels, low-radius panels.
+- Enforce the Onara design contract: protected paper/ink/accent variables, selected palette through --choice-* details, Fraunces headings, Inter body copy, mono labels, low-radius panels.
 - Keep one self-contained index.html document.
 - Keep all CSS inside <style> in <head>.
 - Keep animation lightweight: opacity and transform only.
@@ -222,6 +227,7 @@ def _user_prompt(
     planner: PlannerOutput,
     settings: Settings,
 ) -> str:
+    context = build_business_context(job.business_data, job.style_preferences)
     return f"""Debug this Agent 6 HTML.
 
 Known issues from deterministic audit:
@@ -238,6 +244,8 @@ Relevant RAG guidance:
 
 {ONARA_THEME_CONTRACT}
 {style_directive_text(job.style_preferences)}
+{business_fact_contract(context, job.style_preferences)}
+{ONARA_GENERATION_QUALITY_CONTRACT}
 
 Return exactly this JSON:
 {{

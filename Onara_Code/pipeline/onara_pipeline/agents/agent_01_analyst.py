@@ -3,6 +3,10 @@ from pydantic import ValidationError
 from onara_pipeline.agents.context import BusinessContext, build_business_context
 from onara_pipeline.agents.contracts import AnalystOutput
 from onara_pipeline.agents.fallbacks import fallback_analyst
+from onara_pipeline.agents.generation_contracts import (
+    ONARA_GENERATION_QUALITY_CONTRACT,
+    business_fact_contract,
+)
 from onara_pipeline.agents.json_utils import compact_json, parse_json_model
 from onara_pipeline.agents.style_directives import style_directive_text
 from onara_pipeline.agents.supervisor import validate_analyst_output
@@ -63,6 +67,9 @@ Google Rating: {context.rating if context.rating is not None else "Unknown"} ({c
 Services listed on Google: {compact_json(context.services)}
 Owner notes: {context.notes or "None"}
 {style_directive_text(style_preferences)}
+
+{business_fact_contract(context, style_preferences)}
+{ONARA_GENERATION_QUALITY_CONTRACT}
 
 Return this exact JSON structure:
 {{

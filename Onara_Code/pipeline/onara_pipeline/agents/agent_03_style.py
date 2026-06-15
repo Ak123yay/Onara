@@ -3,6 +3,10 @@ from pydantic import ValidationError
 from onara_pipeline.agents.context import build_business_context
 from onara_pipeline.agents.contracts import AnalystOutput, StyleOutput
 from onara_pipeline.agents.fallbacks import fallback_style
+from onara_pipeline.agents.generation_contracts import (
+    ONARA_GENERATION_QUALITY_CONTRACT,
+    business_fact_contract,
+)
 from onara_pipeline.agents.json_utils import compact_json, parse_json_model
 from onara_pipeline.agents.onara_theme import ONARA_THEME_CONTRACT
 from onara_pipeline.agents.style_directives import style_directive_text
@@ -19,7 +23,7 @@ Onara design quality rules:
 - Never produce a generic centered brochure aesthetic.
 - Use the Onara design contract as the base visual system.
 - Typography must use Fraunces for headings and Inter for body text.
-- The user's palette choice is mandatory. Keep Onara typography and low-radius paper/editorial structure, but set primary, secondary/accent, background, surface, text, and border values from the selected palette direction.
+- The user's palette choice is mandatory, but it must not overwrite canonical Onara paper/ink/accent variables in final CSS. Return selected palette values as design-token guidance for --choice-* component accents, not as permission to flatten the Onara theme.
 - Use high-contrast editorial type, sharp low-radius surfaces, strong section contrast, and practical proof/contact panels.
 - The style notes must describe a concrete layout direction, not just mood words.
 
@@ -29,6 +33,7 @@ Industry-to-palette defaults:
 - landscaper: forest green (#166534), warm tan (#d4a96a), cream white
 - campground/hospitality: deep pine (#17351f), river blue (#265b73), campfire orange (#c76f35), warm cream
 - cleaner: sky blue (#0ea5e9), bright white, subtle grey
+- grocery: deep ink (#1a1a1a), fresh green (#5d946a), produce orange (#c76f35), warm paper
 - contractor/builder: slate grey (#475569), warm orange (#ea580c), white
 - food truck: energetic red (#dc2626), warm yellow (#fbbf24), near-black
 - photographer: near-black (#111827), warm cream (#fef3c7), gold accent (#d97706)
@@ -85,6 +90,9 @@ Google photo dominant color (if available): Unknown
 User style preferences: {compact_json(job.style_preferences)}
 Owner notes: {context.notes or "None"}
 {style_directive_text(job.style_preferences)}
+
+{business_fact_contract(context, job.style_preferences)}
+{ONARA_GENERATION_QUALITY_CONTRACT}
 
 {ONARA_THEME_CONTRACT}
 

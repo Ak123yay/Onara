@@ -32,7 +32,9 @@ ONARA_THEME_CONTRACT = f"""
 Onara design contract:
 - Use the Onara paper aesthetic: warm paper background, subtle radial/repeating texture, visible rule lines, and restrained shadows.
 - Use Onara typography: Fraunces-style serif display headings, Inter-style UI body copy, and JetBrains Mono-style uppercase labels/eyebrows.
-- Use Onara colors: paper/ink neutrals plus the selected action accent. Terracotta is the default Onara accent, but user-selected palettes may replace it.
+- Use Onara colors: warm paper/ink neutrals plus the selected palette as secondary action/detail colors.
+- Terracotta remains the canonical Onara --accent; selected palettes may influence CTA/detail styling through --choice-* tokens.
+- Canonical variables are protected. Do not redeclare --paper, --paper-2, --paper-3, --ink, --ink-2, --ink-3, --rule, --accent, --accent-ink, or --leaf after the Onara definitions. Put user palette values in --choice-primary, --choice-accent, --choice-background, --choice-surface, --choice-text, --choice-muted, and --choice-border instead.
 - Use low-radius surfaces: mostly 2px-8px cards/buttons; only small chips/badges may be pill-shaped.
 - Use crisp editorial composition: split or asymmetrical hero, browser/card/proof panels, section contrast, and practical local proof.
 - Build a complete first fold, not a single hero poster: include a split hero plus a side panel stack, proof strip, service menu, local detail card, or contact/booking card above the fold.

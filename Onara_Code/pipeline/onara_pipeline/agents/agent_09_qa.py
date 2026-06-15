@@ -3,7 +3,12 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
+from onara_pipeline.agents.context import build_business_context
 from onara_pipeline.agents.contracts import PlannerOutput, QAOutput
+from onara_pipeline.agents.generation_contracts import (
+    ONARA_GENERATION_QUALITY_CONTRACT,
+    business_fact_contract,
+)
 from onara_pipeline.agents.json_utils import compact_json, parse_json_model
 from onara_pipeline.agents.onara_theme import ONARA_THEME_CONTRACT
 from onara_pipeline.agents.photos import prompt_photo_assets
@@ -54,6 +59,7 @@ async def run_qa_agent(
         business_data=job.business_data,
         component_files=component_files,
         planner=planner,
+        style_preferences=job.style_preferences,
     )
     validate_qa_output(deterministic)
 
@@ -105,12 +111,14 @@ def deterministic_qa(
     business_data: dict[str, Any],
     component_files: Any,
     planner: PlannerOutput,
+    style_preferences: dict[str, Any] | None = None,
 ) -> QAOutput:
     checks, blocking_issues, warnings = audit_site(
         html,
         business_data=business_data,
         component_files=component_files,
         planner=planner,
+        style_preferences=style_preferences,
     )
     status: QAStatus = "fail" if blocking_issues else "pass"
     output = QAOutput(
@@ -140,8 +148,10 @@ def audit_site(
     business_data: dict[str, Any],
     component_files: Any,
     planner: PlannerOutput,
+    style_preferences: dict[str, Any] | None = None,
 ) -> tuple[dict[str, bool], list[str], list[str]]:
     lower = html.lower()
+    context = build_business_context(business_data, style_preferences or {})
     checks: dict[str, bool] = {}
     blocking: list[str] = []
     warnings: list[str] = []
@@ -215,6 +225,44 @@ def audit_site(
         checks["photo_usage"] = False
         blocking.append("Generated HTML uses non-deployable photo URLs")
 
+    service_card_count = _class_instance_count(html, "service-card")
+    checks["service_richness"] = service_card_count >= 3
+    if not checks["service_richness"]:
+        blocking.append("Services section contains fewer than three visible service cards")
+
+    checks["hours_rendered"] = not context.hours or _hours_visible(html, context.hours)
+    if not checks["hours_rendered"]:
+        blocking.append("Business hours are available in the input but are not rendered on the page")
+
+    local_needles = [context.service_area.lower()]
+    if context.address:
+        local_needles.append(context.address.lower())
+    if context.city:
+        local_needles.append(context.city.lower())
+    checks["local_details"] = any(needle and needle in lower for needle in local_needles)
+    if not checks["local_details"]:
+        blocking.append("Generated page does not render the supplied service area, city, or address")
+
+    selected_sections = set(style_preferences.get("sections", [])) if isinstance(style_preferences, dict) else set()
+    license_selected = "license" in selected_sections
+    claims_credentials = any(
+        phrase in lower
+        for phrase in ("licensed and insured", "fully insured", "bonded", "license #", "lic #", "certified")
+    )
+    owner_supplied_credentials = _credential_terms_supplied(str(context.notes or ""))
+    transparent_missing_license = any(
+        phrase in lower
+        for phrase in ("not supplied", "verify before publishing", "add a license", "credential status")
+    )
+    checks["license_honesty"] = (
+        not license_selected
+        or owner_supplied_credentials
+        or not claims_credentials
+        or transparent_missing_license
+    )
+    if not checks["license_honesty"]:
+        blocking.append("License proof claims credentials that were not supplied in owner notes or business data")
+
     checks["mobile_basics"] = ("name=\"viewport\"" in lower or "name='viewport'" in lower) and "@media" in lower
     if not checks["mobile_basics"]:
         blocking.append("Missing mobile viewport or responsive media query")
@@ -239,11 +287,14 @@ def _user_prompt(
     planner: PlannerOutput,
     settings: Settings,
 ) -> str:
+    context = build_business_context(job.business_data, job.style_preferences)
     return f"""Review this generated contractor website for launch blockers.
 
 Business data:
 {compact_json(job.business_data)}
 {style_directive_text(job.style_preferences)}
+{business_fact_contract(context, job.style_preferences)}
+{ONARA_GENERATION_QUALITY_CONTRACT}
 
 Planner component order:
 {compact_json(planner.component_order)}
@@ -299,6 +350,33 @@ def _normalize_ai_blockers(review: QAReview, deterministic: QAOutput) -> tuple[Q
 
 def _phone_digits(phone: str) -> str:
     return re.sub(r"[^0-9+]", "", phone)
+
+
+def _class_instance_count(html: str, class_name: str) -> int:
+    escaped = re.escape(class_name)
+    return len(re.findall(rf"class=[\"'][^\"']*\b{escaped}\b[^\"']*[\"']", html, flags=re.IGNORECASE))
+
+
+def _hours_visible(html: str, hours: list[str]) -> bool:
+    lower = html.lower()
+    for item in hours:
+        normalized = re.sub(r"\s+", " ", str(item).strip().lower())
+        if normalized and normalized in lower:
+            return True
+        if ":" in normalized:
+            time_part = normalized.split(":", 1)[1].strip()
+            if time_part and time_part in lower:
+                return True
+    return False
+
+
+def _credential_terms_supplied(notes: str) -> bool:
+    return bool(
+        re.search(
+            r"(?i)\b(?:license(?:d)?|lic\.?|insured|insurance|bonded|certified|certification)\b",
+            notes,
+        )
+    )
 
 
 def _unique(values: list[str]) -> list[str]:

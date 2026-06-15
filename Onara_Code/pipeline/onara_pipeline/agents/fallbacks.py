@@ -11,6 +11,10 @@ from onara_pipeline.agents.contracts import (
     PromptOutput,
     StyleOutput,
 )
+from onara_pipeline.agents.generation_contracts import (
+    ONARA_GENERATION_QUALITY_CONTRACT,
+    business_fact_contract,
+)
 from onara_pipeline.agents.json_utils import compact_json
 from onara_pipeline.agents.onara_theme import ONARA_FONT_IMPORT, ONARA_THEME_CONTRACT, ONARA_THEME_CSS
 from onara_pipeline.agents.style_directives import (
@@ -57,7 +61,7 @@ def fallback_analyst(context: BusinessContext, style_preferences: dict[str, Any]
 
 
 def fallback_content(context: BusinessContext, analyst: AnalystOutput) -> ContentOutput:
-    services = context.services or default_services(analyst.industryType)
+    services = _service_list(context, analyst.industryType)
     service_area = context.service_area
     cta = analyst.primaryCta
     tone = _tone_from_keywords(analyst.toneKeywords)
@@ -108,7 +112,7 @@ def fallback_content(context: BusinessContext, analyst: AnalystOutput) -> Conten
             "services": [
                 {
                     "name": service,
-                    "description": f"Practical {service.lower()} support with clear next steps and a simple way to call.",
+                    "description": _service_description(service, context, analyst),
                 }
                 for service in services[:6]
             ],
@@ -258,18 +262,25 @@ def fallback_planner(
         {
             "components": components,
             "css_variables": {
-                "--paper": style.colors.background,
-                "--paper-2": style.colors.surface,
-                "--paper-3": style.colors.background,
-                "--ink": style.colors.text_primary,
-                "--ink-2": style.colors.primary,
-                "--ink-3": style.colors.text_secondary,
-                "--rule": style.colors.border,
-                "--accent": style.colors.secondary,
-                "--accent-ink": style.colors.primary,
+                "--paper": "#fbfaf6",
+                "--paper-2": "#f3f0e8",
+                "--paper-3": "#ebe6dc",
+                "--ink": "#1a1a1a",
+                "--ink-2": "#3b3b3b",
+                "--ink-3": "#6a6a6a",
+                "--rule": "#d8d6cf",
+                "--accent": "#c76f35",
+                "--accent-ink": "#8a461f",
                 "--serif": "Fraunces",
                 "--ui": "Inter",
                 "--mono": "JetBrains Mono",
+                "--choice-primary": style.colors.primary,
+                "--choice-accent": style.colors.secondary,
+                "--choice-background": style.colors.background,
+                "--choice-surface": style.colors.surface,
+                "--choice-text": style.colors.text_primary,
+                "--choice-muted": style.colors.text_secondary,
+                "--choice-border": style.colors.border,
                 "--color-primary": style.colors.primary,
                 "--color-secondary": style.colors.secondary,
                 "--color-background": style.colors.background,
@@ -295,16 +306,17 @@ def fallback_planner(
 def fallback_prompt(
     *,
     analyst: AnalystOutput,
+    business_name: str,
     content: ContentOutput,
-    photo_assets: list[dict[str, str]] | None = None,
+    context: BusinessContext,
+    phone: str,
     planner: PlannerOutput,
     style: StyleOutput,
+    photo_assets: list[dict[str, str]] | None = None,
     style_preferences: dict[str, Any] | None = None,
-    business_name: str,
-    phone: str,
 ) -> PromptOutput:
     photo_assets = photo_assets or []
-    prompt = f"""You are generating the production-ready contractor website for {business_name}.
+    prompt = f"""You are generating the production-ready local business website for {business_name}.
 
 Return exactly one self-contained index.html file wrapped with {{FILE_MARKER_START}} before <!doctype html> and {{FILE_MARKER_END}} after </html>. Return no markdown, no explanation, and no extra text outside the markers.
 
@@ -337,6 +349,8 @@ Design system:
 
 {ONARA_THEME_CONTRACT}
 {style_directive_text(style_preferences)}
+{business_fact_contract(context, style_preferences)}
+{ONARA_GENERATION_QUALITY_CONTRACT}
 
 Resolved photo assets:
 {compact_json(photo_assets)}
@@ -345,7 +359,7 @@ Component blueprint:
 {compact_json(planner.model_dump())}
 
 Build the components in this exact order: {", ".join(planner.component_order)}.
-The final HTML must look polished, local, contractor-specific, and conversion-focused. Avoid generic SaaS landing-page patterns."""
+The final HTML must look polished, local, business-specific, and conversion-focused. Avoid generic SaaS landing-page patterns."""
 
     return PromptOutput(prompt=prompt)
 
@@ -468,16 +482,13 @@ def fallback_codegen(
 
       :root {{
 {_indent(ONARA_THEME_CSS, 8)}
-        --paper: {style.colors.background};
-        --paper-2: {style.colors.surface};
-        --paper-3: {style.colors.background};
-        --ink: {style.colors.text_primary};
-        --ink-2: {style.colors.primary};
-        --ink-3: {style.colors.text_secondary};
-        --rule: {style.colors.border};
-        --accent: {style.colors.secondary};
-        --accent-2: {style.colors.secondary};
-        --accent-ink: {style.colors.primary};
+        --choice-primary: {style.colors.primary};
+        --choice-accent: {style.colors.secondary};
+        --choice-background: {style.colors.background};
+        --choice-surface: {style.colors.surface};
+        --choice-text: {style.colors.text_primary};
+        --choice-muted: {style.colors.text_secondary};
+        --choice-border: {style.colors.border};
         --color-primary: {style.colors.primary};
         --color-secondary: {style.colors.secondary};
         --color-background: {style.colors.background};
@@ -517,7 +528,7 @@ def fallback_codegen(
       .site-shell {{
         min-height: 100vh;
         background:
-          radial-gradient(circle at 18% 10%, color-mix(in srgb, var(--accent) 16%, transparent), transparent 32rem),
+          radial-gradient(circle at 18% 10%, color-mix(in srgb, var(--choice-accent) 16%, transparent), transparent 32rem),
           radial-gradient(circle at 82% 18%, color-mix(in srgb, var(--leaf) 10%, transparent), transparent 30rem),
           radial-gradient(circle at 25% 30%, rgba(0,0,0,0.012) 0, transparent 38rem),
           linear-gradient(180deg, var(--paper), var(--paper-2));
@@ -540,7 +551,7 @@ def fallback_codegen(
       .site-header {{
         align-items: center;
         animation: onara-fade-in 460ms var(--motion-ease) both;
-        border-bottom: 1px solid var(--color-border);
+        border-bottom: 1px solid var(--rule);
         display: flex;
         gap: 22px;
         justify-content: space-between;
@@ -565,7 +576,7 @@ def fallback_codegen(
       }}
       .header-cta, .primary-cta {{
         align-items: center;
-        background: var(--accent);
+        background: var(--choice-accent);
         color: #fff;
         display: inline-flex;
         font-weight: 850;
@@ -704,9 +715,13 @@ def fallback_codegen(
       }}
       .hours-card span {{ grid-column: 1 / -1; }}
       .hours-card a {{
-        border-bottom: 1px solid var(--accent);
-        color: var(--accent-ink);
+        border-bottom: 1px solid var(--choice-accent);
+        color: var(--choice-primary);
         font-weight: 800;
+      }}
+      .hours-card small {{
+        color: var(--ink-3);
+        font-size: 0.9rem;
       }}
       .service-menu {{
         background: var(--paper-2);
@@ -744,7 +759,7 @@ def fallback_codegen(
       .service-card:nth-child(5) {{ animation-delay: 280ms; }}
       .service-card:nth-child(6) {{ animation-delay: 350ms; }}
       .service-card span {{
-        color: var(--accent);
+        color: var(--choice-accent);
         font-family: var(--mono);
         display: block;
         font-size: 0.75rem;
@@ -818,6 +833,11 @@ def fallback_codegen(
         border: 1px solid var(--rule);
         padding: 24px;
       }}
+      .review-card strong,
+      .proof-card strong,
+      .finance-card strong {{
+        color: var(--choice-primary);
+      }}
       .gallery-grid figure {{
         background: var(--ink);
         color: #fff;
@@ -838,14 +858,14 @@ def fallback_codegen(
       .gallery-placeholder div {{
         aspect-ratio: 4 / 3;
         background:
-          radial-gradient(circle at 30% 25%, color-mix(in srgb, var(--accent) 24%, transparent), transparent 40%),
-          linear-gradient(135deg, color-mix(in srgb, var(--ink) 94%, #000), color-mix(in srgb, var(--accent) 34%, var(--ink)));
+          radial-gradient(circle at 30% 25%, color-mix(in srgb, var(--choice-accent) 24%, transparent), transparent 40%),
+          linear-gradient(135deg, color-mix(in srgb, var(--ink) 94%, #000), color-mix(in srgb, var(--choice-accent) 34%, var(--ink)));
       }}
-      :focus-visible {{ outline: 3px solid var(--accent); outline-offset: 3px; }}
+      :focus-visible {{ outline: 3px solid var(--choice-accent); outline-offset: 3px; }}
       @media (hover: hover) {{
         .header-cta:hover,
         .primary-cta:hover {{
-          box-shadow: 0 16px 34px color-mix(in srgb, var(--accent) 28%, transparent);
+          box-shadow: 0 16px 34px color-mix(in srgb, var(--choice-accent) 28%, transparent);
           transform: translate3d(0, -2px, 0);
         }}
         .hero-card:hover,
@@ -921,6 +941,8 @@ def _industry_label(industry: str) -> str:
         "plumber": "Plumbing",
         "roofer": "Roof repair",
         "electrician": "Electrical",
+        "grocery": "Fresh grocery",
+        "campground": "Campground",
     }
     return labels.get(industry, industry.replace("-", " ").title())
 
@@ -952,6 +974,8 @@ def _palette(style_preferences: dict[str, Any], industry: str) -> dict[str, str]
         "electrician": ("#0f172a", "#facc15", "#fffbea", "#ffffff", "#111827", "#5b5b4d", "#e4dec8"),
         "landscaper": ("#166534", "#d4a96a", "#fbf7ef", "#ffffff", "#17351f", "#64705f", "#d8cdbb"),
         "cleaner": ("#0ea5e9", "#94a3b8", "#f6fbff", "#ffffff", "#183044", "#637583", "#d8e7ef"),
+        "grocery": ("#1a1a1a", "#5d946a", "#fbfaf6", "#ffffff", "#1a1a1a", "#6a6a6a", "#d8d6cf"),
+        "campground": ("#17351f", "#c76f35", "#fbfaf6", "#ffffff", "#1a1a1a", "#6a6a6a", "#d8d6cf"),
     }
     values = palettes.get(str(preset)) or industry_palettes.get(industry) or palettes["clean"]
     keys = ("primary", "secondary", "background", "surface", "text_primary", "text_secondary", "border")
@@ -1081,6 +1105,7 @@ def _optional_component_files(
     sections = set(preferences.get("sections", []))
 
     if "reviews" in sections:
+        review_cards = _review_cards(context, rating_line, service_area)
         files["components/reviews.html"] = f"""<section class="optional-section reviews" data-component="reviews" id="reviews">
   <div class="section-head">
     <span class="eyebrow">{_escape(SECTION_LABELS["reviews"])}</span>
@@ -1088,17 +1113,12 @@ def _optional_component_files(
     <p>{_escape(content.social_proof.subtext)}</p>
   </div>
   <div class="review-grid">
-    <article class="review-card"><strong>{_escape(rating_line)}</strong><p>Review proof is visible before the final call action.</p></article>
-    <article class="review-card"><strong>Google Business verified</strong><p>Hours, location, services, and contact details stay easy to scan.</p></article>
-    <article class="review-card"><strong>Local confidence</strong><p>Visitors see proof before they have to make a decision.</p></article>
+{review_cards}
   </div>
 </section>"""
 
     if "license" in sections:
-        trust_items = "\n".join(
-            f"""    <article class="proof-card"><strong>{_escape(signal)}</strong><p>Clear trust proof for homeowners comparing local providers.</p></article>"""
-            for signal in (analyst.trustSignals or ["Licensed and insured", "Local proof", "Clear next step"])[:3]
-        )
+        trust_items = _license_cards(context, analyst, rating_line)
         files["components/license_proof.html"] = f"""<section class="optional-section license-proof" data-component="license_proof" id="license-proof">
   <div class="section-head">
     <span class="eyebrow">{_escape(SECTION_LABELS["license"])}</span>
@@ -1110,11 +1130,15 @@ def _optional_component_files(
 </section>"""
 
     if "service-area" in sections:
+        service_area_cards = _service_area_cards(context, analyst, service_area)
         files["components/service_area.html"] = f"""<section class="optional-section service-area" data-component="service_area" id="service-area">
-  <div class="proof-card">
+  <div class="section-head">
     <span class="eyebrow">{_escape(SECTION_LABELS["service-area"])}</span>
     <h2>Built for {_escape(service_area)} searches.</h2>
-    <p>{_escape(context.name)} keeps the coverage area, address, and next step visible for local customers searching for {_escape(analyst.targetKeyword)}.</p>
+    <p>{_escape(context.name)} keeps the coverage area, address, hours, and next step visible for local customers searching for {_escape(analyst.targetKeyword)}.</p>
+  </div>
+  <div class="proof-grid local-detail-grid">
+{service_area_cards}
   </div>
 </section>"""
 
@@ -1180,6 +1204,120 @@ def _gallery_figures(context: BusinessContext, analyst: AnalystOutput) -> str:
     )
 
 
+def _review_cards(context: BusinessContext, rating_line: str, service_area: str) -> str:
+    rating_title = (
+        f"{context.rating:g} from {context.review_count} Google reviews"
+        if context.rating and context.review_count
+        else "Google profile details"
+    )
+    cards = [
+        (
+            rating_title,
+            rating_line if context.rating and context.review_count else "Review count was not supplied, so the page uses available profile facts instead of fake testimonials.",
+        ),
+        (
+            "Hours customers can check",
+            _hours_summary(context),
+        ),
+        (
+            f"Local to {service_area}",
+            context.address or f"Service area shown as {service_area}.",
+        ),
+    ]
+    return "\n".join(
+        f"""    <article class="review-card"><strong>{_escape(title)}</strong><p>{_escape(body)}</p></article>"""
+        for title, body in cards
+    )
+
+
+def _license_cards(context: BusinessContext, analyst: AnalystOutput, rating_line: str) -> str:
+    credentials = _credential_claims(context.notes)
+    if credentials:
+        cards = [
+            ("Owner-provided credential", credentials[0]),
+            ("Business identity", context.address or context.category),
+            ("Review proof", rating_line),
+        ]
+    else:
+        cards = [
+            (
+                "Credential status",
+                "License or insurance details were not supplied in the business data or owner notes.",
+            ),
+            (
+                "Business identity",
+                context.address or f"{context.name} is listed as {context.category}.",
+            ),
+            (
+                "Before publishing",
+                "Add a license number, insurance note, or certification only after the business verifies it.",
+            ),
+        ]
+    return "\n".join(
+        f"""    <article class="proof-card"><strong>{_escape(title)}</strong><p>{_escape(body)}</p></article>"""
+        for title, body in cards[:3]
+    )
+
+
+def _service_area_cards(context: BusinessContext, analyst: AnalystOutput, service_area: str) -> str:
+    cards = [
+        ("Coverage", f"Focused on {service_area} and nearby searches for {analyst.targetKeyword}."),
+        ("Address", context.address or f"City/state shown as {service_area}."),
+        ("Availability", _hours_summary(context)),
+    ]
+    return "\n".join(
+        f"""    <article class="proof-card"><strong>{_escape(title)}</strong><p>{_escape(body)}</p></article>"""
+        for title, body in cards
+    )
+
+
+def _credential_claims(notes: str) -> list[str]:
+    if not notes:
+        return []
+
+    matches = re.findall(
+        r"(?i)\b(?:license(?:d)?|lic\.?|insured|insurance|bonded|certified|certification)\b[^.\n;]{0,90}",
+        notes,
+    )
+    return _unique([match.strip(" :-") for match in matches])[:3]
+
+
+def _hours_summary(context: BusinessContext) -> str:
+    hours = [item.strip() for item in context.hours if item.strip()]
+    if not hours:
+        return "Hours not supplied yet"
+
+    time_parts = []
+    for item in hours:
+        if ":" not in item:
+            continue
+        time_parts.append(item.split(":", 1)[1].strip())
+
+    unique_times = _unique(time_parts)
+    if len(unique_times) == 1 and len(hours) >= 5:
+        return f"Daily {unique_times[0]}"
+
+    return hours[0]
+
+
+def _service_list(context: BusinessContext, industry: str, *, limit: int = 6) -> list[str]:
+    candidates = [
+        *context.services,
+        *default_services(industry),
+        context.category,
+    ]
+    services = _unique([candidate for candidate in candidates if candidate])
+    return services[:limit]
+
+
+def _service_description(service: str, context: BusinessContext, analyst: AnalystOutput) -> str:
+    next_step = context.phone or analyst.primaryCta
+    return (
+        f"Clear {service.lower()} details for {context.service_area} customers, with "
+        f"{next_step} visible as the next step."
+    )
+
+
 def _proof_items(context: BusinessContext, rating_line: str, service_area: str) -> str:
     items = [
         ("Reviews", rating_line),
@@ -1203,20 +1341,22 @@ def _hero_side_component(
     service_area: str,
     preferences: dict[str, Any],
 ) -> str:
-    services = (context.services or default_services(analyst.industryType))[:4]
+    services = _service_list(context, analyst.industryType, limit=4)
     service_items = "\n".join(
         f"""      <li>{_escape(service)}</li>""" for service in services
     )
     layout = str(preferences.get("layout") or "phone-first")
     media = _hero_media_component(context, analyst)
+    hours_summary = _hours_summary(context)
     local_card = f"""    <div class="detail-card local-card">
       <span class="eyebrow">Local proof</span>
       <strong>{_escape(service_area)}</strong>
-      <p>{_escape(rating_line)}</p>
+      <p>{_escape(context.address or rating_line)}</p>
     </div>"""
     action_card = f"""    <div class="detail-card hours-card">
-      <span class="eyebrow">Next step</span>
-      <strong>{_escape(context.phone or analyst.primaryCta)}</strong>
+      <span class="eyebrow">Hours and next step</span>
+      <strong>{_escape(hours_summary)}</strong>
+      <small>{_escape(context.phone or "Use the estimate request to start.")}</small>
       <a href="{cta_href}">{_escape(analyst.primaryCta)}</a>
     </div>"""
     service_menu = f"""    <ul class="service-menu" aria-label="Common services">
@@ -1252,7 +1392,7 @@ def _hero_media_component(context: BusinessContext, analyst: AnalystOutput) -> s
     </figure>"""
 
     return f"""    <div class="hero-card" aria-label="Fast contact">
-      <span>Phone-first contractor site</span>
+      <span>Phone-first local site</span>
       <strong>{_escape(context.phone or "Call for estimate")}</strong>
       <p>{_escape(analyst.targetKeyword)}</p>
     </div>"""

@@ -72,6 +72,12 @@ def infer_industry(context: BusinessContext) -> str:
         ("construction", "contractor"),
         ("paint", "painter"),
         ("floor", "flooring contractor"),
+        ("grocery", "grocery"),
+        ("supermarket", "grocery"),
+        ("pharmacy", "grocery"),
+        ("campground", "campground"),
+        ("rv park", "campground"),
+        ("camping", "campground"),
     )
 
     for needle, industry in mappings:
@@ -90,6 +96,8 @@ def default_services(industry: str) -> list[str]:
         "landscaper": ["Lawn care", "Seasonal cleanup", "Mulching", "Landscape maintenance"],
         "cleaner": ["Deep cleaning", "Move-out cleaning", "Recurring service", "Office cleaning"],
         "painter": ["Interior painting", "Exterior painting", "Drywall repair", "Color refresh"],
+        "grocery": ["Grocery pickup", "Fresh produce", "Pharmacy", "Weekly essentials"],
+        "campground": ["RV sites", "Tent camping", "Full hookups", "Family stays"],
     }
 
     return defaults.get(industry, ["Service calls", "Repairs", "Maintenance", "Free estimates"])

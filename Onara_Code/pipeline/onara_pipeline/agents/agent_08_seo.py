@@ -8,6 +8,10 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError
 from onara_pipeline.agents.agent_06_codegen import split_component_files
 from onara_pipeline.agents.context import BusinessContext, build_business_context
 from onara_pipeline.agents.contracts import AnalystOutput, ContentOutput, PlannerOutput, SEOOutput
+from onara_pipeline.agents.generation_contracts import (
+    ONARA_GENERATION_QUALITY_CONTRACT,
+    business_fact_contract,
+)
 from onara_pipeline.agents.json_utils import compact_json, parse_json_model
 from onara_pipeline.agents.supervisor import SupervisorValidationError, validate_seo_output
 from onara_pipeline.ai_client import AIClient, AIClientError, AIMessage, AIRequest, get_agent_model_route
@@ -198,10 +202,13 @@ def _user_prompt(
     defaults: dict[str, Any],
     settings: Settings,
 ) -> str:
+    context = build_business_context(job.business_data, job.style_preferences)
     return f"""Create SEO metadata for this generated contractor website.
 
 Business data:
 {compact_json(job.business_data)}
+{business_fact_contract(context, job.style_preferences)}
+{ONARA_GENERATION_QUALITY_CONTRACT}
 
 Analyst requirements:
 {compact_json(analyst.model_dump())}

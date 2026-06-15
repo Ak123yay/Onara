@@ -1,6 +1,10 @@
 from onara_pipeline.agents.context import build_business_context, photo_assets_for_prompt
 from onara_pipeline.agents.contracts import AnalystOutput, ContentOutput, PlannerOutput, PromptOutput, StyleOutput
 from onara_pipeline.agents.fallbacks import fallback_prompt
+from onara_pipeline.agents.generation_contracts import (
+    ONARA_GENERATION_QUALITY_CONTRACT,
+    business_fact_contract,
+)
 from onara_pipeline.agents.json_utils import compact_json
 from onara_pipeline.agents.onara_theme import ONARA_THEME_CONTRACT
 from onara_pipeline.agents.style_directives import style_directive_text
@@ -55,6 +59,7 @@ async def run_prompt_engineer(
                         role="user",
                         content=_user_prompt(
                             context.name,
+                            context,
                             context.phone,
                             photo_assets_for_prompt(context),
                             job.style_preferences,
@@ -77,6 +82,7 @@ async def run_prompt_engineer(
             analyst=analyst,
             business_name=context.name,
             content=content,
+            context=context,
             photo_assets=photo_assets_for_prompt(context),
             phone=context.phone,
             planner=planner,
@@ -89,6 +95,7 @@ async def run_prompt_engineer(
 
 def _user_prompt(
     business_name: str,
+    context,
     phone: str,
     photo_assets: list[dict[str, str]],
     style_preferences: dict,
@@ -108,6 +115,9 @@ PHONE NUMBER: {phone or "Unknown"}
 RESOLVED PHOTO ASSETS: {compact_json(photo_assets)}
 {style_directive_text(style_preferences)}
 
+{business_fact_contract(context, style_preferences)}
+{ONARA_GENERATION_QUALITY_CONTRACT}
+
 {ONARA_THEME_CONTRACT}
 
 The generated site must:
@@ -123,7 +133,8 @@ The generated site must:
 - Look professionally designed enough for a paying local business owner
 - Follow the Onara design contract exactly, including the required CSS variables in :root
 - Import or declare Fraunces, Inter, JetBrains Mono, and Caveat-compatible font stacks
-- Use the selected palette for CTAs and accents, warm paper/ink structure, mono uppercase metadata, and low-radius paper cards
+- Define canonical Onara variables once; use selected palette values through --choice-* tokens and local component accents only
+- Use the selected palette for CTAs/details while preserving warm paper/ink structure, mono uppercase metadata, and low-radius paper cards
 - Avoid generic centered brochure templates; the desktop hero must not be only centered text, a badge, and one CTA
 - Use a split/asymmetrical hero with a proof, service, contact, image, or booking panel beside the copy
 - Build a complete first fold with at least four named Onara composition surfaces: hero-side, panel-stack, proof-strip, proof-grid, service-menu, local-card, hours-card, detail-card, review-card, contact-card

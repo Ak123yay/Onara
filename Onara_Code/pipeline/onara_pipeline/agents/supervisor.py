@@ -192,6 +192,10 @@ def validate_qa_output(output: QAOutput) -> None:
         "localbusiness_schema",
         "tap_to_call",
         "photo_usage",
+        "service_richness",
+        "hours_rendered",
+        "local_details",
+        "license_honesty",
         "mobile_basics",
         "no_artifacts",
     )

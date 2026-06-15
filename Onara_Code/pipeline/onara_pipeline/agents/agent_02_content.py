@@ -3,6 +3,10 @@ from pydantic import ValidationError
 from onara_pipeline.agents.context import build_business_context
 from onara_pipeline.agents.contracts import AnalystOutput, ContentOutput
 from onara_pipeline.agents.fallbacks import fallback_content
+from onara_pipeline.agents.generation_contracts import (
+    ONARA_GENERATION_QUALITY_CONTRACT,
+    business_fact_contract,
+)
 from onara_pipeline.agents.json_utils import compact_json, parse_json_model
 from onara_pipeline.agents.style_directives import style_directive_text
 from onara_pipeline.agents.supervisor import SupervisorValidationError, validate_content_output
@@ -78,6 +82,9 @@ Primary CTA: {analyst.primaryCta}
 Trust signals: {compact_json(analyst.trustSignals)}
 Target keyword: {analyst.targetKeyword}
 {style_directive_text(job.style_preferences)}
+
+{business_fact_contract(context, job.style_preferences)}
+{ONARA_GENERATION_QUALITY_CONTRACT}
 
 Return this JSON structure:
 {{
