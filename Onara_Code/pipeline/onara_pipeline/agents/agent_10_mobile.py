@@ -6,6 +6,7 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError
 from onara_pipeline.agents.agent_06_codegen import split_component_files
 from onara_pipeline.agents.context import build_business_context
 from onara_pipeline.agents.contracts import MobileOutput, PlannerOutput
+from onara_pipeline.agents.fact_repair import ensure_hours_rendered, ensure_onara_typography
 from onara_pipeline.agents.generation_contracts import (
     ONARA_GENERATION_QUALITY_CONTRACT,
     business_fact_contract,
@@ -47,7 +48,12 @@ async def run_mobile_agent(
     planner: PlannerOutput,
 ) -> MobileOutput:
     source_html = _clean_html_document(str(job.blackboard.get("generated_html") or ""))
-    deterministic = deterministic_mobile(source_html, planner=planner)
+    deterministic = deterministic_mobile(
+        source_html,
+        business_data=job.business_data,
+        planner=planner,
+        style_preferences=job.style_preferences,
+    )
     validate_mobile_output(deterministic)
 
     if deterministic.status == "pass":
@@ -79,6 +85,12 @@ async def run_mobile_agent(
         )
         ai_output = parse_json_model(response.content, MobileAIOutput)
         html = _clean_html_document(ai_output.html)
+        html, typography_fixes = ensure_onara_typography(html)
+        html, fact_fixes = ensure_hours_rendered(
+            html,
+            business_data=job.business_data,
+            style_preferences=job.style_preferences,
+        )
         status: MobileStatus = ai_output.status
         if html != source_html:
             status = "fixed"
@@ -87,7 +99,7 @@ async def run_mobile_agent(
             checks=audit_mobile(html)[0],
             component_files=split_component_files(html, planner),
             fallback_used=response.fallback_used,
-            fixes=ai_output.fixes or deterministic.fixes,
+            fixes=_unique([*(ai_output.fixes or deterministic.fixes), *typography_fixes, *fact_fixes]),
             html=html,
             issues=ai_output.issues or deterministic.issues,
             model=response.model,
@@ -101,7 +113,13 @@ async def run_mobile_agent(
         return deterministic
 
 
-def deterministic_mobile(html: str, *, planner: PlannerOutput) -> MobileOutput:
+def deterministic_mobile(
+    html: str,
+    *,
+    business_data: dict[str, Any] | None = None,
+    planner: PlannerOutput,
+    style_preferences: dict[str, Any] | None = None,
+) -> MobileOutput:
     checks, issues = audit_mobile(html)
     fixed = html
     fixes: list[str] = []
@@ -120,6 +138,16 @@ def deterministic_mobile(html: str, *, planner: PlannerOutput) -> MobileOutput:
     if _needs_mobile_css_patch(fixed):
         fixed = _append_style_patch(fixed, MOBILE_CSS_PATCH)
         fixes.append("Added mobile-safe layout, media, overflow, tap-target, and fluid-type CSS")
+
+    if business_data is not None:
+        fixed, typography_fixes = ensure_onara_typography(fixed)
+        fixes.extend(typography_fixes)
+        fixed, fact_fixes = ensure_hours_rendered(
+            fixed,
+            business_data=business_data,
+            style_preferences=style_preferences,
+        )
+        fixes.extend(fact_fixes)
 
     status: MobileStatus = "fixed" if fixes else "pass"
     output = MobileOutput(
@@ -269,6 +297,18 @@ def _clean_html_document(value: str) -> str:
         stripped = re.sub(r"^```[a-zA-Z0-9_-]*\s*", "", stripped)
         stripped = re.sub(r"\s*```$", "", stripped)
     return stripped.strip()
+
+
+def _unique(values: list[str]) -> list[str]:
+    seen: set[str] = set()
+    output: list[str] = []
+    for value in values:
+        normalized = str(value).strip()
+        key = normalized.lower()
+        if normalized and key not in seen:
+            seen.add(key)
+            output.append(normalized)
+    return output
 
 
 MOBILE_CSS_PATCH = """

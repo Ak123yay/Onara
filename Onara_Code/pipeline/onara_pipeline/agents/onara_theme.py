@@ -26,6 +26,7 @@ ONARA_THEME_CSS = """
 --serif: "Fraunces", Georgia, serif;
 --ui: "Inter", Arial, sans-serif;
 --mono: "JetBrains Mono", "Courier New", monospace;
+--hand: "Caveat", cursive;
 """.strip()
 
 ONARA_THEME_CONTRACT = f"""

@@ -6,6 +6,14 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError
 from onara_pipeline.agents.agent_06_codegen import extract_index_html, split_component_files
 from onara_pipeline.agents.context import build_business_context
 from onara_pipeline.agents.contracts import DebuggerOutput, PlannerOutput
+from onara_pipeline.agents.fact_repair import (
+    ensure_hours_rendered,
+    ensure_onara_typography,
+    ensure_review_and_license_integrity,
+    hours_visible,
+    onara_typography_issues,
+    review_license_integrity_issues,
+)
 from onara_pipeline.agents.generation_contracts import (
     ONARA_GENERATION_QUALITY_CONTRACT,
     business_fact_contract,
@@ -54,10 +62,22 @@ async def run_debugger(
     ai_client: AIClient,
     settings: Settings,
     planner: PlannerOutput,
+    *,
+    extra_issues: list[str] | None = None,
 ) -> DebuggerOutput:
     source_html = str(job.blackboard.get("generated_html") or "")
     source_html = _clean_html_document(source_html)
-    issues = audit_html(source_html, business_data=job.business_data, planner=planner)
+    issues = _unique(
+        [
+            *audit_html(
+                source_html,
+                business_data=job.business_data,
+                planner=planner,
+                style_preferences=job.style_preferences,
+            ),
+            *(extra_issues or []),
+        ]
+    )
 
     if not issues:
         output = DebuggerOutput(
@@ -97,11 +117,19 @@ async def run_debugger(
         status: DebuggerStatus = ai_output.status
         if status == "pass" and html != source_html:
             status = "fixed"
+        html, deterministic_fixes = _apply_fact_repairs(
+            html,
+            business_data=job.business_data,
+            style_preferences=job.style_preferences,
+        )
+        fixes = _unique([*ai_output.fixes, *deterministic_fixes])
+        if deterministic_fixes:
+            status = "fixed"
 
         output = DebuggerOutput(
             component_files=split_component_files(html, planner),
             fallback_used=response.fallback_used,
-            fixes=ai_output.fixes,
+            fixes=fixes,
             html=html,
             issues=ai_output.issues or issues,
             model=response.model,
@@ -112,13 +140,26 @@ async def run_debugger(
         validate_debugger_output(output)
         return output
     except (AIClientError, ValueError, ValidationError, SupervisorValidationError):
-        output = deterministic_debugger(source_html, issues=issues, planner=planner, business_data=job.business_data)
+        output = deterministic_debugger(
+            source_html,
+            business_data=job.business_data,
+            issues=issues,
+            planner=planner,
+            style_preferences=job.style_preferences,
+        )
         validate_debugger_output(output)
         return output
 
 
-def audit_html(html: str, *, business_data: dict[str, Any], planner: PlannerOutput) -> list[str]:
+def audit_html(
+    html: str,
+    *,
+    business_data: dict[str, Any],
+    planner: PlannerOutput,
+    style_preferences: dict[str, Any] | None = None,
+) -> list[str]:
     lower = html.lower()
+    context = build_business_context(business_data, style_preferences or {})
     issues: list[str] = []
 
     required_markup = ("<!doctype html", "<html", "<head", "<style", "<body", "</body>", "</html>")
@@ -151,6 +192,16 @@ def audit_html(html: str, *, business_data: dict[str, Any], planner: PlannerOutp
         issues.append("Resolved business photos are available but not used in the HTML")
     if "/api/places/photo" in lower or "localhost" in lower or re.search(r"src=[\"']places/", html, flags=re.IGNORECASE):
         issues.append("HTML uses non-deployable photo URLs")
+    if context.hours and not hours_visible(html, context.hours):
+        issues.append("Business hours are available in the input but are not rendered on the page")
+    issues.extend(onara_typography_issues(html))
+    issues.extend(
+        review_license_integrity_issues(
+            html,
+            business_data=business_data,
+            style_preferences=style_preferences,
+        )
+    )
 
     issues.extend(professional_visual_issues(html))
 
@@ -171,6 +222,7 @@ def deterministic_debugger(
     business_data: dict[str, Any],
     issues: list[str],
     planner: PlannerOutput,
+    style_preferences: dict[str, Any] | None = None,
 ) -> DebuggerOutput:
     fixed = _clean_html_document(html)
     fixes: list[str] = []
@@ -202,6 +254,13 @@ def deterministic_debugger(
         if changed:
             fixes.append("Added tap-to-call link")
 
+    fixed, fact_fixes = _apply_fact_repairs(
+        fixed,
+        business_data=business_data,
+        style_preferences=style_preferences,
+    )
+    fixes.extend(fact_fixes)
+
     if not fixes:
         fixes.append("Revalidated HTML with no deterministic changes")
 
@@ -218,6 +277,26 @@ def deterministic_debugger(
         used_deterministic_fallback=True,
     )
     return output
+
+
+def _apply_fact_repairs(
+    html: str,
+    *,
+    business_data: dict[str, Any],
+    style_preferences: dict[str, Any] | None = None,
+) -> tuple[str, list[str]]:
+    fixed, typography_fixes = ensure_onara_typography(html)
+    fixed, hours_fixes = ensure_hours_rendered(
+        fixed,
+        business_data=business_data,
+        style_preferences=style_preferences,
+    )
+    fixed, integrity_fixes = ensure_review_and_license_integrity(
+        fixed,
+        business_data=business_data,
+        style_preferences=style_preferences,
+    )
+    return fixed, _unique([*typography_fixes, *hours_fixes, *integrity_fixes])
 
 
 def _user_prompt(

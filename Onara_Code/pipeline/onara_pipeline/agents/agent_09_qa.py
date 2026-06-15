@@ -5,6 +5,11 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from onara_pipeline.agents.context import build_business_context
 from onara_pipeline.agents.contracts import PlannerOutput, QAOutput
+from onara_pipeline.agents.fact_repair import (
+    hours_visible,
+    onara_typography_issues,
+    review_license_integrity_issues,
+)
 from onara_pipeline.agents.generation_contracts import (
     ONARA_GENERATION_QUALITY_CONTRACT,
     business_fact_contract,
@@ -185,6 +190,10 @@ def audit_site(
     theme_issues = onara_theme_issues(html)
     checks["onara_theme"] = not theme_issues
 
+    typography_issues = onara_typography_issues(html)
+    checks["onara_typography"] = not typography_issues
+    blocking.extend(typography_issues)
+
     unsafe_motion = "requestanimationframe" in lower or "setinterval(" in lower or "infinite" in lower
     checks["motion_safety"] = (
         "@keyframes" in lower
@@ -230,7 +239,7 @@ def audit_site(
     if not checks["service_richness"]:
         blocking.append("Services section contains fewer than three visible service cards")
 
-    checks["hours_rendered"] = not context.hours or _hours_visible(html, context.hours)
+    checks["hours_rendered"] = not context.hours or hours_visible(html, context.hours)
     if not checks["hours_rendered"]:
         blocking.append("Business hours are available in the input but are not rendered on the page")
 
@@ -262,6 +271,21 @@ def audit_site(
     )
     if not checks["license_honesty"]:
         blocking.append("License proof claims credentials that were not supplied in owner notes or business data")
+
+    fact_integrity_issues = review_license_integrity_issues(
+        html,
+        business_data=business_data,
+        style_preferences=style_preferences,
+    )
+    review_fact_issues = [issue for issue in fact_integrity_issues if "review" in issue.lower()]
+    license_fact_issues = [
+        issue
+        for issue in fact_integrity_issues
+        if "license" in issue.lower() or "credential" in issue.lower()
+    ]
+    checks["review_integrity"] = not review_fact_issues
+    checks["license_honesty"] = checks["license_honesty"] and not license_fact_issues
+    blocking.extend(fact_integrity_issues)
 
     checks["mobile_basics"] = ("name=\"viewport\"" in lower or "name='viewport'" in lower) and "@media" in lower
     if not checks["mobile_basics"]:
@@ -355,19 +379,6 @@ def _phone_digits(phone: str) -> str:
 def _class_instance_count(html: str, class_name: str) -> int:
     escaped = re.escape(class_name)
     return len(re.findall(rf"class=[\"'][^\"']*\b{escaped}\b[^\"']*[\"']", html, flags=re.IGNORECASE))
-
-
-def _hours_visible(html: str, hours: list[str]) -> bool:
-    lower = html.lower()
-    for item in hours:
-        normalized = re.sub(r"\s+", " ", str(item).strip().lower())
-        if normalized and normalized in lower:
-            return True
-        if ":" in normalized:
-            time_part = normalized.split(":", 1)[1].strip()
-            if time_part and time_part in lower:
-                return True
-    return False
 
 
 def _credential_terms_supplied(notes: str) -> bool:
