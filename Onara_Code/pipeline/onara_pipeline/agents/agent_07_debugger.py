@@ -8,11 +8,15 @@ from onara_pipeline.agents.context import build_business_context
 from onara_pipeline.agents.contracts import DebuggerOutput, PlannerOutput
 from onara_pipeline.agents.fact_repair import (
     ensure_hours_rendered,
+    ensure_onara_spacing,
     ensure_onara_typography,
     ensure_review_and_license_integrity,
+    ensure_section_dedupe,
     hours_visible,
+    onara_spacing_issues,
     onara_typography_issues,
     review_license_integrity_issues,
+    section_dedupe_issues,
 )
 from onara_pipeline.agents.generation_contracts import (
     ONARA_GENERATION_QUALITY_CONTRACT,
@@ -195,8 +199,16 @@ def audit_html(
     if context.hours and not hours_visible(html, context.hours):
         issues.append("Business hours are available in the input but are not rendered on the page")
     issues.extend(onara_typography_issues(html))
+    issues.extend(onara_spacing_issues(html))
     issues.extend(
         review_license_integrity_issues(
+            html,
+            business_data=business_data,
+            style_preferences=style_preferences,
+        )
+    )
+    issues.extend(
+        section_dedupe_issues(
             html,
             business_data=business_data,
             style_preferences=style_preferences,
@@ -286,6 +298,7 @@ def _apply_fact_repairs(
     style_preferences: dict[str, Any] | None = None,
 ) -> tuple[str, list[str]]:
     fixed, typography_fixes = ensure_onara_typography(html)
+    fixed, spacing_fixes = ensure_onara_spacing(fixed)
     fixed, hours_fixes = ensure_hours_rendered(
         fixed,
         business_data=business_data,
@@ -296,7 +309,12 @@ def _apply_fact_repairs(
         business_data=business_data,
         style_preferences=style_preferences,
     )
-    return fixed, _unique([*typography_fixes, *hours_fixes, *integrity_fixes])
+    fixed, dedupe_fixes = ensure_section_dedupe(
+        fixed,
+        business_data=business_data,
+        style_preferences=style_preferences,
+    )
+    return fixed, _unique([*typography_fixes, *spacing_fixes, *hours_fixes, *integrity_fixes, *dedupe_fixes])
 
 
 def _user_prompt(

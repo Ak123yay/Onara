@@ -7,8 +7,10 @@ from onara_pipeline.agents.context import build_business_context
 from onara_pipeline.agents.contracts import PlannerOutput, QAOutput
 from onara_pipeline.agents.fact_repair import (
     hours_visible,
+    onara_spacing_issues,
     onara_typography_issues,
     review_license_integrity_issues,
+    section_dedupe_issues,
 )
 from onara_pipeline.agents.generation_contracts import (
     ONARA_GENERATION_QUALITY_CONTRACT,
@@ -194,6 +196,10 @@ def audit_site(
     checks["onara_typography"] = not typography_issues
     blocking.extend(typography_issues)
 
+    spacing_issues = onara_spacing_issues(html)
+    checks["onara_spacing"] = not spacing_issues
+    blocking.extend(spacing_issues)
+
     unsafe_motion = "requestanimationframe" in lower or "setinterval(" in lower or "infinite" in lower
     checks["motion_safety"] = (
         "@keyframes" in lower
@@ -286,6 +292,14 @@ def audit_site(
     checks["review_integrity"] = not review_fact_issues
     checks["license_honesty"] = checks["license_honesty"] and not license_fact_issues
     blocking.extend(fact_integrity_issues)
+
+    duplicate_section_issues = section_dedupe_issues(
+        html,
+        business_data=business_data,
+        style_preferences=style_preferences,
+    )
+    checks["section_dedupe"] = not duplicate_section_issues
+    blocking.extend(duplicate_section_issues)
 
     checks["mobile_basics"] = ("name=\"viewport\"" in lower or "name='viewport'" in lower) and "@media" in lower
     if not checks["mobile_basics"]:

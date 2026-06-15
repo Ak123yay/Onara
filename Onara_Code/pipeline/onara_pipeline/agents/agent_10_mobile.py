@@ -6,7 +6,7 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError
 from onara_pipeline.agents.agent_06_codegen import split_component_files
 from onara_pipeline.agents.context import build_business_context
 from onara_pipeline.agents.contracts import MobileOutput, PlannerOutput
-from onara_pipeline.agents.fact_repair import ensure_hours_rendered, ensure_onara_typography
+from onara_pipeline.agents.fact_repair import ensure_hours_rendered, ensure_onara_spacing, ensure_onara_typography
 from onara_pipeline.agents.generation_contracts import (
     ONARA_GENERATION_QUALITY_CONTRACT,
     business_fact_contract,
@@ -86,6 +86,7 @@ async def run_mobile_agent(
         ai_output = parse_json_model(response.content, MobileAIOutput)
         html = _clean_html_document(ai_output.html)
         html, typography_fixes = ensure_onara_typography(html)
+        html, spacing_fixes = ensure_onara_spacing(html)
         html, fact_fixes = ensure_hours_rendered(
             html,
             business_data=job.business_data,
@@ -99,7 +100,7 @@ async def run_mobile_agent(
             checks=audit_mobile(html)[0],
             component_files=split_component_files(html, planner),
             fallback_used=response.fallback_used,
-            fixes=_unique([*(ai_output.fixes or deterministic.fixes), *typography_fixes, *fact_fixes]),
+            fixes=_unique([*(ai_output.fixes or deterministic.fixes), *typography_fixes, *spacing_fixes, *fact_fixes]),
             html=html,
             issues=ai_output.issues or deterministic.issues,
             model=response.model,
@@ -142,6 +143,8 @@ def deterministic_mobile(
     if business_data is not None:
         fixed, typography_fixes = ensure_onara_typography(fixed)
         fixes.extend(typography_fixes)
+        fixed, spacing_fixes = ensure_onara_spacing(fixed)
+        fixes.extend(spacing_fixes)
         fixed, fact_fixes = ensure_hours_rendered(
             fixed,
             business_data=business_data,

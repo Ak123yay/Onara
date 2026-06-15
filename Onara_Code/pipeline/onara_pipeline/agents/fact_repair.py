@@ -25,6 +25,19 @@ def ensure_onara_typography(html: str) -> tuple[str, list[str]]:
     return fixed, fixes
 
 
+def ensure_onara_spacing(html: str) -> tuple[str, list[str]]:
+    fixed = _normalize_full_viewport_spacing(html)
+    fixes: list[str] = []
+    if fixed != html:
+        fixes.append("Replaced full-viewport section heights with content-sized spacing")
+
+    fixed, changed = _append_css_once(fixed, "onara-spacing-lock", ONARA_SPACING_LOCK_CSS)
+    if changed:
+        fixes.append("Applied Onara spacing lock to prevent oversized hero whitespace")
+
+    return fixed, fixes
+
+
 def onara_typography_issues(html: str) -> list[str]:
     lower = html.lower()
     issues: list[str] = []
@@ -54,6 +67,34 @@ def onara_typography_issues(html: str) -> list[str]:
     mono_uses_labels = re.search(r"(?:\.eyebrow|\.mono|label|small)[^{]*\{[^}]*font-family\s*:\s*var\(--mono\)", lower, flags=re.DOTALL)
     if not mono_uses_labels:
         issues.append("Generated page does not apply JetBrains Mono/var(--mono) to labels or metadata")
+
+    return _unique(issues)
+
+
+def onara_spacing_issues(html: str) -> list[str]:
+    lower = html.lower()
+    issues: list[str] = []
+    has_spacing_lock = "onara-spacing-lock" in lower
+
+    if not has_spacing_lock:
+        issues.append("Generated page is missing the Onara spacing lock that prevents oversized hero whitespace")
+
+    compact = lower.replace(" ", "")
+    if (
+        "min-height:100vh" in compact
+        or "height:100vh" in compact
+        or "min-height:100svh" in compact
+        or "height:100svh" in compact
+        or "min-height:100dvh" in compact
+        or "height:100dvh" in compact
+    ):
+        issues.append("Generated page uses full-viewport hero height that creates excessive whitespace")
+
+    if not has_spacing_lock and re.search(
+        r"padding(?:-block|-top|-bottom)?\s*:\s*(?:clamp\([^;]*(?:1[6-9]\d|[2-9]\d\d)px|(?:1[6-9]\d|[2-9]\d\d)px)",
+        lower,
+    ):
+        issues.append("Generated page uses oversized vertical padding that creates excessive whitespace")
 
     return _unique(issues)
 
@@ -110,6 +151,60 @@ def ensure_review_and_license_integrity(
             fixes.append("Removed unsupported license, insurance, bonded, or certified trust claims")
 
     return fixed, _unique(fixes)
+
+
+def ensure_section_dedupe(
+    html: str,
+    *,
+    business_data: dict[str, Any],
+    style_preferences: dict[str, Any] | None = None,
+) -> tuple[str, list[str]]:
+    del business_data, style_preferences
+
+    issues = section_dedupe_issues(html)
+    if not issues:
+        return html, []
+
+    fixed = html
+    fixes: list[str] = []
+
+    reviews_section = _component_section(fixed, "reviews")
+    proof_section = _first_component_section(
+        fixed,
+        ("trust_proof", "trust", "proof", "social_proof", "license_proof"),
+    )
+    if reviews_section and proof_section:
+        marker = _hidden_component_marker("reviews")
+        fixed, changed = _replace_component_section(fixed, "reviews", marker)
+        if changed:
+            fixes.append("Merged duplicate Google reviews section into the visible trust proof section")
+
+    return fixed, _unique(fixes)
+
+
+def section_dedupe_issues(
+    html: str,
+    *,
+    business_data: dict[str, Any] | None = None,
+    style_preferences: dict[str, Any] | None = None,
+) -> list[str]:
+    del business_data, style_preferences
+
+    reviews_section = _component_section(html, "reviews")
+    if not reviews_section or _is_hidden_section(reviews_section):
+        return []
+
+    proof_section = _first_component_section(
+        html,
+        ("trust_proof", "trust", "proof", "social_proof", "license_proof"),
+    )
+    if not proof_section or _is_hidden_section(proof_section):
+        return []
+
+    if _sections_repeat_same_proof(proof_section, reviews_section):
+        return ["Trust proof and Google reviews sections repeat the same visible aggregate rating copy"]
+
+    return []
 
 
 def review_license_integrity_issues(
@@ -297,6 +392,14 @@ def _component_section(html: str, component_id: str) -> str:
     return match.group(0) if match else ""
 
 
+def _first_component_section(html: str, component_ids: tuple[str, ...]) -> str:
+    for component_id in component_ids:
+        section = _component_section(html, component_id)
+        if section:
+            return section
+    return ""
+
+
 def _replace_component_section(html: str, component_id: str, replacement: str) -> tuple[str, bool]:
     fixed = re.sub(
         _component_section_pattern(component_id),
@@ -315,6 +418,75 @@ def _component_section_pattern(component_id: str) -> str:
         rf"(?=[^>]*(?:data-component=[\"']{escaped}[\"']|id=[\"']{escaped}[\"']))"
         r"[^>]*>.*?</section>"
     )
+
+
+def _hidden_component_marker(component_id: str) -> str:
+    return (
+        f'<section class="optional-section {html_lib.escape(component_id)} merged-section-marker" '
+        f'data-component="{html_lib.escape(component_id)}" id="{html_lib.escape(component_id)}" '
+        'hidden aria-hidden="true"></section>'
+    )
+
+
+def _is_hidden_section(section: str) -> bool:
+    opening = re.search(r"<section\b[^>]*>", section, flags=re.IGNORECASE)
+    if not opening:
+        return False
+
+    tag = opening.group(0).lower()
+    return " hidden" in tag or "aria-hidden=\"true\"" in tag or "aria-hidden='true'" in tag
+
+
+def _sections_repeat_same_proof(left: str, right: str) -> bool:
+    left_heading = _compact_visible_text(_section_heading_text(left))
+    right_heading = _compact_visible_text(_section_heading_text(right))
+    if left_heading and right_heading and left_heading == right_heading and len(left_heading) >= 24:
+        return True
+
+    left_text = _visible_text(left)
+    right_text = _visible_text(right)
+    if not left_text or not right_text:
+        return False
+
+    left_compact = _compact_visible_text(left_text)
+    right_compact = _compact_visible_text(right_text)
+    if min(len(left_compact), len(right_compact)) >= 80 and (
+        left_compact in right_compact or right_compact in left_compact
+    ):
+        return True
+
+    return _word_overlap(left_text, right_text) >= 0.6
+
+
+def _section_heading_text(section: str) -> str:
+    match = re.search(r"<h[1-3]\b[^>]*>(.*?)</h[1-3]>", section, flags=re.IGNORECASE | re.DOTALL)
+    return _visible_text(match.group(1)) if match else ""
+
+
+def _visible_text(html: str) -> str:
+    without_hidden = re.sub(
+        r"<[^>]+\b(?:hidden|aria-hidden=[\"']true[\"'])[^>]*>.*?</[^>]+>",
+        " ",
+        html,
+        flags=re.IGNORECASE | re.DOTALL,
+    )
+    without_script = re.sub(r"<(?:script|style)\b[^>]*>.*?</(?:script|style)>", " ", without_hidden, flags=re.IGNORECASE | re.DOTALL)
+    text = re.sub(r"<[^>]+>", " ", without_script)
+    text = html_lib.unescape(text)
+    return re.sub(r"\s+", " ", text).strip()
+
+
+def _compact_visible_text(text: str) -> str:
+    return re.sub(r"[^a-z0-9]", "", text.lower())
+
+
+def _word_overlap(left: str, right: str) -> float:
+    left_words = {word for word in re.findall(r"[a-z0-9]+", left.lower()) if len(word) > 3}
+    right_words = {word for word in re.findall(r"[a-z0-9]+", right.lower()) if len(word) > 3}
+    if not left_words or not right_words:
+        return 0.0
+
+    return len(left_words & right_words) / min(len(left_words), len(right_words))
 
 
 def _review_quotes_supplied(business_data: dict[str, Any]) -> bool:
@@ -368,6 +540,7 @@ def _has_credential_claim(lower: str) -> bool:
 
 def _strip_unsupplied_credential_claims(html: str) -> str:
     replacements = (
+        (r"\blicense verification card\s*\([^)]*\)", "credential status card"),
         (r"\blicense verification card\b", "credential status card"),
         (r"\blicense verification\b", "credential status"),
         (r"\blicensed and insured\b", "credential details pending"),
@@ -480,6 +653,22 @@ def _ensure_typography_variables(html: str) -> tuple[str, bool]:
     return fixed, changed
 
 
+def _normalize_full_viewport_spacing(html: str) -> str:
+    fixed = re.sub(
+        r"min-height\s*:\s*100(?:s|d)?vh\s*;?",
+        "min-height: auto;",
+        html,
+        flags=re.IGNORECASE,
+    )
+    fixed = re.sub(
+        r"height\s*:\s*100(?:s|d)?vh\s*;?",
+        "height: auto;",
+        fixed,
+        flags=re.IGNORECASE,
+    )
+    return fixed
+
+
 def _append_css_once(html: str, marker: str, css: str) -> tuple[str, bool]:
     if marker.lower() in html.lower():
         return html, False
@@ -553,6 +742,10 @@ ONARA_TYPOGRAPHY_LOCK_CSS = """
       html,
       body {
         font-family: var(--ui);
+        -webkit-font-smoothing: antialiased;
+        font-feature-settings: "ss01", "ss03";
+        font-synthesis-weight: none;
+        text-rendering: optimizeLegibility;
       }
 
       body,
@@ -572,6 +765,24 @@ ONARA_TYPOGRAPHY_LOCK_CSS = """
       .hero h1,
       .section-head h2 {
         font-family: var(--serif);
+        font-optical-sizing: auto;
+        font-weight: 400;
+        letter-spacing: -0.045em;
+        line-height: 0.92;
+        text-wrap: balance;
+      }
+
+      h1,
+      .hero h1,
+      .display {
+        font-size: clamp(4rem, 8.5vw, 7.5rem);
+        max-width: 12ch;
+      }
+
+      h2,
+      .section-head h2 {
+        font-size: clamp(2.8rem, 5.4vw, 5.5rem);
+        max-width: 13ch;
       }
 
       .eyebrow,
@@ -593,5 +804,78 @@ ONARA_TYPOGRAPHY_LOCK_CSS = """
       .script,
       .handwritten {
         font-family: var(--hand);
+      }
+
+      @media (max-width: 760px) {
+        h1,
+        .hero h1,
+        .display {
+          font-size: clamp(3.1rem, 15vw, 5.2rem);
+          line-height: 0.94;
+        }
+
+        h2,
+        .section-head h2 {
+          font-size: clamp(2.35rem, 11vw, 4rem);
+          line-height: 0.96;
+        }
+      }
+""".rstrip()
+
+
+ONARA_SPACING_LOCK_CSS = """
+      /* onara-spacing-lock */
+      body {
+        overflow-x: clip;
+      }
+
+      main {
+        overflow: clip;
+      }
+
+      .hero,
+      section.hero,
+      [data-component="hero"] {
+        min-height: auto !important;
+        padding-block: clamp(56px, 7vw, 104px) !important;
+        align-items: center;
+        overflow: clip;
+      }
+
+      .hero,
+      [data-component="hero"] {
+        gap: clamp(24px, 4vw, 64px);
+      }
+
+      .hero > *,
+      [data-component="hero"] > * {
+        min-width: 0;
+      }
+
+      main > section:not([data-component="hero"]),
+      section.optional-section {
+        padding-block: clamp(48px, 7vw, 88px);
+      }
+
+      .hero-side,
+      .panel-stack,
+      .proof-grid,
+      .service-menu,
+      .hero-proof {
+        align-self: start;
+      }
+
+      @media (min-width: 900px) {
+        .hero,
+        [data-component="hero"] {
+          grid-template-columns: minmax(0, 1.04fr) minmax(320px, 0.76fr);
+        }
+      }
+
+      @media (max-width: 899px) {
+        .hero,
+        [data-component="hero"] {
+          padding-block: clamp(40px, 11vw, 72px) !important;
+        }
       }
 """.rstrip()
