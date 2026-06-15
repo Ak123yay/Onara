@@ -34,7 +34,7 @@ export const AGENT_STEPS: AgentStep[] = [
   },
   {
     id: "style",
-    model: "Qwen local",
+    model: "GLM 5.1",
     name: "Style Agent",
     task: "Choosing palette, type scale, sections, and trust layout",
   },

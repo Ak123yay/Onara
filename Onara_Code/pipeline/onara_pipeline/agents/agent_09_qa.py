@@ -7,8 +7,13 @@ from onara_pipeline.agents.contracts import PlannerOutput, QAOutput
 from onara_pipeline.agents.json_utils import compact_json, parse_json_model
 from onara_pipeline.agents.onara_theme import ONARA_THEME_CONTRACT
 from onara_pipeline.agents.photos import prompt_photo_assets
+from onara_pipeline.agents.style_directives import style_directive_text
 from onara_pipeline.agents.supervisor import SupervisorValidationError, validate_qa_output
-from onara_pipeline.agents.visual_quality import onara_theme_issues, professional_visual_issues
+from onara_pipeline.agents.visual_quality import (
+    composition_depth_issues,
+    onara_theme_issues,
+    professional_visual_issues,
+)
 from onara_pipeline.ai_client import AIClient, AIClientError, AIMessage, AIRequest, get_agent_model_route
 from onara_pipeline.config import Settings
 from onara_pipeline.job_queue import PipelineJob
@@ -164,6 +169,9 @@ def audit_site(
     checks["professional_visual_system"] = not visual_issues
     blocking.extend(visual_issues)
 
+    depth_issues = composition_depth_issues(html)
+    checks["composition_depth"] = not depth_issues
+
     theme_issues = onara_theme_issues(html)
     checks["onara_theme"] = not theme_issues
 
@@ -235,6 +243,7 @@ def _user_prompt(
 
 Business data:
 {compact_json(job.business_data)}
+{style_directive_text(job.style_preferences)}
 
 Planner component order:
 {compact_json(planner.component_order)}

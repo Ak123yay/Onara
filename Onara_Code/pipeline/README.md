@@ -51,6 +51,10 @@ Phase 18 through Phase 21 Agents 7-10 now run in the background after enqueue:
 - Agent 10 Mobile: `qwen3.5:9b` through Ollama, hardens the final HTML for responsive layout, tap targets, flexible media, overflow prevention, fluid type, and reduced-motion safety.
 - Phase 22 Parser: normalizes final HTML, strips FILE_MARKER wrappers, splits atomic component files, and creates a deployment manifest.
 - Phase 22 GitHub backup: commits deployment files to `onara-sites/sites/{projectId}/` through GitHub App installation auth when GitHub env vars are configured.
+- GitHub deployment diagnostic:
+  - Read-only check: `python scripts/check_github_deployment.py`
+  - Real write check: `python scripts/check_github_deployment.py --write-check`
+  - If PyJWT/crypto is missing on the mini PC, run `python -m pip install -r requirements.txt` from `Onara_Code/pipeline`, then restart PM2/FastAPI.
 - Phase 22 Cloudflare Pages Direct Upload: creates/reuses a Pages project, uploads the public static files with Wrangler, and records the deployed `pages.dev` URL when Cloudflare env vars are configured.
 - Blackboard Supervisor inspects blackboard outputs after each phase and records whether to continue, rerun, route to debugger, or fail.
 - Onara theme gate: generated sites must use paper/ink/terracotta variables, Fraunces/Inter/mono typography, low-radius panels, paper texture, and Onara-style split/proof compositions before deploy.

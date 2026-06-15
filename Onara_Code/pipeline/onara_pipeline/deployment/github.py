@@ -260,7 +260,10 @@ def generate_app_jwt(*, app_id: str, private_key: str) -> str:
     try:
         import jwt
     except ImportError as exc:
-        raise GitHubDeploymentError("PyJWT[crypto] is required for GitHub App authentication") from exc
+        raise GitHubDeploymentError(
+            "PyJWT[crypto] is required for GitHub App authentication. "
+            "Run: python -m pip install -r requirements.txt"
+        ) from exc
 
     now = int(time.time())
     payload = {
@@ -268,7 +271,13 @@ def generate_app_jwt(*, app_id: str, private_key: str) -> str:
         "iat": now - 60,
         "iss": str(app_id),
     }
-    token = jwt.encode(payload, private_key, algorithm="RS256")
+    try:
+        token = jwt.encode(payload, private_key, algorithm="RS256")
+    except Exception as exc:
+        raise GitHubDeploymentError(
+            "GitHub App private key could not sign a JWT. Check GITHUB_APP_PRIVATE_KEY formatting "
+            "and make sure PyJWT[crypto] is installed."
+        ) from exc
     return token.decode("utf-8") if isinstance(token, bytes) else token
 
 

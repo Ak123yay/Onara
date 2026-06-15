@@ -8,7 +8,6 @@ _Installation, model downloads, dev and production configuration._
 
 Local LLM inference for speed-critical agents and local fallback:
 - Agent 2 — Content Writer (`qwen3.5:9b`)
-- Agent 3 — Style Picker (`qwen3.5:9b`, parallel with Agent 2)
 - Agent 8 — SEO Agent (`qwen3.5:9b`)
 - Agent 10 — Mobile Agent (`qwen3.5:9b`)
 - Supervisor — validates between each agent step (`gemma4:e4b`)
@@ -21,7 +20,7 @@ Local LLM inference for speed-critical agents and local fallback:
 | Variable | Where | Value |
 |----------|-------|-------|
 | `OLLAMA_BASE_URL` | FastAPI `.env` | `http://localhost:11434` when FastAPI and Ollama run on the same host |
-| `OLLAMA_PRIMARY_MODEL` | FastAPI `.env` | `qwen3.5:9b` — Agents 2, 3, 8, 10 |
+| `OLLAMA_PRIMARY_MODEL` | FastAPI `.env` | `qwen3.5:9b` — Agents 2, 8, 10 |
 | `OLLAMA_FALLBACK_MODEL` | FastAPI `.env` | `gemma4:e4b` — Supervisor + NIM/cloud fallback |
 
 ---

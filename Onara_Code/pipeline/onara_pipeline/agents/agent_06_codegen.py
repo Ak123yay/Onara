@@ -14,6 +14,7 @@ from onara_pipeline.agents.contracts import (
 from onara_pipeline.agents.fallbacks import fallback_codegen
 from onara_pipeline.agents.json_utils import compact_json
 from onara_pipeline.agents.onara_theme import ONARA_THEME_CONTRACT
+from onara_pipeline.agents.style_directives import style_directive_text
 from onara_pipeline.agents.supervisor import SupervisorValidationError, validate_codegen_output
 from onara_pipeline.ai_client import AIClient, AIClientError, AIMessage, AIRequest, get_agent_model_route
 from onara_pipeline.config import Settings
@@ -34,9 +35,11 @@ Generate production-ready contractor website code from the exact prompt and blue
 
 Onara visual quality bar:
 - The output must look like a professionally designed local-business website, not a generic AI landing page.
-- The output must follow the Onara design contract: warm paper, ink text, terracotta accent, Fraunces display type, Inter UI copy, JetBrains Mono metadata, low-radius panels.
+- The output must follow the Onara design contract: warm paper, ink text, selected palette accent, Fraunces display type, Inter UI copy, JetBrains Mono metadata, low-radius panels.
 - Do not create a centered brochure hero with a small badge, centered H1, centered paragraph, and one CTA as the whole fold.
 - Desktop hero must use a split/asymmetrical composition with a proof, service, image, booking, or contact panel beside the copy.
+- First fold must include at least four Onara composition surfaces such as hero-side, panel-stack, proof-strip, proof-grid, service-menu, local-card, hours-card, detail-card, review-card, or contact-card.
+- Do not output a page that is only a giant headline, short paragraph, one CTA, and one photo; layer useful local-business proof and action panels.
 - Use strong editorial type scale, low-radius cards, section contrast, atmospheric background treatment, and conversion-first CTAs.
 - Use CSS grid, grid-template-columns, minmax/repeat, clamp() typography, and at least one gradient/texture/shaped visual treatment.
 - Avoid Tailwind-looking defaults, oversized empty whitespace, generic rounded pills, and bland template symmetry.
@@ -84,7 +87,7 @@ async def run_codegen(
                 max_tokens=12000,
                 messages=[
                     AIMessage(role="system", content=SYSTEM_PROMPT),
-                    AIMessage(role="user", content=_user_prompt(context.name, planner, prompt)),
+                    AIMessage(role="user", content=_user_prompt(context.name, job.style_preferences, planner, prompt)),
                 ],
                 metadata={
                     "agent_id": "agent_06_codegen",
@@ -113,6 +116,7 @@ async def run_codegen(
             context=context,
             planner=planner,
             style=style,
+            style_preferences=job.style_preferences,
         )
         validate_codegen_output(output)
         return output
@@ -145,10 +149,16 @@ def split_component_files(html: str, planner: PlannerOutput) -> dict[str, str]:
     return files
 
 
-def _user_prompt(business_name: str, planner: PlannerOutput, prompt: PromptOutput) -> str:
+def _user_prompt(
+    business_name: str,
+    style_preferences: dict,
+    planner: PlannerOutput,
+    prompt: PromptOutput,
+) -> str:
     return f"""{prompt.prompt}
 
 {ONARA_THEME_CONTRACT}
+{style_directive_text(style_preferences)}
 
 Final Agent 6 requirements:
 - Business name: {business_name}
@@ -158,9 +168,11 @@ Final Agent 6 requirements:
 - Build a professional Onara-style local-business page, not a generic centered brochure page.
 - Define and use the Onara theme variables in :root: --paper, --paper-2, --ink, --ink-2, --ink-3, --rule, --accent, --accent-ink, --serif, --ui, --mono.
 - Use Fraunces/var(--serif) for H1-H3, Inter/var(--ui) for body copy, and JetBrains Mono/var(--mono) for eyebrows, labels, metadata, and tiny proof text.
-- Use terracotta CTAs, paper cards, ink panels, low-radius borders, rule-line separators, and subtle paper texture.
+- Use the selected palette for CTAs and accents, while keeping Onara paper cards, ink panels, low-radius borders, rule-line separators, and subtle paper texture.
 - The desktop hero must be a composed grid/split layout; do not set .hero to text-align:center unless there is still a designed side panel.
 - Include a proof/contact/service panel near the hero so the first fold has more than centered copy.
+- Include at least four named composition surfaces in or near the first fold: hero-side, panel-stack, proof-strip, proof-grid, service-menu, local-card, hours-card, detail-card, review-card, contact-card.
+- Include at least three distinct card types across the page: service-card, proof-card, review-card, local-card, contact-card, hours-card, metric-card, or detail-card.
 - Include CSS grid with grid-template-columns, fluid typography with clamp(), and a visual atmosphere layer using gradients, texture, image framing, color-mix(), clip-path, or aspect-ratio panels.
 - Use resolved photo assets from the prompt when present; otherwise use designed CSS placeholder panels, not broken image tags.
 - Add polished, lightweight CSS motion: entry reveals, subtle CTA/card hover states, and staggered proof/card reveals.

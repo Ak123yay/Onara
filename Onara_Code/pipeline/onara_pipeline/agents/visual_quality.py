@@ -46,6 +46,7 @@ def professional_visual_issues(html: str) -> list[str]:
     if sum(1 for token in proof_panel_tokens if token in lower) < 3:
         issues.append("Page lacks enough structured proof, service, and contact panels")
 
+    issues.extend(composition_depth_issues(html))
     issues.extend(onara_theme_issues(html))
 
     return _unique(issues)
@@ -53,6 +54,81 @@ def professional_visual_issues(html: str) -> list[str]:
 
 def has_professional_visual_system(html: str) -> bool:
     return not professional_visual_issues(html)
+
+
+def composition_depth_issues(html: str) -> list[str]:
+    """Require the Onara page to feel composed, not just styled."""
+    lower = html.lower()
+    issues: list[str] = []
+
+    depth_tokens = (
+        "accent-bar",
+        "browser-frame",
+        "card-stack",
+        "contact-card",
+        "cta-band",
+        "detail-card",
+        "figcaption",
+        "hero-card",
+        "hero-photo",
+        "hero-proof",
+        "hero-side",
+        "hours-card",
+        "image-stack",
+        "local-card",
+        "map-card",
+        "metric-card",
+        "panel-stack",
+        "photo-stack",
+        "proof-card",
+        "proof-grid",
+        "proof-strip",
+        "review-card",
+        "review-proof",
+        "service-card",
+        "service-menu",
+        "side-panel",
+        "trust-list",
+        "trust-rail",
+    )
+    depth_score = sum(1 for token in depth_tokens if token in lower)
+    if depth_score < 8:
+        issues.append(
+            "Page lacks Onara composition depth: add layered proof, service, photo, contact, and detail panels"
+        )
+
+    first_fold_match = re.search(r"<section\b[^>]*class=[\"'][^\"']*\bhero\b.*?</section>", html, flags=re.IGNORECASE | re.DOTALL)
+    first_fold = first_fold_match.group(0).lower() if first_fold_match else lower[:6500]
+    hero_depth_tokens = (
+        "hero-side",
+        "hero-card",
+        "hero-photo",
+        "proof-strip",
+        "proof-grid",
+        "service-menu",
+        "detail-card",
+        "local-card",
+        "hours-card",
+        "panel-stack",
+        "metric-card",
+    )
+    hero_depth_score = sum(1 for token in hero_depth_tokens if token in first_fold)
+    if hero_depth_score < 4:
+        issues.append(
+            "Hero fold is too sparse; it needs a side panel plus proof/service/detail cards above the fold"
+        )
+
+    if lower.count("<section") < 4:
+        issues.append("Page needs at least four real sections after header for a complete local-business site")
+
+    if "data-component=\"hero\"" in lower and "data-component=\"services\"" in lower:
+        hero_start = lower.find("data-component=\"hero\"")
+        services_start = lower.find("data-component=\"services\"")
+        hero_markup = lower[hero_start:services_start] if services_start > hero_start else ""
+        if hero_markup and hero_markup.count("<a ") < 1:
+            issues.append("Hero is missing a clear conversion CTA")
+
+    return _unique(issues)
 
 
 def onara_theme_issues(html: str) -> list[str]:
@@ -74,7 +150,7 @@ def onara_theme_issues(html: str) -> list[str]:
         issues.append("Page does not use Onara mono eyebrow/metadata typography")
 
     if not any(token in lower for token in ("--accent", "#c76f35", "#a95724", "terracotta")):
-        issues.append("Page does not use the Onara terracotta action accent")
+        issues.append("Page does not define an Onara action accent")
 
     paper_tokens = ("--paper", "radial-gradient", "repeating-linear-gradient", "background-image")
     if sum(1 for token in paper_tokens if token in lower) < 2:

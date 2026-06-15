@@ -32,9 +32,12 @@ ONARA_THEME_CONTRACT = f"""
 Onara design contract:
 - Use the Onara paper aesthetic: warm paper background, subtle radial/repeating texture, visible rule lines, and restrained shadows.
 - Use Onara typography: Fraunces-style serif display headings, Inter-style UI body copy, and JetBrains Mono-style uppercase labels/eyebrows.
-- Use Onara colors: paper/ink neutrals plus a terracotta action accent; business-specific colors may be secondary accents only.
+- Use Onara colors: paper/ink neutrals plus the selected action accent. Terracotta is the default Onara accent, but user-selected palettes may replace it.
 - Use low-radius surfaces: mostly 2px-8px cards/buttons; only small chips/badges may be pill-shaped.
 - Use crisp editorial composition: split or asymmetrical hero, browser/card/proof panels, section contrast, and practical local proof.
+- Build a complete first fold, not a single hero poster: include a split hero plus a side panel stack, proof strip, service menu, local detail card, or contact/booking card above the fold.
+- Use named composition surfaces when possible: hero-side, panel-stack, proof-strip, proof-grid, service-menu, local-card, hours-card, detail-card, review-card, and contact-card.
+- Every generated site should feel like a finished local-business brand piece with layered utility panels, not just a huge headline, one CTA, and one photo.
 - Avoid generic SaaS gloss: no purple defaults, no centered-only brochure hero, no oversized rounded pills, no empty template spacing.
 - Define these CSS variables in :root and use them across the page:
 {ONARA_THEME_CSS}

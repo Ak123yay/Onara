@@ -8,6 +8,7 @@ from onara_pipeline.agents.contracts import DebuggerOutput, PlannerOutput
 from onara_pipeline.agents.json_utils import compact_json, parse_json_model
 from onara_pipeline.agents.onara_theme import ONARA_THEME_CONTRACT
 from onara_pipeline.agents.photos import prompt_photo_assets
+from onara_pipeline.agents.style_directives import style_directive_text
 from onara_pipeline.agents.supervisor import SupervisorValidationError, validate_debugger_output
 from onara_pipeline.agents.visual_quality import professional_visual_issues
 from onara_pipeline.ai_client import AIClient, AIClientError, AIMessage, AIRequest, get_agent_model_route
@@ -25,7 +26,7 @@ Strict rules:
 - Preserve the business copy, content order, component IDs, and visual direction.
 - Fix broken or risky HTML/CSS/accessibility/performance issues.
 - If the deterministic audit flags generic visual composition or off-theme Onara styling, redesign the layout while preserving copy and component IDs.
-- Enforce the Onara design contract: paper/ink/terracotta variables, Fraunces headings, Inter body copy, mono labels, low-radius panels.
+- Enforce the Onara design contract: paper/ink/selected-accent variables, Fraunces headings, Inter body copy, mono labels, low-radius panels.
 - Keep one self-contained index.html document.
 - Keep all CSS inside <style> in <head>.
 - Keep animation lightweight: opacity and transform only.
@@ -236,6 +237,7 @@ Relevant RAG guidance:
 {_load_debugger_patterns(settings)}
 
 {ONARA_THEME_CONTRACT}
+{style_directive_text(job.style_preferences)}
 
 Return exactly this JSON:
 {{

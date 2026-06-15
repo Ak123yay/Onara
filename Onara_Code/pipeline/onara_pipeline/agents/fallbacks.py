@@ -13,6 +13,12 @@ from onara_pipeline.agents.contracts import (
 )
 from onara_pipeline.agents.json_utils import compact_json
 from onara_pipeline.agents.onara_theme import ONARA_FONT_IMPORT, ONARA_THEME_CONTRACT, ONARA_THEME_CSS
+from onara_pipeline.agents.style_directives import (
+    PALETTE_LABELS,
+    SECTION_LABELS,
+    normalized_style_preferences,
+    style_directive_text,
+)
 
 
 def fallback_analyst(context: BusinessContext, style_preferences: dict[str, Any]) -> AnalystOutput:
@@ -54,20 +60,42 @@ def fallback_content(context: BusinessContext, analyst: AnalystOutput) -> Conten
     services = context.services or default_services(analyst.industryType)
     service_area = context.service_area
     cta = analyst.primaryCta
+    tone = _tone_from_keywords(analyst.toneKeywords)
     rating_line = (
         f"Built around a {context.rating:g}-star Google rating and {context.review_count} local reviews."
         if context.rating and context.review_count
         else "Built around clear proof, local service details, and fast contact."
     )
+    subheadline = {
+        "direct": (
+            f"{context.name} makes it easy to get the right help in {service_area}. "
+            "Call, compare the services, and get the next step fast."
+        ),
+        "friendly": (
+            f"{context.name} gives neighbors around {service_area} a simple place to understand services, "
+            "ask for help, and feel comfortable before calling."
+        ),
+        "premium": (
+            f"{context.name} presents clear service details, proof, and a refined way for homeowners in "
+            f"{service_area} to start a serious project."
+        ),
+        "professional": (
+            f"{context.name} gives homeowners a clear way to get help, compare services, "
+            "and call without digging through a long page."
+        ),
+    }.get(tone, "")
+    contact_subtext = {
+        "direct": "Call now or request the next available estimate.",
+        "friendly": "Tell us what you need and we will point you to the right next step.",
+        "premium": "Share the project details and get a clear, professional next step.",
+        "professional": "No pressure. Call or request an estimate and get a clear next step.",
+    }.get(tone, "No pressure. Call or request an estimate and get a clear next step.")
 
     return ContentOutput.model_validate(
         {
             "hero": {
                 "headline": f"{_industry_label(analyst.industryType)} help in {service_area}.",
-                "subheadline": (
-                    f"{context.name} gives homeowners a clear way to get help, compare services, "
-                    "and call without digging through a long page."
-                ),
+                "subheadline": subheadline,
                 "cta_button": cta,
             },
             "about": {
@@ -90,7 +118,7 @@ def fallback_content(context: BusinessContext, analyst: AnalystOutput) -> Conten
             },
             "contact": {
                 "headline": "Tell us what is going on.",
-                "subtext": "No pressure. Call or request an estimate and get a clear next step.",
+                "subtext": contact_subtext,
             },
             "footer_tagline": f"{context.name} - local help without the runaround.",
         }
@@ -102,9 +130,10 @@ def fallback_style(
     analyst: AnalystOutput,
     style_preferences: dict[str, Any],
 ) -> StyleOutput:
+    preferences = normalized_style_preferences(style_preferences)
     palette = _palette(style_preferences, analyst.industryType)
-    tone = str(style_preferences.get("tone") or "professional")
-    layout = str(style_preferences.get("layout") or "phone-first")
+    tone = preferences["tone"]
+    layout = preferences["layout"]
 
     return StyleOutput.model_validate(
         {
@@ -118,7 +147,8 @@ def fallback_style(
             "style_notes": (
                 f"{context.name} should feel {tone}, local, and easy to call. "
                 f"Use a {layout.replace('-', ' ')} layout with Onara paper texture, Fraunces display type, "
-                "terracotta CTAs, low-radius proof panels, and practical trust proof."
+                f"{PALETTE_LABELS[preferences['palette']].lower()} color direction, "
+                "low-radius proof panels, and practical trust proof."
             ),
         }
     )
@@ -128,7 +158,9 @@ def fallback_planner(
     analyst: AnalystOutput,
     content: ContentOutput,
     style: StyleOutput,
+    style_preferences: dict[str, Any] | None = None,
 ) -> PlannerOutput:
+    preferences = normalized_style_preferences(style_preferences)
     components = [
         {
             "id": "site_header",
@@ -188,48 +220,53 @@ def fallback_planner(
             "responsive_changes": "Keep proof cards readable with generous spacing on mobile.",
             "interactive": None,
         },
-        {
-            "id": "contact",
-            "type": "section",
-            "order": 5,
-            "html_structure": "Create a contact section with a short headline, low-friction subtext, and final CTA.",
-            "css_classes": ["contact", "contact-card", "contact-cta"],
-            "content_mapping": {
-                "headline": content.contact.headline,
-                "subtext": content.contact.subtext,
-                "cta": content.hero.cta_button,
-            },
-            "responsive_changes": "Make the final CTA full-width on mobile with at least 44px tap height.",
-            "interactive": "CTA links to tel: when a phone number is available, otherwise #contact.",
-        },
-        {
-            "id": "site_footer",
-            "type": "footer",
-            "order": 6,
-            "html_structure": "Create a simple footer with tagline, service area, and contact details.",
-            "css_classes": ["site-footer", "footer-tagline"],
-            "content_mapping": {
-                "tagline": content.footer_tagline,
-                "targetKeyword": analyst.targetKeyword,
-            },
-            "responsive_changes": "Stack footer details vertically on mobile.",
-            "interactive": None,
-        },
     ]
+    components.extend(_optional_component_specs(preferences, analyst, content, start_order=len(components) + 1))
+    components.extend(
+        [
+            {
+                "id": "contact",
+                "type": "section",
+                "order": len(components) + 1,
+                "html_structure": "Create a contact section with a short headline, low-friction subtext, and final CTA.",
+                "css_classes": ["contact", "contact-card", "contact-cta"],
+                "content_mapping": {
+                    "headline": content.contact.headline,
+                    "subtext": content.contact.subtext,
+                    "cta": content.hero.cta_button,
+                },
+                "responsive_changes": "Make the final CTA full-width on mobile with at least 44px tap height.",
+                "interactive": "CTA links to tel: when a phone number is available, otherwise #contact.",
+            },
+            {
+                "id": "site_footer",
+                "type": "footer",
+                "order": len(components) + 2,
+                "html_structure": "Create a simple footer with tagline, service area, and contact details.",
+                "css_classes": ["site-footer", "footer-tagline"],
+                "content_mapping": {
+                    "tagline": content.footer_tagline,
+                    "targetKeyword": analyst.targetKeyword,
+                },
+                "responsive_changes": "Stack footer details vertically on mobile.",
+                "interactive": None,
+            },
+        ]
+    )
 
     return PlannerOutput.model_validate(
         {
             "components": components,
             "css_variables": {
-                "--paper": "#fbfaf6",
-                "--paper-2": "#f3f0e8",
-                "--paper-3": "#ebe6dc",
-                "--ink": "#1a1a1a",
-                "--ink-2": "#3b3b3b",
-                "--ink-3": "#6a6a6a",
-                "--rule": "#d8d6cf",
-                "--accent": "#c76f35",
-                "--accent-ink": "#8a461f",
+                "--paper": style.colors.background,
+                "--paper-2": style.colors.surface,
+                "--paper-3": style.colors.background,
+                "--ink": style.colors.text_primary,
+                "--ink-2": style.colors.primary,
+                "--ink-3": style.colors.text_secondary,
+                "--rule": style.colors.border,
+                "--accent": style.colors.secondary,
+                "--accent-ink": style.colors.primary,
                 "--serif": "Fraunces",
                 "--ui": "Inter",
                 "--mono": "JetBrains Mono",
@@ -248,7 +285,8 @@ def fallback_planner(
             "component_order": [component["id"] for component in components],
             "special_notes": (
                 f"Build a phone-first {analyst.industryType} website. Primary CTA: {analyst.primaryCta}. "
-                f"Target keyword: {analyst.targetKeyword}. {style.style_notes}"
+                f"Target keyword: {analyst.targetKeyword}. {style.style_notes} "
+                f"{style_directive_text(preferences)}"
             ),
         }
     )
@@ -261,6 +299,7 @@ def fallback_prompt(
     photo_assets: list[dict[str, str]] | None = None,
     planner: PlannerOutput,
     style: StyleOutput,
+    style_preferences: dict[str, Any] | None = None,
     business_name: str,
     phone: str,
 ) -> PromptOutput:
@@ -279,6 +318,8 @@ Hard requirements:
 - If photo assets are available, include at least one real image using an exact provided src.
 - Never use raw Google Places photo names, /api/places/photo, localhost, or authenticated app URLs in deployed HTML.
 - Follow the Onara design contract exactly.
+- Build a complete first fold with a hero-side panel stack, proof-strip, service-menu/local-card/detail-card surfaces, and at least three distinct card types.
+- Do not generate only a large headline, paragraph, CTA, and one photo; layer proof, services, and local action panels into the page.
 - Include lightweight CSS-only animation using opacity and transform for entry reveals, CTA/card hover states, and proof/card stagger.
 - Include at least one @keyframes rule.
 - Include @media (prefers-reduced-motion: reduce) that disables animations, transitions, and smooth scrolling.
@@ -295,6 +336,7 @@ Design system:
 {compact_json(style.model_dump())}
 
 {ONARA_THEME_CONTRACT}
+{style_directive_text(style_preferences)}
 
 Resolved photo assets:
 {compact_json(photo_assets)}
@@ -315,9 +357,11 @@ def fallback_codegen(
     context: BusinessContext,
     planner: PlannerOutput,
     style: StyleOutput,
+    style_preferences: dict[str, Any] | None = None,
     model: str = "fallback-template",
     provider: str = "deterministic",
 ) -> CodegenOutput:
+    preferences = normalized_style_preferences(style_preferences)
     cta_href = _cta_href(context.phone)
     rating_line = (
         f"{context.rating:g} from {context.review_count} Google reviews"
@@ -339,7 +383,17 @@ def fallback_codegen(
     )
     if not trust_items:
         trust_items = "          <li>Local service area and clear contact details</li>"
-    hero_media = _hero_media_component(context, analyst)
+    hero_side = _hero_side_component(context, analyst, cta_href, rating_line, service_area, preferences)
+    proof_items = _proof_items(context, rating_line, service_area)
+    optional_component_files = _optional_component_files(
+        analyst=analyst,
+        content=content,
+        context=context,
+        cta_href=cta_href,
+        preferences=preferences,
+        rating_line=rating_line,
+        service_area=service_area,
+    )
 
     component_files = {
         "components/site_header.html": f"""<header class="site-header" data-component="site_header">
@@ -351,7 +405,7 @@ def fallback_codegen(
   </nav>
   <a class="header-cta" href="{cta_href}">{_escape(analyst.primaryCta)}</a>
 </header>""",
-        "components/hero.html": f"""<section class="hero" data-component="hero" id="top">
+        "components/hero.html": f"""<section class="hero hero-{_escape(preferences["layout"])}" data-component="hero" id="top">
   <div class="hero-copy">
     <span class="eyebrow">{_escape(rating_line)}</span>
     <h1>{_escape(content.hero.headline)}</h1>
@@ -360,8 +414,11 @@ def fallback_codegen(
       <a class="primary-cta" href="{cta_href}">{_escape(content.hero.cta_button)}</a>
       <span>Serving {_escape(service_area)}</span>
     </div>
+    <div class="proof-strip" aria-label="Fast proof">
+{proof_items}
+    </div>
   </div>
-{hero_media}
+{hero_side}
 </section>""",
         "components/services.html": f"""<section class="services section" data-component="services" id="services">
   <div class="section-head">
@@ -396,6 +453,7 @@ def fallback_codegen(
   <span>{_escape(context.address or service_area)}</span>
 </footer>""",
     }
+    component_files.update(optional_component_files)
 
     ordered_components = _ordered_component_html(planner, component_files)
     html = f"""<!doctype html>
@@ -410,6 +468,16 @@ def fallback_codegen(
 
       :root {{
 {_indent(ONARA_THEME_CSS, 8)}
+        --paper: {style.colors.background};
+        --paper-2: {style.colors.surface};
+        --paper-3: {style.colors.background};
+        --ink: {style.colors.text_primary};
+        --ink-2: {style.colors.primary};
+        --ink-3: {style.colors.text_secondary};
+        --rule: {style.colors.border};
+        --accent: {style.colors.secondary};
+        --accent-2: {style.colors.secondary};
+        --accent-ink: {style.colors.primary};
         --color-primary: {style.colors.primary};
         --color-secondary: {style.colors.secondary};
         --color-background: {style.colors.background};
@@ -453,6 +521,21 @@ def fallback_codegen(
           radial-gradient(circle at 82% 18%, color-mix(in srgb, var(--leaf) 10%, transparent), transparent 30rem),
           radial-gradient(circle at 25% 30%, rgba(0,0,0,0.012) 0, transparent 38rem),
           linear-gradient(180deg, var(--paper), var(--paper-2));
+      }}
+      .site-shell.layout-trust-led .hero {{
+        grid-template-columns: minmax(0, 0.88fr) minmax(340px, 1.12fr);
+      }}
+      .site-shell.layout-service-grid .hero {{
+        grid-template-columns: minmax(0, 0.82fr) minmax(360px, 1.18fr);
+      }}
+      .site-shell.layout-service-grid .service-menu {{
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }}
+      .site-shell.layout-split-hero .hero {{
+        grid-template-columns: minmax(0, 0.9fr) minmax(420px, 1.1fr);
+      }}
+      .site-shell.layout-split-hero .hero-photo img {{
+        aspect-ratio: 5 / 4;
       }}
       .site-header {{
         align-items: center;
@@ -522,9 +605,50 @@ def fallback_codegen(
       }}
       .hero-actions {{ align-items: center; display: flex; flex-wrap: wrap; gap: 16px; margin-top: 30px; }}
       .hero-actions span {{ color: var(--ink-3); font-size: 0.95rem; }}
+      .proof-strip {{
+        display: grid;
+        gap: 10px;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        margin-top: 34px;
+      }}
+      .metric-card {{
+        animation: onara-rise var(--motion-duration) var(--motion-ease) both;
+        background: color-mix(in srgb, var(--paper) 82%, #fff);
+        border: 1px solid var(--rule);
+        min-height: 96px;
+        padding: 16px;
+      }}
+      .metric-card:nth-child(2) {{ animation-delay: 80ms; }}
+      .metric-card:nth-child(3) {{ animation-delay: 160ms; }}
+      .metric-card span,
+      .detail-card span {{
+        color: var(--ink-3);
+        display: block;
+        font-family: var(--mono);
+        font-size: 0.68rem;
+        letter-spacing: 0.18em;
+        margin-bottom: 12px;
+        text-transform: uppercase;
+      }}
+      .metric-card strong {{
+        color: var(--ink);
+        display: block;
+        font-size: 0.9rem;
+        line-height: 1.25;
+      }}
+      .hero-side {{
+        align-self: end;
+        display: grid;
+        gap: 12px;
+      }}
+      .panel-stack > * {{
+        animation: onara-rise var(--motion-duration) var(--motion-ease) both;
+      }}
+      .panel-stack > :nth-child(2) {{ animation-delay: 90ms; }}
+      .panel-stack > :nth-child(3) {{ animation-delay: 180ms; }}
+      .panel-stack > :nth-child(4) {{ animation-delay: 270ms; }}
       .hero-card {{
         animation: onara-rise var(--motion-duration) var(--motion-ease) 220ms both;
-        align-self: end;
         background: var(--ink);
         border: 1px solid color-mix(in srgb, var(--paper) 18%, transparent);
         color: #fff;
@@ -536,7 +660,6 @@ def fallback_codegen(
       .hero-card p {{ color: color-mix(in srgb, #fff 70%, transparent); margin: 0; }}
       .hero-photo {{
         animation: onara-rise var(--motion-duration) var(--motion-ease) 220ms both;
-        align-self: end;
         background: var(--ink);
         border: 1px solid color-mix(in srgb, var(--paper) 18%, transparent);
         color: #fff;
@@ -557,6 +680,49 @@ def fallback_codegen(
         font-size: 0.9rem;
         padding: 14px 4px 0;
       }}
+      .detail-card {{
+        background: color-mix(in srgb, var(--paper) 88%, #fff);
+        border: 1px solid var(--rule);
+        padding: 20px;
+      }}
+      .detail-card strong {{
+        display: block;
+        font-family: var(--serif);
+        font-size: 1.45rem;
+        letter-spacing: -0.045em;
+        line-height: 1;
+      }}
+      .detail-card p {{
+        color: var(--ink-3);
+        margin: 12px 0 0;
+      }}
+      .hours-card {{
+        align-items: center;
+        display: grid;
+        gap: 12px;
+        grid-template-columns: 1fr auto;
+      }}
+      .hours-card span {{ grid-column: 1 / -1; }}
+      .hours-card a {{
+        border-bottom: 1px solid var(--accent);
+        color: var(--accent-ink);
+        font-weight: 800;
+      }}
+      .service-menu {{
+        background: var(--paper-2);
+        border: 1px solid var(--rule);
+        display: grid;
+        gap: 0;
+        list-style: none;
+        margin: 0;
+        padding: 0;
+      }}
+      .service-menu li {{
+        border-bottom: 1px solid var(--rule);
+        font-weight: 750;
+        padding: 15px 18px;
+      }}
+      .service-menu li:last-child {{ border-bottom: 0; }}
       .section {{ margin: 0 auto; max-width: var(--container); padding: 72px 20px; }}
       .section-head {{ display: grid; gap: 18px; margin-bottom: 28px; }}
       .service-grid {{
@@ -631,6 +797,50 @@ def fallback_codegen(
         padding: 28px 20px;
       }}
       .site-footer strong {{ color: var(--ink); }}
+      .optional-section {{
+        margin: 0 auto;
+        max-width: var(--container);
+        padding: 56px 20px;
+      }}
+      .review-grid,
+      .gallery-grid,
+      .faq-grid,
+      .proof-grid {{
+        display: grid;
+        gap: 14px;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }}
+      .review-card,
+      .proof-card,
+      .faq-card,
+      .finance-card {{
+        background: var(--paper);
+        border: 1px solid var(--rule);
+        padding: 24px;
+      }}
+      .gallery-grid figure {{
+        background: var(--ink);
+        color: #fff;
+        margin: 0;
+        padding: 10px;
+      }}
+      .gallery-grid img {{
+        aspect-ratio: 4 / 3;
+        display: block;
+        object-fit: cover;
+        width: 100%;
+      }}
+      .gallery-grid figcaption {{
+        color: color-mix(in srgb, #fff 70%, transparent);
+        font-size: 0.86rem;
+        padding: 10px 2px 0;
+      }}
+      .gallery-placeholder div {{
+        aspect-ratio: 4 / 3;
+        background:
+          radial-gradient(circle at 30% 25%, color-mix(in srgb, var(--accent) 24%, transparent), transparent 40%),
+          linear-gradient(135deg, color-mix(in srgb, var(--ink) 94%, #000), color-mix(in srgb, var(--accent) 34%, var(--ink)));
+      }}
       :focus-visible {{ outline: 3px solid var(--accent); outline-offset: 3px; }}
       @media (hover: hover) {{
         .header-cta:hover,
@@ -665,13 +875,19 @@ def fallback_codegen(
         nav {{ justify-content: space-between; }}
         .header-cta, .primary-cta {{ width: 100%; }}
         .hero, .trust {{ grid-template-columns: 1fr; }}
+        .hours-card,
+        .proof-strip {{ grid-template-columns: 1fr; }}
+        .review-grid,
+        .gallery-grid,
+        .faq-grid,
+        .proof-grid {{ grid-template-columns: 1fr; }}
         .service-grid {{ grid-template-columns: 1fr; }}
         .site-footer {{ flex-direction: column; }}
       }}
     </style>
   </head>
   <body>
-    <div class="site-shell">
+    <div class="site-shell layout-{_escape(preferences["layout"])} palette-{_escape(preferences["palette"])} tone-{_escape(preferences["tone"])} cta-{_escape(preferences["cta"])}">
 {ordered_components}
     </div>
   </body>
@@ -689,11 +905,11 @@ def fallback_codegen(
 
 
 def _cta_text(style_preferences: dict[str, Any], context: BusinessContext) -> str:
-    cta = style_preferences.get("cta")
+    cta = normalized_style_preferences(style_preferences)["cta"]
     if cta == "call-now" and context.phone:
         return "Call Now"
     if cta == "emergency" and context.phone:
-        return "Call for Emergency Help"
+        return "Get Emergency Help"
     if cta == "book-online":
         return "Book Online"
     return "Get a Free Estimate"
@@ -710,8 +926,9 @@ def _industry_label(industry: str) -> str:
 
 
 def _palette(style_preferences: dict[str, Any], industry: str) -> dict[str, str]:
-    if style_preferences.get("palette") == "custom":
-        custom = style_preferences.get("customPalette")
+    preferences = normalized_style_preferences(style_preferences)
+    if preferences["palette"] == "custom":
+        custom = preferences["customPalette"]
         if isinstance(custom, dict):
             return {
                 "primary": _hex(custom.get("primary"), "#10263a"),
@@ -723,7 +940,7 @@ def _palette(style_preferences: dict[str, Any], industry: str) -> dict[str, str]
                 "border": "#ddd5ca",
             }
 
-    preset = style_preferences.get("palette")
+    preset = preferences["palette"]
     palettes = {
         "emergency": ("#10263a", "#ea5b0c", "#fff8ef", "#ffffff", "#191919", "#62615d", "#ddd5ca"),
         "trust": ("#1a4f8a", "#047481", "#f5efe4", "#ffffff", "#10263a", "#617080", "#d8d0c4"),
@@ -751,6 +968,15 @@ def _typography(tone: str) -> dict[str, str]:
     }
 
 
+def _tone_from_keywords(tone_keywords: list[str]) -> str:
+    allowed = {"direct", "professional", "friendly", "premium"}
+    for keyword in tone_keywords:
+        normalized = keyword.strip().lower()
+        if normalized in allowed:
+            return normalized
+    return "professional"
+
+
 def _ordered_component_html(planner: PlannerOutput, component_files: dict[str, str]) -> str:
     by_id = {path.removeprefix("components/").removesuffix(".html"): value for path, value in component_files.items()}
     aliases = {
@@ -774,6 +1000,243 @@ def _ordered_component_html(planner: PlannerOutput, component_files: dict[str, s
     return "\n".join(_indent(component, 6) for component in ordered)
 
 
+def _optional_component_specs(
+    preferences: dict[str, Any],
+    analyst: AnalystOutput,
+    content: ContentOutput,
+    *,
+    start_order: int,
+) -> list[dict[str, Any]]:
+    specs: list[dict[str, Any]] = []
+    section_specs = {
+        "reviews": {
+            "id": "reviews",
+            "html_structure": "Create a Google reviews section with rating proof and review-style cards.",
+            "css_classes": ["optional-section", "reviews", "review-grid", "review-card"],
+            "content_mapping": {"headline": content.social_proof.headline, "subtext": content.social_proof.subtext},
+        },
+        "license": {
+            "id": "license_proof",
+            "html_structure": "Create a license and insurance proof section with concise confidence cards.",
+            "css_classes": ["optional-section", "license-proof", "proof-grid", "proof-card"],
+            "content_mapping": {"trustSignals": ", ".join(analyst.trustSignals)},
+        },
+        "service-area": {
+            "id": "service_area",
+            "html_structure": "Create a service area section naming the local coverage area and nearby work.",
+            "css_classes": ["optional-section", "service-area", "proof-card"],
+            "content_mapping": {"targetKeyword": analyst.targetKeyword},
+        },
+        "gallery": {
+            "id": "gallery",
+            "html_structure": "Create a photo gallery section using resolved photo assets when available.",
+            "css_classes": ["optional-section", "gallery", "gallery-grid"],
+            "content_mapping": {"headline": "Photos from the business"},
+        },
+        "faq": {
+            "id": "faq",
+            "html_structure": "Create a concise FAQ section that answers common homeowner objections.",
+            "css_classes": ["optional-section", "faq", "faq-grid", "faq-card"],
+            "content_mapping": {"targetKeyword": analyst.targetKeyword},
+        },
+        "financing": {
+            "id": "financing",
+            "html_structure": "Create a financing/payment options section without inventing lender claims.",
+            "css_classes": ["optional-section", "financing", "finance-card"],
+            "content_mapping": {"cta": content.hero.cta_button},
+        },
+    }
+
+    for section in preferences.get("sections", []):
+        spec = section_specs.get(str(section))
+        if not spec:
+            continue
+        specs.append(
+            {
+                "id": spec["id"],
+                "type": "section",
+                "order": start_order + len(specs),
+                "html_structure": spec["html_structure"],
+                "css_classes": spec["css_classes"],
+                "content_mapping": spec["content_mapping"],
+                "responsive_changes": "Stack cards into one column on mobile with readable spacing.",
+                "interactive": None,
+            }
+        )
+
+    return specs
+
+
+def _optional_component_files(
+    *,
+    analyst: AnalystOutput,
+    content: ContentOutput,
+    context: BusinessContext,
+    cta_href: str,
+    preferences: dict[str, Any],
+    rating_line: str,
+    service_area: str,
+) -> dict[str, str]:
+    files: dict[str, str] = {}
+    sections = set(preferences.get("sections", []))
+
+    if "reviews" in sections:
+        files["components/reviews.html"] = f"""<section class="optional-section reviews" data-component="reviews" id="reviews">
+  <div class="section-head">
+    <span class="eyebrow">{_escape(SECTION_LABELS["reviews"])}</span>
+    <h2>{_escape(content.social_proof.headline)}</h2>
+    <p>{_escape(content.social_proof.subtext)}</p>
+  </div>
+  <div class="review-grid">
+    <article class="review-card"><strong>{_escape(rating_line)}</strong><p>Review proof is visible before the final call action.</p></article>
+    <article class="review-card"><strong>Google Business verified</strong><p>Hours, location, services, and contact details stay easy to scan.</p></article>
+    <article class="review-card"><strong>Local confidence</strong><p>Visitors see proof before they have to make a decision.</p></article>
+  </div>
+</section>"""
+
+    if "license" in sections:
+        trust_items = "\n".join(
+            f"""    <article class="proof-card"><strong>{_escape(signal)}</strong><p>Clear trust proof for homeowners comparing local providers.</p></article>"""
+            for signal in (analyst.trustSignals or ["Licensed and insured", "Local proof", "Clear next step"])[:3]
+        )
+        files["components/license_proof.html"] = f"""<section class="optional-section license-proof" data-component="license_proof" id="license-proof">
+  <div class="section-head">
+    <span class="eyebrow">{_escape(SECTION_LABELS["license"])}</span>
+    <h2>Proof before the phone call.</h2>
+  </div>
+  <div class="proof-grid">
+{trust_items}
+  </div>
+</section>"""
+
+    if "service-area" in sections:
+        files["components/service_area.html"] = f"""<section class="optional-section service-area" data-component="service_area" id="service-area">
+  <div class="proof-card">
+    <span class="eyebrow">{_escape(SECTION_LABELS["service-area"])}</span>
+    <h2>Built for {_escape(service_area)} searches.</h2>
+    <p>{_escape(context.name)} keeps the coverage area, address, and next step visible for local customers searching for {_escape(analyst.targetKeyword)}.</p>
+  </div>
+</section>"""
+
+    if "gallery" in sections:
+        figures = _gallery_figures(context, analyst)
+        files["components/gallery.html"] = f"""<section class="optional-section gallery" data-component="gallery" id="gallery">
+  <div class="section-head">
+    <span class="eyebrow">{_escape(SECTION_LABELS["gallery"])}</span>
+    <h2>Photos customers can recognize.</h2>
+  </div>
+  <div class="gallery-grid">
+{figures}
+  </div>
+</section>"""
+
+    if "faq" in sections:
+        files["components/faq.html"] = f"""<section class="optional-section faq" data-component="faq" id="faq">
+  <div class="section-head">
+    <span class="eyebrow">{_escape(SECTION_LABELS["faq"])}</span>
+    <h2>Quick answers before you call.</h2>
+  </div>
+  <div class="faq-grid">
+    <article class="faq-card"><strong>How fast can I get help?</strong><p>Use the primary CTA and include your location so the team can give the clearest next step.</p></article>
+    <article class="faq-card"><strong>What areas do you serve?</strong><p>The site is written around {_escape(service_area)} and nearby local searches.</p></article>
+    <article class="faq-card"><strong>Can I ask for an estimate first?</strong><p>Yes. Use the CTA to start with a clear, low-friction estimate request.</p></article>
+  </div>
+</section>"""
+
+    if "financing" in sections:
+        files["components/financing.html"] = f"""<section class="optional-section financing" data-component="financing" id="financing">
+  <div class="finance-card">
+    <span class="eyebrow">{_escape(SECTION_LABELS["financing"])}</span>
+    <h2>Ask about payment options.</h2>
+    <p>For larger work, use the first call to ask what estimate, deposit, or payment options are available. No lender claims are made until the business confirms them.</p>
+    <a class="primary-cta" href="{cta_href}">{_escape(content.hero.cta_button)}</a>
+  </div>
+</section>"""
+
+    return files
+
+
+def _gallery_figures(context: BusinessContext, analyst: AnalystOutput) -> str:
+    if context.photos:
+        return "\n".join(
+            f"""    <figure>
+      <img src="{_escape(photo.src)}" alt="{_escape(photo.alt)}" loading="lazy" decoding="async" />
+      <figcaption>{_escape(photo.attribution_display or analyst.targetKeyword)}</figcaption>
+    </figure>"""
+            for photo in context.photos[:3]
+        )
+
+    placeholders = (
+        ("Project detail", analyst.targetKeyword),
+        ("Service area", context.service_area),
+        ("Before the call", context.name),
+    )
+    return "\n".join(
+        f"""    <figure class="gallery-placeholder">
+      <div aria-hidden="true"></div>
+      <figcaption>{_escape(title)} - {_escape(subtitle)}</figcaption>
+    </figure>"""
+        for title, subtitle in placeholders
+    )
+
+
+def _proof_items(context: BusinessContext, rating_line: str, service_area: str) -> str:
+    items = [
+        ("Reviews", rating_line),
+        ("Area", f"Serving {service_area}"),
+        ("Action", context.phone or "Fast estimate request"),
+    ]
+    return "\n".join(
+        f"""      <div class="metric-card">
+        <span>{_escape(label)}</span>
+        <strong>{_escape(value)}</strong>
+      </div>"""
+        for label, value in items
+    )
+
+
+def _hero_side_component(
+    context: BusinessContext,
+    analyst: AnalystOutput,
+    cta_href: str,
+    rating_line: str,
+    service_area: str,
+    preferences: dict[str, Any],
+) -> str:
+    services = (context.services or default_services(analyst.industryType))[:4]
+    service_items = "\n".join(
+        f"""      <li>{_escape(service)}</li>""" for service in services
+    )
+    layout = str(preferences.get("layout") or "phone-first")
+    media = _hero_media_component(context, analyst)
+    local_card = f"""    <div class="detail-card local-card">
+      <span class="eyebrow">Local proof</span>
+      <strong>{_escape(service_area)}</strong>
+      <p>{_escape(rating_line)}</p>
+    </div>"""
+    action_card = f"""    <div class="detail-card hours-card">
+      <span class="eyebrow">Next step</span>
+      <strong>{_escape(context.phone or analyst.primaryCta)}</strong>
+      <a href="{cta_href}">{_escape(analyst.primaryCta)}</a>
+    </div>"""
+    service_menu = f"""    <ul class="service-menu" aria-label="Common services">
+{service_items}
+    </ul>"""
+
+    if layout == "trust-led":
+        ordered_panels = f"{local_card}\n{media}\n{action_card}\n{service_menu}"
+    elif layout == "service-grid":
+        ordered_panels = f"{service_menu}\n{local_card}\n{media}\n{action_card}"
+    elif layout == "split-hero":
+        ordered_panels = f"{media}\n{service_menu}\n{local_card}\n{action_card}"
+    else:
+        ordered_panels = f"{action_card}\n{service_menu}\n{media}\n{local_card}"
+
+    return f"""  <aside class="hero-side panel-stack" aria-label="Local proof and next steps">
+{ordered_panels}
+  </aside>"""
+
+
 def _hero_media_component(context: BusinessContext, analyst: AnalystOutput) -> str:
     if context.photos:
         photo = context.photos[0]
@@ -783,16 +1246,16 @@ def _hero_media_component(context: BusinessContext, analyst: AnalystOutput) -> s
             else _escape(photo.attribution_display)
         )
         caption = attribution or _escape(analyst.targetKeyword)
-        return f"""  <figure class="hero-photo" aria-label="Business photo">
-    <img src="{_escape(photo.src)}" alt="{_escape(photo.alt)}" loading="eager" decoding="async" />
-    <figcaption>{caption}</figcaption>
-  </figure>"""
+        return f"""    <figure class="hero-photo" aria-label="Business photo">
+      <img src="{_escape(photo.src)}" alt="{_escape(photo.alt)}" loading="eager" decoding="async" />
+      <figcaption>{caption}</figcaption>
+    </figure>"""
 
-    return f"""  <aside class="hero-card" aria-label="Fast contact">
-    <span>Phone-first contractor site</span>
-    <strong>{_escape(context.phone or "Call for estimate")}</strong>
-    <p>{_escape(analyst.targetKeyword)}</p>
-  </aside>"""
+    return f"""    <div class="hero-card" aria-label="Fast contact">
+      <span>Phone-first contractor site</span>
+      <strong>{_escape(context.phone or "Call for estimate")}</strong>
+      <p>{_escape(analyst.targetKeyword)}</p>
+    </div>"""
 
 
 def _cta_href(phone: str) -> str:

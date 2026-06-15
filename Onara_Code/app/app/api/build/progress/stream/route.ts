@@ -6,6 +6,7 @@ import {
 } from "@/lib/build/agent-progress";
 
 export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
 
 type PipelineProgressEntry = {
   agent_id?: string | null;
@@ -27,6 +28,12 @@ type PipelineStatusResponse = {
   status: "queued" | "running" | "completed" | "failed";
 };
 
+type PipelineStatusError = {
+  error: string;
+  fatal?: boolean;
+  message: string;
+};
+
 const PIPELINE_AGENT_TO_STEP_INDEX: Record<string, number> = {
   agent_01_analyst: 0,
   agent_02_content: 1,
@@ -41,7 +48,8 @@ const PIPELINE_AGENT_TO_STEP_INDEX: Record<string, number> = {
 };
 
 const POLL_INTERVAL_MS = 900;
-const STREAM_TIMEOUT_MS = 240_000;
+const HEARTBEAT_INTERVAL_MS = 12_000;
+const PIPELINE_FETCH_TIMEOUT_MS = 20_000;
 
 function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -69,6 +77,8 @@ function pipelineStream(jobId: string, businessName: string) {
   let emittedProgressCount = 0;
   let queuedSent = false;
   let lastPreviewHtml = "";
+  let lastHeartbeatAt = 0;
+  let transientErrorCount = 0;
 
   const stream = new ReadableStream<Uint8Array>({
     async start(controller) {
@@ -83,16 +93,35 @@ function pipelineStream(jobId: string, businessName: string) {
       }
 
       try {
+        send("heartbeat", {
+          jobId,
+          timestamp: new Date().toISOString(),
+        });
+        lastHeartbeatAt = Date.now();
+
         while (!closed) {
           const status = await fetchPipelineStatus(jobId);
 
           if ("error" in status) {
-            send("error", {
+            if (status.fatal) {
+              send("error", {
+                jobId,
+                message: status.message,
+              });
+              break;
+            }
+
+            transientErrorCount += 1;
+            send("reconnecting", {
               jobId,
-              message: status.message,
+              message: `${status.message} Reconnecting to the build stream.`,
+              retryCount: transientErrorCount,
             });
-            break;
+            await sleep(Math.min(5_000, POLL_INTERVAL_MS * transientErrorCount));
+            continue;
           }
+
+          transientErrorCount = 0;
 
           if (status.status === "queued" && !queuedSent) {
             queuedSent = true;
@@ -147,12 +176,12 @@ function pipelineStream(jobId: string, businessName: string) {
             break;
           }
 
-          if (Date.now() - startedAt > STREAM_TIMEOUT_MS) {
-            send("error", {
+          if (Date.now() - lastHeartbeatAt >= HEARTBEAT_INTERVAL_MS) {
+            send("heartbeat", {
               jobId,
-              message: "Build stream timed out. Refresh to reconnect.",
+              timestamp: new Date().toISOString(),
             });
-            break;
+            lastHeartbeatAt = Date.now();
           }
 
           await sleep(POLL_INTERVAL_MS);
@@ -321,16 +350,20 @@ function emitProgressEntry(
   }
 }
 
-async function fetchPipelineStatus(jobId: string) {
+async function fetchPipelineStatus(jobId: string): Promise<PipelineStatusResponse | PipelineStatusError> {
   const pipelineServerUrl = process.env.PIPELINE_SERVER_URL?.replace(/\/+$/, "");
   const pipelineSecret = process.env.PIPELINE_API_SECRET;
 
   if (!pipelineServerUrl || !pipelineSecret) {
-    return {
-      error: "pipeline_not_configured",
-      message: "Pipeline status is not configured.",
-    };
+      return {
+        error: "pipeline_not_configured",
+        fatal: true,
+        message: "Pipeline status is not configured.",
+      };
   }
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), PIPELINE_FETCH_TIMEOUT_MS);
 
   try {
     const response = await fetch(`${pipelineServerUrl}/pipeline/status/${encodeURIComponent(jobId)}`, {
@@ -338,12 +371,14 @@ async function fetchPipelineStatus(jobId: string) {
       headers: {
         "X-Pipeline-Secret": pipelineSecret,
       },
+      signal: controller.signal,
     });
     const body = await response.json().catch(() => null);
 
     if (!response.ok) {
       return {
         error: "pipeline_status_failed",
+        fatal: response.status === 401 || response.status === 403 || response.status === 404,
         message: errorMessageFromBody(body) || "Pipeline status is unavailable.",
       };
     }
@@ -354,6 +389,8 @@ async function fetchPipelineStatus(jobId: string) {
       error: "pipeline_unavailable",
       message: "FastAPI pipeline server is unreachable.",
     };
+  } finally {
+    clearTimeout(timeout);
   }
 }
 

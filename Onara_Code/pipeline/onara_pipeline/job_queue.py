@@ -1,4 +1,5 @@
 import asyncio
+import json
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Any, Literal
@@ -20,6 +21,7 @@ class PipelineJob:
     user_plan: str
     business_data: dict
     style_preferences: dict
+    request_signature: str
     agents_completed: int = 0
     agents_total: int = 10
     blackboard: dict[str, Any] = field(default_factory=dict)
@@ -54,7 +56,10 @@ class JobQueue:
             if existing_id:
                 existing_job = self._jobs[existing_id]
 
-                if existing_job.status in {"queued", "running"}:
+                if (
+                    existing_job.status in {"queued", "running"}
+                    and existing_job.request_signature == request_signature(request)
+                ):
                     existing_job.updated_at = datetime.now(timezone.utc)
                     return EnqueueResult(job=existing_job, deduped=True)
 
@@ -68,6 +73,7 @@ class JobQueue:
                 user_plan=request.user_plan,
                 business_data=request.business_data,
                 style_preferences=request.style_preferences,
+                request_signature=request_signature(request),
             )
 
             self._jobs[job_id] = job
@@ -518,3 +524,19 @@ class JobQueue:
             task.result()
         except Exception:
             pass
+
+
+def request_signature(request: GenerateRequest) -> str:
+    """Identify jobs that are truly identical for queue dedupe."""
+    return json.dumps(
+        {
+            "agent_6_model": request.agent_6_model,
+            "business_data": request.business_data,
+            "is_trial": request.is_trial,
+            "style_preferences": request.style_preferences,
+            "user_plan": request.user_plan,
+        },
+        default=str,
+        separators=(",", ":"),
+        sort_keys=True,
+    )

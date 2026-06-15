@@ -5,6 +5,7 @@ from onara_pipeline.agents.contracts import AnalystOutput, StyleOutput
 from onara_pipeline.agents.fallbacks import fallback_style
 from onara_pipeline.agents.json_utils import compact_json, parse_json_model
 from onara_pipeline.agents.onara_theme import ONARA_THEME_CONTRACT
+from onara_pipeline.agents.style_directives import style_directive_text
 from onara_pipeline.agents.supervisor import SupervisorValidationError, validate_style_output
 from onara_pipeline.ai_client import AIClient, AIClientError, AIMessage, AIRequest, get_agent_model_route
 from onara_pipeline.config import Settings
@@ -18,7 +19,7 @@ Onara design quality rules:
 - Never produce a generic centered brochure aesthetic.
 - Use the Onara design contract as the base visual system.
 - Typography must use Fraunces for headings and Inter for body text.
-- Use the terracotta action accent and warm paper/ink neutrals. User palette choices can influence secondary accents, but not replace the Onara base.
+- The user's palette choice is mandatory. Keep Onara typography and low-radius paper/editorial structure, but set primary, secondary/accent, background, surface, text, and border values from the selected palette direction.
 - Use high-contrast editorial type, sharp low-radius surfaces, strong section contrast, and practical proof/contact panels.
 - The style notes must describe a concrete layout direction, not just mood words.
 
@@ -83,6 +84,7 @@ Business name: {context.name}
 Google photo dominant color (if available): Unknown
 User style preferences: {compact_json(job.style_preferences)}
 Owner notes: {context.notes or "None"}
+{style_directive_text(job.style_preferences)}
 
 {ONARA_THEME_CONTRACT}
 

@@ -47,7 +47,8 @@ See `wiki/ai_agents/workflows.md` for full sequence. Summary:
 | Step | Agent | Model | Output |
 |------|-------|-------|--------|
 | 1 | Business Analyst | NVIDIA NIM z-ai/glm-5.1 | Site requirements JSON |
-| 2+3 | Content Writer + Style Agent (parallel) | Ollama qwen3.5:9b | Copy JSON + design tokens |
+| 2 | Content Writer | Ollama qwen3.5:9b | Copy JSON |
+| 3 | Style Agent | NVIDIA NIM z-ai/glm-5.1 | Design tokens |
 | 4 | Planner | NVIDIA NIM z-ai/glm-5.1 | Component blueprint |
 | 5 | Prompt Engineer | NVIDIA NIM z-ai/glm-5.1 | Code-generation prompt |
 | 6 | Code Generator | Plan-gated model | Complete index.html |

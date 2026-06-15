@@ -4,6 +4,7 @@ from onara_pipeline.agents.context import build_business_context
 from onara_pipeline.agents.contracts import AnalystOutput, ContentOutput
 from onara_pipeline.agents.fallbacks import fallback_content
 from onara_pipeline.agents.json_utils import compact_json, parse_json_model
+from onara_pipeline.agents.style_directives import style_directive_text
 from onara_pipeline.agents.supervisor import SupervisorValidationError, validate_content_output
 from onara_pipeline.ai_client import AIClient, AIClientError, AIMessage, AIRequest, get_agent_model_route
 from onara_pipeline.config import Settings
@@ -76,6 +77,7 @@ Tone keywords from Analyst: {compact_json(analyst.toneKeywords)}
 Primary CTA: {analyst.primaryCta}
 Trust signals: {compact_json(analyst.trustSignals)}
 Target keyword: {analyst.targetKeyword}
+{style_directive_text(job.style_preferences)}
 
 Return this JSON structure:
 {{

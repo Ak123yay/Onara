@@ -144,6 +144,7 @@ export function AgentProgressExperience() {
     const streamUrl = `/api/build/progress/stream?jobId=${encodeURIComponent(jobId)}&businessName=${businessParam}`;
     let pollingTimer: ReturnType<typeof setInterval> | null = null;
     let closedByComplete = false;
+    let pollingFailures = 0;
 
     function applyStep(stepIndex: number, status: AgentStatus, message?: string, nextProgress?: number) {
       setStatuses(AGENT_STEPS.map((_, index) => statusForStep(index, stepIndex, status)));
@@ -166,6 +167,7 @@ export function AgentProgressExperience() {
         queued?: boolean;
         retrying?: boolean;
       };
+      pollingFailures = 0;
 
       if (data.html) {
         setPreviewHtml(data.html);
@@ -195,14 +197,26 @@ export function AgentProgressExperience() {
     }
 
     function startPolling() {
+      if (pollingTimer) {
+        return;
+      }
+
       setConnectionMode("polling");
       pollingTimer = setInterval(() => {
         pollStatus().catch(() => {
-          setConnectionMode("error");
-          setCurrentMessage("Connection lost. Refresh to reconnect to the build stream.");
+          pollingFailures += 1;
+          setCurrentMessage("Build stream is reconnecting. The job is still saved.");
+
+          if (pollingFailures >= 10) {
+            setConnectionMode("error");
+            setCurrentMessage("Connection lost. Refresh to reconnect to the build stream.");
+          }
         });
       }, 900);
-      void pollStatus();
+      void pollStatus().catch(() => {
+        pollingFailures += 1;
+        setCurrentMessage("Build stream is reconnecting. The job is still saved.");
+      });
     }
 
     if (!("EventSource" in window)) {
@@ -219,6 +233,10 @@ export function AgentProgressExperience() {
     eventSourceRef.current = eventSource;
 
     eventSource.addEventListener("open", () => {
+      setConnectionMode("sse");
+    });
+
+    eventSource.addEventListener("heartbeat", () => {
       setConnectionMode("sse");
     });
 
@@ -264,6 +282,12 @@ export function AgentProgressExperience() {
       if (data.html) {
         setPreviewHtml(data.html);
       }
+    });
+
+    eventSource.addEventListener("reconnecting", (event) => {
+      const data = JSON.parse((event as MessageEvent).data) as StreamPayload;
+      setConnectionMode("sse");
+      setCurrentMessage(data.message || "Build stream is reconnecting. The job is still saved.");
     });
 
     eventSource.addEventListener("complete", (event) => {

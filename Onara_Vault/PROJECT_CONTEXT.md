@@ -60,7 +60,7 @@ Pre-launch. Architecture fully defined. Development not yet begun. This repo + w
 |---|---|---|---|
 |1|Analyst|z-ai/glm-5.1 (NIM)|Parse GBP data, extract business facts|
 |2|Content Writer|qwen3.5:9b (local)|Write all copy for the site|
-|3|Style Agent|qwen3.5:9b (local)|Choose colors, fonts, layout|
+|3|Style Agent|z-ai/glm-5.1 (NIM)|Choose colors, fonts, layout|
 |4|Planner|z-ai/glm-5.1 (NIM)|Break site into atomic components|
 |5|Prompt Engineer|z-ai/glm-5.1 (NIM)|Write code-gen prompts per component|
 |6|Code Generator|z-ai/glm-5.1 / plan-gated model picker|Generate HTML/CSS/JS per component|

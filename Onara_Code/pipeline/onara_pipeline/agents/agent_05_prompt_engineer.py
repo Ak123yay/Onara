@@ -3,6 +3,7 @@ from onara_pipeline.agents.contracts import AnalystOutput, ContentOutput, Planne
 from onara_pipeline.agents.fallbacks import fallback_prompt
 from onara_pipeline.agents.json_utils import compact_json
 from onara_pipeline.agents.onara_theme import ONARA_THEME_CONTRACT
+from onara_pipeline.agents.style_directives import style_directive_text
 from onara_pipeline.agents.supervisor import SupervisorValidationError, validate_prompt_output
 from onara_pipeline.ai_client import AIClient, AIClientError, AIMessage, AIRequest, get_agent_model_route
 from onara_pipeline.config import Settings
@@ -20,7 +21,7 @@ A good code generation prompt:
 - Is specific enough that two different models would produce nearly identical output
 - Explicitly rejects generic centered brochure layouts, Tailwind-like sameness, weak pills, and empty whitespace
 - Requires a professional Onara-style local business composition: strong type, split hero, proof/contact panels, section contrast, and conversion-first mobile
-- Requires the Onara theme contract: paper/ink/terracotta palette, Fraunces headings, Inter UI copy, mono labels, low-radius surfaces
+- Requires the Onara theme contract: paper/ink/selected-accent palette, Fraunces headings, Inter UI copy, mono labels, low-radius surfaces
 
 Return the prompt as a plain string, not JSON."""
 
@@ -56,6 +57,7 @@ async def run_prompt_engineer(
                             context.name,
                             context.phone,
                             photo_assets_for_prompt(context),
+                            job.style_preferences,
                             analyst,
                             content,
                             style,
@@ -79,6 +81,7 @@ async def run_prompt_engineer(
             phone=context.phone,
             planner=planner,
             style=style,
+            style_preferences=job.style_preferences,
         )
         validate_prompt_output(output)
         return output
@@ -88,6 +91,7 @@ def _user_prompt(
     business_name: str,
     phone: str,
     photo_assets: list[dict[str, str]],
+    style_preferences: dict,
     analyst: AnalystOutput,
     content: ContentOutput,
     style: StyleOutput,
@@ -102,6 +106,7 @@ BUSINESS NAME: {business_name}
 PRIMARY CTA: {analyst.primaryCta}
 PHONE NUMBER: {phone or "Unknown"}
 RESOLVED PHOTO ASSETS: {compact_json(photo_assets)}
+{style_directive_text(style_preferences)}
 
 {ONARA_THEME_CONTRACT}
 
@@ -118,9 +123,12 @@ The generated site must:
 - Look professionally designed enough for a paying local business owner
 - Follow the Onara design contract exactly, including the required CSS variables in :root
 - Import or declare Fraunces, Inter, JetBrains Mono, and Caveat-compatible font stacks
-- Use warm paper background, ink text, terracotta CTAs, mono uppercase metadata, and low-radius paper cards
+- Use the selected palette for CTAs and accents, warm paper/ink structure, mono uppercase metadata, and low-radius paper cards
 - Avoid generic centered brochure templates; the desktop hero must not be only centered text, a badge, and one CTA
 - Use a split/asymmetrical hero with a proof, service, contact, image, or booking panel beside the copy
+- Build a complete first fold with at least four named Onara composition surfaces: hero-side, panel-stack, proof-strip, proof-grid, service-menu, local-card, hours-card, detail-card, review-card, contact-card
+- Include at least three distinct card types across the page, such as service-card, proof-card, review-card, local-card, contact-card, hours-card, or metric-card
+- Do not ship a page that is only a large H1, one paragraph, one CTA, and one photo; layer useful local-business proof and action panels
 - Use fluid display type with clamp(), CSS grid with grid-template-columns, and at least one atmospheric background treatment
 - Use low-radius cards, strong section contrast, practical local proof, and above-the-fold conversion structure
 - Avoid rounded SaaS pill clutter, excessive empty whitespace, stock-template spacing, and vague decorative sections

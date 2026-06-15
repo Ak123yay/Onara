@@ -4,7 +4,7 @@ const { useState: uS_gen, useEffect: uE_gen } = React;
 const AGENTS = [
   { id: 'analyst', name: 'Business Analyst', model: 'gpt-oss:20b', task: 'Identifying what your industry needs' },
   { id: 'writer', name: 'Content Writer', model: 'qwen3:8b', task: 'Drafting headline, services, about copy' },
-  { id: 'style', name: 'Style Agent', model: 'qwen3:8b', task: 'Choosing palette, fonts, layout DNA' },
+  { id: 'style', name: 'Style Agent', model: 'glm-5.1', task: 'Choosing palette, fonts, layout DNA' },
   { id: 'planner', name: 'Planner', model: 'glm-5.1', task: 'Merging copy + style into a blueprint' },
   { id: 'prompt', name: 'Prompt Engineer', model: 'glm-5.1', task: 'Writing the precise build instructions' },
   { id: 'code', name: 'Code Generator', model: 'Copilot', task: 'Generating HTML, CSS, JavaScript' },

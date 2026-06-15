@@ -185,6 +185,7 @@ def validate_qa_output(output: QAOutput) -> None:
         "component_files",
         "component_markers",
         "professional_visual_system",
+        "composition_depth",
         "onara_theme",
         "motion_safety",
         "seo_metadata",

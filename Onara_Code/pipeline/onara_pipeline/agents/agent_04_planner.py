@@ -5,6 +5,10 @@ from onara_pipeline.agents.contracts import AnalystOutput, ContentOutput, Planne
 from onara_pipeline.agents.fallbacks import fallback_planner
 from onara_pipeline.agents.json_utils import compact_json, parse_json_model
 from onara_pipeline.agents.onara_theme import ONARA_THEME_CONTRACT
+from onara_pipeline.agents.style_directives import (
+    required_component_ids_for_preferences,
+    style_directive_text,
+)
 from onara_pipeline.agents.supervisor import SupervisorValidationError, validate_planner_output
 from onara_pipeline.ai_client import AIClient, AIClientError, AIMessage, AIRequest, get_agent_model_route
 from onara_pipeline.config import Settings
@@ -16,10 +20,12 @@ You do not write code. You write an unambiguous specification that a code genera
 
 Onara quality bar:
 - The blueprint must produce a designed local-business website, not a generic centered brochure template.
-- The blueprint must follow the Onara design contract: paper texture, ink/terracotta palette, Fraunces display type, Inter body type, mono eyebrows, low-radius panels.
+- The blueprint must follow the Onara design contract: paper texture, ink/selected-accent palette, Fraunces display type, Inter body type, mono eyebrows, low-radius panels.
 - Desktop hero must use a deliberate composition: split grid, editorial panel, image/proof card, service menu, or trust/contact module beside the copy.
 - Do not plan a hero whose main CSS direction is only text-align:center and max-width copy.
 - Include visible proof, services, and conversion panels above or immediately after the fold.
+- Plan a composed first fold with at least four of these surfaces: hero-side, panel-stack, proof-strip, proof-grid, service-menu, local-card, hours-card, detail-card, review-card, contact-card.
+- The generated page must not be just a large headline, paragraph, CTA, and one image; it needs layered local utility panels a business owner would recognize.
 - Specify strong typography scale, section contrast, and practical mobile behavior.
 
 Each component specification must include:
@@ -63,10 +69,12 @@ async def run_planner(
         )
         output = parse_json_model(response.content, PlannerOutput)
         validate_planner_output(output)
+        validate_style_component_requirements(output, job.style_preferences)
         return output
     except (AIClientError, ValueError, ValidationError, SupervisorValidationError):
-        output = fallback_planner(analyst, content, style)
+        output = fallback_planner(analyst, content, style, job.style_preferences)
         validate_planner_output(output)
+        validate_style_component_requirements(output, job.style_preferences)
         return output
 
 
@@ -89,6 +97,7 @@ Resolved photo assets: {compact_json(photo_assets_for_prompt(context))}
 DESIGN SYSTEM: {compact_json(style.model_dump())}
 CONTENT: {compact_json(content.model_dump())}
 SITE REQUIREMENTS: {compact_json(analyst.model_dump())}
+{style_directive_text(job.style_preferences)}
 
 {ONARA_THEME_CONTRACT}
 
@@ -96,9 +105,11 @@ The site must use semantic HTML5. All styles use CSS custom properties defined i
 No external CSS libraries. No JavaScript frameworks. Vanilla HTML, CSS, and minimal JS only.
 Desktop visual requirements:
 - Use Onara CSS variables for paper, ink, rule, accent, accent-ink, serif, ui, and mono tokens.
-- Use mono uppercase labels, serif H1/H2 display type, terracotta CTAs, paper cards, and low-radius browser/proof panels.
+- Use mono uppercase labels, serif H1/H2 display type, selected-palette CTAs, paper cards, and low-radius browser/proof panels.
 - Hero must be asymmetrical or split-composition, not a centered single-column brochure hero.
 - Include one proof/contact/service panel in the hero or directly adjacent to it.
+- Include at least four named composition surfaces across the first fold: hero-side, panel-stack, proof-strip, proof-grid, service-menu, local-card, hours-card, detail-card, review-card, contact-card.
+- Include at least three distinct card types across the page, such as service-card, proof-card, review-card, local-card, contact-card, or hours-card.
 - Use section contrast, card structure, and distinctive type scale so the site looks professionally designed.
 - If resolved photo assets are available, plan a real photo panel, gallery strip, or proof image using those exact `src` values and useful alt text.
 - If no resolved photo assets are available, plan designed placeholders or illustrated panels instead of broken image tags.
@@ -119,3 +130,13 @@ Return this exact JSON structure:
   "component_order": ["ordered list of component IDs"],
   "special_notes": "string"
 }}"""
+
+
+def validate_style_component_requirements(output: PlannerOutput, style_preferences: dict) -> None:
+    missing = [
+        component_id
+        for component_id in required_component_ids_for_preferences(style_preferences)
+        if component_id not in output.component_order
+    ]
+    if missing:
+        raise SupervisorValidationError(f"Planner omitted selected style section: {missing[0]}")

@@ -4,6 +4,7 @@ from onara_pipeline.agents.context import BusinessContext, build_business_contex
 from onara_pipeline.agents.contracts import AnalystOutput
 from onara_pipeline.agents.fallbacks import fallback_analyst
 from onara_pipeline.agents.json_utils import compact_json, parse_json_model
+from onara_pipeline.agents.style_directives import style_directive_text
 from onara_pipeline.agents.supervisor import validate_analyst_output
 from onara_pipeline.ai_client import AIClient, AIClientError, AIMessage, AIRequest, get_agent_model_route
 from onara_pipeline.config import Settings
@@ -18,7 +19,7 @@ Always return valid JSON only. No markdown, no explanation, no preamble."""
 
 async def run_analyst(job: PipelineJob, ai_client: AIClient, settings: Settings) -> AnalystOutput:
     context = build_business_context(job.business_data, job.style_preferences)
-    prompt = _user_prompt(context)
+    prompt = _user_prompt(context, job.style_preferences)
     route = get_agent_model_route(
         "agent_01_analyst",
         ollama_fallback_model=settings.ollama_fallback_model,
@@ -49,7 +50,7 @@ async def run_analyst(job: PipelineJob, ai_client: AIClient, settings: Settings)
         return output
 
 
-def _user_prompt(context: BusinessContext) -> str:
+def _user_prompt(context: BusinessContext, style_preferences: dict) -> str:
     return f"""Analyze this business and return a website specification as JSON.
 
 BUSINESS DATA:
@@ -61,6 +62,7 @@ Hours: {compact_json(context.hours)}
 Google Rating: {context.rating if context.rating is not None else "Unknown"} ({context.review_count if context.review_count is not None else 0} reviews)
 Services listed on Google: {compact_json(context.services)}
 Owner notes: {context.notes or "None"}
+{style_directive_text(style_preferences)}
 
 Return this exact JSON structure:
 {{
