@@ -48,6 +48,8 @@ class CloudflarePagesDeploymentResult:
 
 
 class CloudflarePagesClient:
+    MAX_API_ATTEMPTS = 4
+
     def __init__(
         self,
         *,
@@ -150,34 +152,48 @@ class CloudflarePagesClient:
         allow_not_found: bool = False,
         json: dict[str, Any] | None = None,
     ) -> dict[str, Any] | None:
-        try:
-            response = await client.request(
-                method,
-                path,
-                headers={
-                    "Authorization": f"Bearer {self.api_token}",
-                    "Content-Type": "application/json",
-                },
-                json=json,
-            )
-        except httpx.HTTPError as exc:
-            raise CloudflarePagesDeploymentError(f"Cloudflare API request failed: {exc}") from exc
+        last_error: CloudflarePagesDeploymentError | None = None
+        for attempt in range(1, self.MAX_API_ATTEMPTS + 1):
+            try:
+                response = await client.request(
+                    method,
+                    path,
+                    headers={
+                        "Authorization": f"Bearer {self.api_token}",
+                        "Content-Type": "application/json",
+                    },
+                    json=json,
+                )
+            except httpx.HTTPError as exc:
+                last_error = CloudflarePagesDeploymentError(f"Cloudflare API request failed: {exc}")
+                if attempt < self.MAX_API_ATTEMPTS:
+                    await asyncio.sleep(_cloudflare_retry_delay(attempt))
+                    continue
+                raise last_error from exc
 
-        if allow_not_found and response.status_code == 404:
-            return None
-        if response.status_code >= 400:
-            raise CloudflarePagesDeploymentError(_cloudflare_error_message(response))
+            if allow_not_found and response.status_code == 404:
+                return None
+            if _is_retryable_cloudflare_response(response) and attempt < self.MAX_API_ATTEMPTS:
+                last_error = CloudflarePagesDeploymentError(_cloudflare_error_message(response))
+                await asyncio.sleep(_cloudflare_retry_delay(attempt, response=response))
+                continue
+            if response.status_code >= 400:
+                raise CloudflarePagesDeploymentError(_cloudflare_error_message(response))
 
-        try:
-            payload = response.json()
-        except ValueError as exc:
-            raise CloudflarePagesDeploymentError("Cloudflare API returned non-JSON response") from exc
+            try:
+                payload = response.json()
+            except ValueError as exc:
+                raise CloudflarePagesDeploymentError("Cloudflare API returned non-JSON response") from exc
 
-        if not isinstance(payload, dict) or payload.get("success") is False:
-            raise CloudflarePagesDeploymentError(f"Cloudflare API returned an unsuccessful response: {payload}")
+            if not isinstance(payload, dict) or payload.get("success") is False:
+                raise CloudflarePagesDeploymentError(f"Cloudflare API returned an unsuccessful response: {payload}")
 
-        result = payload.get("result")
-        return result if isinstance(result, dict) else {}
+            result = payload.get("result")
+            return result if isinstance(result, dict) else {}
+
+        if last_error:
+            raise last_error
+        raise CloudflarePagesDeploymentError("Cloudflare API request failed after retries")
 
     def _wrangler_env(self) -> dict[str, str]:
         env = dict(os.environ)
@@ -307,3 +323,17 @@ def _cloudflare_error_message(response: httpx.Response) -> str:
     except ValueError:
         pass
     return f"Cloudflare API returned {response.status_code}: {detail}"
+
+
+def _is_retryable_cloudflare_response(response: httpx.Response) -> bool:
+    return response.status_code == 429 or 500 <= response.status_code <= 599
+
+
+def _cloudflare_retry_delay(attempt: int, *, response: httpx.Response | None = None) -> float:
+    retry_after = response.headers.get("Retry-After") if response is not None else None
+    if retry_after:
+        try:
+            return min(float(retry_after), 10.0)
+        except ValueError:
+            pass
+    return min(0.75 * (2 ** (attempt - 1)), 8.0)
