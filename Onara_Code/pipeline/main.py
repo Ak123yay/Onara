@@ -2,9 +2,12 @@ from fastapi import Depends, FastAPI, Header, HTTPException, Response, status
 
 from onara_pipeline.ai_client import get_agent_6_model_selection
 from onara_pipeline.config import Settings, get_settings
+from onara_pipeline.dashboard_brief import build_dashboard_brief
 from onara_pipeline.health import build_health_response
 from onara_pipeline.job_queue import JobQueue
 from onara_pipeline.schemas import (
+    DashboardBriefRequest,
+    DashboardBriefResponse,
     GenerateRequest,
     HealthResponse,
     JobEnqueueResponse,
@@ -38,6 +41,18 @@ def verify_pipeline_secret(
 @app.get("/health", response_model=HealthResponse)
 async def health(settings: Settings = Depends(get_settings)) -> HealthResponse:
     return await build_health_response(settings=settings, queue=queue)
+
+
+@app.post(
+    "/dashboard/brief",
+    response_model=DashboardBriefResponse,
+    dependencies=[Depends(verify_pipeline_secret)],
+)
+async def dashboard_brief(
+    body: DashboardBriefRequest,
+    settings: Settings = Depends(get_settings),
+) -> DashboardBriefResponse:
+    return await build_dashboard_brief(body=body, settings=settings)
 
 
 @app.post(

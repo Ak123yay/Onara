@@ -362,39 +362,34 @@ export function AgentProgressExperience() {
           </Link>
 
           <div className="agent-progress-heading card">
-            <div className="agent-progress-heading-top">
-              <div>
-                <p className="eyebrow">Build command center</p>
-                <div className={`agent-progress-kicker agent-progress-kicker-${connectionMode}`}>
-                  <span>{connectionLabel(connectionMode)}</span>
-                </div>
-              </div>
-              <div className="agent-progress-monogram" aria-hidden="true">
-                {initialForName(businessName)}
+            <div className="agent-progress-titlebar">
+              <p className="eyebrow">Build command center</p>
+              <div className={`agent-progress-kicker agent-progress-kicker-${connectionMode}`}>
+                <span>{connectionLabel(connectionMode)}</span>
               </div>
             </div>
             <h1 className="serif">{businessName}</h1>
             <span className="agent-progress-heading-meta">{businessMeta}</span>
             <div className="agent-progress-save-note">
               <Clock3 aria-hidden="true" size={15} />
-              <span>Saved build. Leave anytime and reopen live status from the dashboard.</span>
+              <span>Saved. Leave anytime and reopen live status from Dashboard.</span>
             </div>
           </div>
 
-          <div className="agent-progress-stats" aria-label="Build summary">
-            <div className="agent-progress-stat card">
-              <p className="mono">Progress</p>
-              <strong>{progressLabel}</strong>
+          <dl className="agent-progress-stats card" aria-label="Build summary">
+            <div className="agent-progress-stat">
+              <dt>Progress</dt>
+              <dd>{progressLabel}</dd>
             </div>
-            <div className="agent-progress-stat card">
-              <p className="mono">Agents</p>
-              <strong>{completedCount} / {AGENT_STEPS.length}</strong>
+            <div className="agent-progress-stat">
+              <dt>Agents</dt>
+              <dd>{completedCount} / {AGENT_STEPS.length}</dd>
             </div>
-            <div className="agent-progress-stat card">
-              <p className="mono">Time</p>
-              <strong>{etaLabel}</strong>
+            <div className="agent-progress-stat">
+              <dt>Time</dt>
+              <dd>{etaLabel}</dd>
             </div>
-          </div>
+          </dl>
 
           <div className="agent-progress-meter card">
             <div className="agent-progress-meter-head">
@@ -502,11 +497,6 @@ export function AgentProgressExperience() {
 
 function displayUrl(value: string) {
   return value.replace(/^https?:\/\//, "").replace(/\/+$/, "");
-}
-
-function initialForName(value: string) {
-  const first = value.trim().charAt(0).toUpperCase();
-  return first || "O";
 }
 
 function AgentStepRow({

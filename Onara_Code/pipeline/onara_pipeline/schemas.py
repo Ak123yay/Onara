@@ -40,6 +40,45 @@ class HealthResponse(BaseModel):
     uptime_seconds: int
 
 
+class DashboardBriefProject(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    business_name: str = Field(min_length=1, max_length=180)
+    business_category: str | None = Field(default=None, max_length=120)
+    custom_domain: str | None = Field(default=None, max_length=240)
+    error_message: str | None = Field(default=None, max_length=500)
+    google_rating: float | str | None = None
+    google_review_count: int | None = Field(default=None, ge=0)
+    last_deployed_at: str | None = Field(default=None, max_length=80)
+    public_url: str | None = Field(default=None, max_length=500)
+    status: str = Field(min_length=1, max_length=40)
+    updated_at: str | None = Field(default=None, max_length=80)
+
+
+class DashboardBriefRequest(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    active_build_count: int = Field(default=0, ge=0)
+    failed_count: int = Field(default=0, ge=0)
+    is_trial: bool = False
+    live_count: int = Field(default=0, ge=0)
+    projects: list[DashboardBriefProject] = Field(default_factory=list, max_length=25)
+    revisions_label: str = Field(default="0/3", max_length=40)
+    today: str = Field(min_length=8, max_length=20)
+    total_count: int = Field(default=0, ge=0)
+    user_plan: PlanType = "free"
+
+
+class DashboardBriefResponse(BaseModel):
+    generated_on: str
+    headline: str = Field(min_length=1, max_length=120)
+    model: str | None = None
+    provider: str | None = None
+    recommendations: list[str] = Field(default_factory=list, max_length=4)
+    source: Literal["ai", "fallback"] = "fallback"
+    summary: str = Field(min_length=1, max_length=500)
+
+
 class QueueStats(BaseModel):
     queue_length: int
     active_jobs: int

@@ -1,6 +1,8 @@
 "use client";
 
 import {
+  ChevronLeft,
+  ChevronRight,
   CreditCard,
   Globe2,
   HelpCircle,
@@ -12,7 +14,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useState, useTransition, type ReactNode } from "react";
+import { useEffect, useRef, useState, useTransition, type ReactNode } from "react";
 import { createClient } from "@/lib/supabase/client";
 
 export type DashboardUser = {
@@ -81,8 +83,15 @@ function trialLabel(daysLeft: number) {
 export function DashboardShell({ children, user }: DashboardShellProps) {
   const pathname = usePathname();
   const router = useRouter();
+  const sidebarToggleRef = useRef<HTMLInputElement>(null);
   const [trialDaysLeft, setTrialDaysLeft] = useState(user.trialDaysLeft);
   const [isPending, startTransition] = useTransition();
+
+  useEffect(() => {
+    if (sidebarToggleRef.current) {
+      sidebarToggleRef.current.checked = window.localStorage.getItem("onara-sidebar-collapsed") === "true";
+    }
+  }, []);
 
   useEffect(() => {
     if (!user.trialEndsAt) {
@@ -111,14 +120,34 @@ export function DashboardShell({ children, user }: DashboardShellProps) {
 
   return (
     <div className="dashboard-shell paper">
+      <input
+        aria-label="Collapse or expand dashboard menu"
+        className="dashboard-sidebar-control"
+        id="dashboard-sidebar-control"
+        onChange={(event) => {
+          window.localStorage.setItem("onara-sidebar-collapsed", String(event.currentTarget.checked));
+        }}
+        ref={sidebarToggleRef}
+        type="checkbox"
+      />
       <aside className="dashboard-sidebar">
-        <div className="dashboard-sidebar-logo">
-          <Link href="/" className="onara-logo" aria-label="Go to Onara home">
-            <span className="onara-logo-mark" aria-hidden="true">
-              <span className="onara-logo-dot" />
-            </span>
-            <span>Onara</span>
-          </Link>
+        <div className="dashboard-sidebar-header">
+          <div className="dashboard-sidebar-logo">
+            <Link href="/" className="onara-logo" aria-label="Go to Onara home">
+              <span className="onara-logo-mark" aria-hidden="true">
+                <span className="onara-logo-dot" />
+              </span>
+              <span className="onara-logo-word">Onara</span>
+            </Link>
+          </div>
+          <label
+            className="dashboard-sidebar-toggle"
+            htmlFor="dashboard-sidebar-control"
+            title="Collapse or expand menu"
+          >
+            <ChevronLeft aria-hidden="true" className="dashboard-sidebar-toggle-close" size={16} />
+            <ChevronRight aria-hidden="true" className="dashboard-sidebar-toggle-open" size={16} />
+          </label>
         </div>
 
         <p className="dashboard-sidebar-section-label">Workspace</p>
@@ -139,6 +168,7 @@ export function DashboardShell({ children, user }: DashboardShellProps) {
                   .join(" ")}
                 href={item.href}
                 key={item.href}
+                title={item.label}
               >
                 <Icon aria-hidden="true" size={15} />
                 <span>{item.label}</span>
@@ -166,6 +196,7 @@ export function DashboardShell({ children, user }: DashboardShellProps) {
                   .join(" ")}
                 href={item.href}
                 key={item.href}
+                title={item.label}
               >
                 <Icon aria-hidden="true" size={15} />
                 <span>{item.label}</span>
@@ -204,10 +235,11 @@ export function DashboardShell({ children, user }: DashboardShellProps) {
             className="dashboard-signout"
             disabled={isPending}
             onClick={signOut}
+            title="Sign out"
             type="button"
           >
             <LogOut aria-hidden="true" size={14} />
-            {isPending ? "Signing out..." : "Sign out"}
+            <span>{isPending ? "Signing out..." : "Sign out"}</span>
           </button>
         </div>
       </aside>

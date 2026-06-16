@@ -122,19 +122,28 @@ async def run_codegen(
             raw_output=response.content,
             used_fallback_template=False,
         )
+    except (AIClientError, ValueError, ValidationError):
+        return _fallback_codegen_output(analyst, content, context, planner, style, job.style_preferences)
+
+    try:
         validate_codegen_output(output, allow_repairable_visual_issues=True)
         return output
-    except (AIClientError, ValueError, ValidationError, SupervisorValidationError):
-        output = fallback_codegen(
-            analyst=analyst,
-            content=content,
-            context=context,
-            planner=planner,
-            style=style,
-            style_preferences=job.style_preferences,
-        )
-        validate_codegen_output(output, allow_repairable_visual_issues=True)
-        return output
+    except SupervisorValidationError as exc:
+        try:
+            repaired = await _repair_codegen_with_model(
+                ai_client=ai_client,
+                context=context,
+                issue=str(exc),
+                job=job,
+                original=output,
+                planner=planner,
+                prompt=prompt,
+                route=route,
+            )
+            validate_codegen_output(repaired, allow_repairable_visual_issues=True)
+            return repaired
+        except (AIClientError, ValueError, ValidationError, SupervisorValidationError):
+            return _fallback_codegen_output(analyst, content, context, planner, style, job.style_preferences)
 
 
 def extract_index_html(raw_output: str) -> str:
@@ -210,6 +219,119 @@ Return only:
 ...
 </html>
 {{FILE_MARKER_END}}"""
+
+
+async def _repair_codegen_with_model(
+    *,
+    ai_client: AIClient,
+    context,
+    issue: str,
+    job: PipelineJob,
+    original: CodegenOutput,
+    planner: PlannerOutput,
+    prompt: PromptOutput,
+    route,
+) -> CodegenOutput:
+    response = await ai_client.generate_text(
+        route=route,
+        request=AIRequest(
+            max_tokens=12000,
+            messages=[
+                AIMessage(role="system", content=SYSTEM_PROMPT),
+                AIMessage(
+                    role="user",
+                    content=_repair_prompt(
+                        context=context,
+                        issue=issue,
+                        original=original,
+                        planner=planner,
+                        prompt=prompt,
+                    ),
+                ),
+            ],
+            metadata={
+                "agent_id": "agent_06_codegen",
+                "job_id": job.job_id,
+                "repair_for": issue,
+                "repair_source_model": original.model,
+                "requested_model": job.agent_6_model,
+            },
+            temperature=0.12,
+        ),
+    )
+    html = extract_index_html(response.content)
+    return CodegenOutput(
+        component_files=split_component_files(html, planner),
+        fallback_used=original.fallback_used or response.fallback_used,
+        html=html,
+        model=response.model,
+        provider=response.provider,
+        raw_output=response.content,
+        used_fallback_template=False,
+    )
+
+
+def _repair_prompt(
+    *,
+    context,
+    issue: str,
+    original: CodegenOutput,
+    planner: PlannerOutput,
+    prompt: PromptOutput,
+) -> str:
+    return f"""Repair this Agent 6 HTML output. The supervisor rejected it for:
+{issue}
+
+Repair rules:
+- Return a complete replacement index.html, not a patch.
+- Keep the existing Onara theme, business facts, component IDs, and planner component order.
+- Do not rewrite unrelated sections unless required to fix the rejected issue.
+- If the issue mentions a missing conversion CTA, add a clear above-the-fold CTA inside data-component="hero".
+- The hero CTA must be an <a> with an href to tel:, #contact, #booking, #estimate, or another valid on-page conversion target.
+- CTA copy must match the selected conversion goal and business type, such as "Get a Free Estimate", "Call Now", "Book Online", or "Get Emergency Help".
+- Keep the hero split/composed; do not collapse it into a centered brochure layout.
+
+Required planner component order:
+{", ".join(planner.component_order)}
+
+Original generation prompt for context:
+{prompt.prompt}
+
+Business:
+- Name: {context.name}
+- Category: {context.category}
+- Phone: {context.phone or "not supplied"}
+- City/region: {context.city or context.address or "not supplied"}
+
+Rejected HTML:
+{original.html}
+
+Return only:
+{{FILE_MARKER_START}}
+<!doctype html>
+...
+</html>
+{{FILE_MARKER_END}}"""
+
+
+def _fallback_codegen_output(
+    analyst: AnalystOutput,
+    content: ContentOutput,
+    context,
+    planner: PlannerOutput,
+    style: StyleOutput,
+    style_preferences: dict,
+) -> CodegenOutput:
+    output = fallback_codegen(
+        analyst=analyst,
+        content=content,
+        context=context,
+        planner=planner,
+        style=style,
+        style_preferences=style_preferences,
+    )
+    validate_codegen_output(output, allow_repairable_visual_issues=True)
+    return output
 
 
 def _extract_component_html(html: str, component_id: str) -> str | None:
