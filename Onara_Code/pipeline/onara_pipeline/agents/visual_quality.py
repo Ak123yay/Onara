@@ -2,6 +2,23 @@ import re
 
 from onara_pipeline.agents.onara_theme import ONARA_REQUIRED_VARIABLES
 
+CTA_TARGET_TOKENS = (
+    "tel:",
+    "mailto:",
+    "#contact",
+    "#estimate",
+    "#quote",
+    "#booking",
+    "#book",
+    "#order",
+    "#schedule",
+)
+
+CTA_COPY_RE = re.compile(
+    r"\b(call|book|schedule|reserve|quote|estimate|contact|get|start|order|request|emergency|pickup)\b",
+    flags=re.IGNORECASE,
+)
+
 
 def professional_visual_issues(html: str) -> list[str]:
     """Detect low-effort generated pages before they reach deployment."""
@@ -127,7 +144,7 @@ def composition_depth_issues(html: str) -> list[str]:
         hero_start = lower.find("data-component=\"hero\"")
         services_start = lower.find("data-component=\"services\"")
         hero_markup = lower[hero_start:services_start] if services_start > hero_start else ""
-        if hero_markup and hero_markup.count("<a ") < 1:
+        if hero_markup and not _has_conversion_cta(hero_markup):
             issues.append("Hero is missing a clear conversion CTA")
 
     return _unique(issues)
@@ -286,6 +303,25 @@ def _header_markup(html: str) -> str:
         flags=re.IGNORECASE | re.DOTALL,
     )
     return match.group(0) if match else ""
+
+
+def _has_conversion_cta(markup: str) -> bool:
+    controls = re.finditer(
+        r"<(?P<tag>a|button)\b(?P<attrs>[^>]*)>(?P<body>.*?)</(?P=tag)>",
+        markup,
+        flags=re.IGNORECASE | re.DOTALL,
+    )
+    for control in controls:
+        attrs = control.group("attrs").lower()
+        body = re.sub(r"<[^>]+>", " ", control.group("body"))
+        text = re.sub(r"\s+", " ", body).strip()
+        if not text:
+            continue
+        if any(token in attrs for token in CTA_TARGET_TOKENS):
+            return True
+        if CTA_COPY_RE.search(text):
+            return True
+    return False
 
 
 def _class_instance_count(html: str, class_name: str) -> int:
