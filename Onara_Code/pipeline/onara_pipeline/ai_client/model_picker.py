@@ -20,8 +20,8 @@ Agent6ModelOptionId = Literal[
     "onara-default",
     "copilot-gemini-3.1-pro",
     "copilot-gpt-5.4-mini",
-    "openai-gpt-5.4",
-    "claude-sonnet-4",
+    "openai-gpt-5.5-high",
+    "claude-opus-4.8-high",
 ]
 
 BENCHMARKED_PRIMARY_MODEL = "z-ai/glm-5.1"
@@ -247,20 +247,20 @@ def get_agent_6_model_options(*, is_trial: bool, user_plan: UserPlan) -> tuple[A
             None,
         ),
         (
-            "openai-gpt-5.4",
-            "OpenAI GPT-5.4",
+            "openai-gpt-5.5-high",
+            "OpenAI GPT-5.5 High",
             "pro",
             "User OpenAI key",
-            "gpt-5.4",
+            "gpt-5.5-high",
             False,
             "User API-key storage and OpenAI client are not implemented yet.",
         ),
         (
-            "claude-sonnet-4",
-            "Claude Sonnet 4",
+            "claude-opus-4.8-high",
+            "Claude Opus 4.8 High",
             "pro",
             "User Anthropic key",
-            "claude-sonnet-4",
+            "claude-opus-4.8-high",
             False,
             "User API-key storage and Anthropic client are not implemented yet.",
         ),

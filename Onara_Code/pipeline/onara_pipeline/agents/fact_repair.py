@@ -233,16 +233,19 @@ def ensure_review_and_license_integrity(
         business_data=business_data,
         style_preferences=style_preferences,
     )
-    if not credentials_supplied and (_component_section(fixed, "license_proof") or license_issues):
-        fixed, changed = _replace_component_section(fixed, "license_proof", "")
+    if not credentials_supplied:
+        fixed, changed = _remove_unsupplied_credential_sections(fixed)
         if changed:
-            fixes.append("Omitted license proof section because no credential data was supplied")
+            fixes.append("Omitted credential sections because no credential data was supplied")
 
         stripped = _remove_unsupplied_credential_blocks(fixed)
         stripped = _strip_unsupplied_credential_claims(stripped)
         if stripped != fixed:
             fixed = stripped
             fixes.append("Removed unsupported license, insurance, bonded, or certified trust claims")
+
+        if license_issues and not fixes:
+            fixes.append("Checked generated copy for unsupported credential claims")
 
     cleaned = _strip_internal_instruction_leaks(fixed)
     if cleaned != fixed:
@@ -457,7 +460,7 @@ def license_integrity_issues(
     if _credentials_supplied(context, business_data):
         return []
 
-    if not _has_credential_claim(html.lower()):
+    if not _has_credential_claim(_visible_text(html).lower()):
         return []
 
     return ["Generated trust or license proof claims credentials that were not supplied"]
@@ -799,10 +802,17 @@ def _has_credential_claim(lower: str) -> bool:
     return any(
         phrase in lower
         for phrase in (
+            "license proof",
+            "license details",
+            "license detail",
             "licensed professional",
+            "licensed",
+            "license",
             "proof omitted per rules",
             "owner input",
+            "owner-provided credential",
             "credential status",
+            "credential",
             "credential details pending",
             "credential details need",
             "verify before publishing",
@@ -811,13 +821,29 @@ def _has_credential_claim(lower: str) -> bool:
             "professional licensing",
             "implied by trade",
             "licensed and insured",
+            "insured",
+            "insurance",
             "fully insured",
             "bonded",
             "license #",
             "lic #",
             "certified",
+            "certification",
         )
     )
+
+
+def _remove_unsupplied_credential_sections(html: str) -> tuple[str, bool]:
+    fixed = _replace_component_section(html, "license_proof", "")[0]
+    fixed = re.sub(
+        r"<section\b"
+        r"(?=[^>]*(?:data-component|id|class)=[\"'][^\"']*(?:license|credential|insurance|insured|bond|cert)[^\"']*[\"'])"
+        r"[^>]*>.*?</section>",
+        "",
+        fixed,
+        flags=re.IGNORECASE | re.DOTALL,
+    )
+    return fixed, fixed != html
 
 
 def _remove_unsupplied_credential_blocks(html: str) -> str:
@@ -828,13 +854,19 @@ def _remove_unsupplied_credential_blocks(html: str) -> str:
         return "" if _has_credential_claim(text) else match.group(0)
 
     fixed = re.sub(
-        r"<(?:article|li)\b[^>]*>.*?</(?:article|li)>",
+        r"<(?:article|li|aside)\b[^>]*>.*?</(?:article|li|aside)>",
         remove_if_credential,
         fixed,
         flags=re.IGNORECASE | re.DOTALL,
     )
     fixed = re.sub(
-        r"<div\b(?=[^>]*class=[\"'][^\"']*(?:card|proof)[^\"']*[\"'])[^>]*>.*?</div>",
+        r"<div\b(?=[^>]*class=[\"'][^\"']*(?:card|proof|trust|credential|license|badge|item|row)[^\"']*[\"'])[^>]*>.*?</div>",
+        remove_if_credential,
+        fixed,
+        flags=re.IGNORECASE | re.DOTALL,
+    )
+    fixed = re.sub(
+        r"<p\b[^>]*>.*?</p>",
         remove_if_credential,
         fixed,
         flags=re.IGNORECASE | re.DOTALL,
@@ -843,10 +875,26 @@ def _remove_unsupplied_credential_blocks(html: str) -> str:
 
 
 def _strip_unsupplied_credential_claims(html: str) -> str:
+    parts = re.split(
+        r"(<(?:script|style)\b[^>]*>.*?</(?:script|style)>)",
+        html,
+        flags=re.IGNORECASE | re.DOTALL,
+    )
+    return "".join(
+        part if re.match(r"<(?:script|style)\b", part, flags=re.IGNORECASE) else _strip_credential_claim_text(part)
+        for part in parts
+    )
+
+
+def _strip_credential_claim_text(html: str) -> str:
     replacements = (
+        (r"\blicense proof\b", ""),
+        (r"\blicense details?\b", ""),
         (r"\blicensed professional\s*\([^)]*\)", ""),
         (r"\blicensed professional\b", ""),
+        (r"\blicensed\b", ""),
         (r"\bproof omitted per rules[^<.\n]*", ""),
+        (r"\bowner-provided credential[^<.\n]*", ""),
         (r"\blicense verification card\s*\([^)]*\)", ""),
         (r"\blicense verification card\b", ""),
         (r"\blicense verification\b", ""),
@@ -855,14 +903,24 @@ def _strip_unsupplied_credential_claims(html: str) -> str:
         (r"\bimplied by trade[^<.\n]*", ""),
         (r"\blicensed and insured\b", ""),
         (r"\bfully insured\b", ""),
+        (r"\binsured\b", ""),
+        (r"\binsurance\b", ""),
         (r"\bbonded\b", ""),
-        (r"\blicense\s*#\s*[\w-]+", "license detail not supplied"),
-        (r"\blic\s*#\s*[\w-]+", "license detail not supplied"),
+        (r"\blicense\s*#\s*[\w-]+", ""),
+        (r"\blic\s*#\s*[\w-]+", ""),
+        (r"\blicense\b", ""),
+        (r"\blic\.\b", ""),
         (r"\bcertified\b", ""),
+        (r"\bcertification\b", ""),
+        (r"\bcredential status\b", ""),
+        (r"\bcredentials?\b", ""),
+        (r"\bverify before publishing\b", ""),
+        (r"\bowner input\b", ""),
     )
     fixed = html
     for pattern, replacement in replacements:
         fixed = re.sub(pattern, replacement, fixed, flags=re.IGNORECASE)
+    fixed = re.sub(r">\s*(?:/|,|;|and|&amp;|&)\s*<", "><", fixed, flags=re.IGNORECASE)
     return fixed
 
 

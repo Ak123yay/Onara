@@ -95,8 +95,8 @@ type Agent6ModelChoice =
   | "onara-default"
   | "copilot-gemini-3.1-pro"
   | "copilot-gpt-5.4-mini"
-  | "openai-gpt-5.4"
-  | "claude-sonnet-4";
+  | "openai-gpt-5.5-high"
+  | "claude-opus-4.8-high";
 
 type CustomPalette = {
   accent: string;
@@ -325,20 +325,20 @@ const agent6ModelOptions: Agent6ModelOption[] = [
   {
     description: "Reserved for Pro users after user key storage and provider clients exist.",
     executable: false,
-    id: "openai-gpt-5.4",
-    label: "OpenAI GPT-5.4",
+    id: "openai-gpt-5.5-high",
+    label: "OpenAI GPT-5.5 High",
     minimumPlan: "pro",
-    model: "gpt-5.4",
+    model: "gpt-5.5-high",
     provider: "User OpenAI key",
     unavailableReason: "OpenAI user-key storage and client are not wired yet.",
   },
   {
     description: "Reserved for Pro users after user key storage and provider clients exist.",
     executable: false,
-    id: "claude-sonnet-4",
-    label: "Claude Sonnet 4",
+    id: "claude-opus-4.8-high",
+    label: "Claude Opus 4.8 High",
     minimumPlan: "pro",
-    model: "claude-sonnet-4",
+    model: "claude-opus-4.8-high",
     provider: "User Anthropic key",
     unavailableReason: "Anthropic user-key storage and client are not wired yet.",
   },
