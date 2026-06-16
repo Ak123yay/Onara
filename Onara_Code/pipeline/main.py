@@ -63,6 +63,7 @@ async def generate(body: GenerateRequest) -> JobEnqueueResponse:
         agent_6_model_reason=agent_6_selection.selection_reason,
         agent_6_model_requested=agent_6_selection.requested_option_id,
         job_id=job.job_id,
+        project_id=job.project_id,
         queued=job.status == "queued",
         deduped=enqueue_result.deduped,
         queue_position=await queue.position(job.job_id),

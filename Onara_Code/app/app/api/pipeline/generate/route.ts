@@ -21,6 +21,7 @@ type PipelineStartResponse = {
   agent_6_model_requested?: string | null;
   deduped?: boolean;
   job_id?: string;
+  project_id?: string;
   queue_position?: number | null;
   queued?: boolean;
   status?: string;
@@ -135,6 +136,8 @@ export async function POST(request: Request) {
       deduped: Boolean(payload.deduped),
       jobId: payload.job_id,
       job_id: payload.job_id,
+      projectId: payload.project_id ?? null,
+      project_id: payload.project_id ?? null,
       queuePosition: payload.queue_position ?? null,
       queue_position: payload.queue_position ?? null,
       queued: payload.queued ?? true,

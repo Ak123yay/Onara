@@ -47,6 +47,7 @@ def professional_visual_issues(html: str) -> list[str]:
         issues.append("Page lacks enough structured proof, service, and contact panels")
 
     issues.extend(composition_depth_issues(html))
+    issues.extend(layout_balance_issues(html))
     issues.extend(onara_theme_issues(html))
     issues.extend(content_quality_issues(html))
 
@@ -128,6 +129,48 @@ def composition_depth_issues(html: str) -> list[str]:
         hero_markup = lower[hero_start:services_start] if services_start > hero_start else ""
         if hero_markup and hero_markup.count("<a ") < 1:
             issues.append("Hero is missing a clear conversion CTA")
+
+    return _unique(issues)
+
+
+def layout_balance_issues(html: str) -> list[str]:
+    lower = html.lower()
+    issues: list[str] = []
+
+    first_fold = _first_fold_markup(html)
+    first_fold_lower = first_fold.lower()
+    has_side_stack = any(token in first_fold_lower for token in ("hero-side", "panel-stack", "side-panel"))
+    side_stack_depth = sum(
+        1
+        for token in (
+            "hero-photo",
+            "service-menu",
+            "local-card",
+            "hours-card",
+            "detail-card",
+            "proof-card",
+            "contact-card",
+        )
+        if token in first_fold_lower
+    )
+    if has_side_stack and side_stack_depth >= 3 and "onara-first-fold-balance-lock" not in lower:
+        issues.append(
+            "Hero side stack is too tall and can leave a large blank left-column gap before services; compact the side stack or move lower proof cards out of the hero"
+        )
+
+    visible_text = re.sub(r"<[^>]+>", " ", html)
+    visible_text = re.sub(r"\s+", " ", visible_text).strip().lower()
+    if re.search(r"\bdaily\s*:?\s*open\s+24\s+hours\b", visible_text):
+        issues.append("Hours card uses awkward summary copy; use 'Open 24 hours' and render the weekly schedule below")
+
+    header_markup = _header_markup(html).lower()
+    if (
+        header_markup
+        and "<nav" in header_markup
+        and any(token in header_markup for token in ("estimate", "call", "book", "order", "quote"))
+        and "onara-first-fold-balance-lock" not in lower
+    ):
+        issues.append("Header brand, navigation, and CTA need a stable center-aligned grid so the top bar does not look uneven")
 
     return _unique(issues)
 
@@ -216,6 +259,33 @@ def _css_rule(lower_html: str, selector: str) -> str:
     escaped = re.escape(selector)
     match = re.search(rf"{escaped}\s*\{{(?P<body>.*?)\}}", lower_html, flags=re.DOTALL)
     return match.group("body") if match else ""
+
+
+def _first_fold_markup(html: str) -> str:
+    match = re.search(
+        r"<section\b[^>]*class=[\"'][^\"']*\bhero\b.*?</section>",
+        html,
+        flags=re.IGNORECASE | re.DOTALL,
+    )
+    if match:
+        return match.group(0)
+
+    lower = html.lower()
+    hero_start = lower.find('data-component="hero"')
+    services_start = lower.find('data-component="services"')
+    if hero_start >= 0 and services_start > hero_start:
+        return html[hero_start:services_start]
+
+    return html[:6500]
+
+
+def _header_markup(html: str) -> str:
+    match = re.search(
+        r"<header\b[^>]*>.*?</header>",
+        html,
+        flags=re.IGNORECASE | re.DOTALL,
+    )
+    return match.group(0) if match else ""
 
 
 def _class_instance_count(html: str, class_name: str) -> int:

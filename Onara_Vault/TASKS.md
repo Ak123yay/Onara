@@ -175,7 +175,7 @@ Execution rule:
 - [x] HTML parser: split output into atomic component files
 - [x] GitHub commit: push to onara-sites/sites/{projectId}/
 - [x] Cloudflare Pages Direct Upload deployment
-- [ ] Store project record in Supabase
+- [x] Store project record in Supabase
 
 ### Phase 23 — Revision System
 

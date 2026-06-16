@@ -25,6 +25,7 @@ class JobEnqueueResponse(BaseModel):
     agent_6_model_reason: str | None = None
     agent_6_model_requested: str | None = None
     job_id: str
+    project_id: str
     queued: bool
     deduped: bool
     queue_position: int | None
@@ -81,6 +82,7 @@ class JobStatusResponse(BaseModel):
     pre_qa_hardening_attempts: list[dict[str, Any]] = Field(default_factory=list)
     pre_qa_min_check_pass_rate: float | None = None
     pre_qa_status: str | None = None
+    public_url: str | None = None
     queue_position: int | None
     preview_html: str | None = None
     qa_blocking_issues: list[str] = Field(default_factory=list)
@@ -89,6 +91,9 @@ class JobStatusResponse(BaseModel):
     qa_warnings: list[str] = Field(default_factory=list)
     site_id: str | None = None
     supervisor_decision: dict[str, Any] | None = None
+    supabase_project_error: str | None = None
+    supabase_project_id: str | None = None
+    supabase_project_status: str | None = None
     created_at: datetime
     error_message: str | None = None
     updated_at: datetime
@@ -130,6 +135,7 @@ class JobStatusResponse(BaseModel):
         qa_status = None
         qa_warnings: list[str] = []
         phase_21 = job.blackboard.get("phase_21")
+        supabase_project = job.blackboard.get("supabase_project")
         pre_qa_blocking_issues: list[str] = []
         pre_qa_check_pass_rate = None
         pre_qa_hardening_attempts: list[dict[str, Any]] = []
@@ -138,6 +144,7 @@ class JobStatusResponse(BaseModel):
         photo_assets = job.blackboard.get("photo_assets")
         photo_count = len(photo_assets) if isinstance(photo_assets, list) else 0
         photo_resolution_status = _optional_str(job.business_data.get("photo_resolution_status"))
+        public_url = _optional_str(job.blackboard.get("public_url"))
 
         if isinstance(mobile_output, dict):
             raw_checks = mobile_output.get("checks")
@@ -215,6 +222,14 @@ class JobStatusResponse(BaseModel):
             )
             pre_qa_status = _optional_str(phase_21.get("pre_qa_status"))
 
+        supabase_project_error = None
+        supabase_project_id = project_id
+        supabase_project_status = None
+        if isinstance(supabase_project, dict):
+            supabase_project_error = _optional_str(supabase_project.get("error"))
+            supabase_project_id = _optional_str(supabase_project.get("project_id")) or project_id
+            supabase_project_status = _optional_str(supabase_project.get("status"))
+
         return cls(
             ai_blackboard_review=ai_blackboard_review if isinstance(ai_blackboard_review, dict) else None,
             ai_blackboard_warnings=ai_blackboard_warnings,
@@ -252,14 +267,18 @@ class JobStatusResponse(BaseModel):
             pre_qa_hardening_attempts=pre_qa_hardening_attempts,
             pre_qa_min_check_pass_rate=pre_qa_min_check_pass_rate,
             pre_qa_status=pre_qa_status,
+            public_url=public_url,
             queue_position=queue_position,
             preview_html=preview_html if isinstance(preview_html, str) else None,
             qa_blocking_issues=qa_blocking_issues,
             qa_checks=qa_checks,
             qa_status=qa_status,
             qa_warnings=qa_warnings,
-            site_id=project_id if not project_id.startswith("pending:") else f"draft-{job.job_id[:8]}",
+            site_id=project_id,
             supervisor_decision=job.blackboard.get("latest_blackboard_decision"),
+            supabase_project_error=supabase_project_error,
+            supabase_project_id=supabase_project_id,
+            supabase_project_status=supabase_project_status,
             created_at=job.created_at,
             error_message=job.error_message,
             updated_at=job.updated_at,

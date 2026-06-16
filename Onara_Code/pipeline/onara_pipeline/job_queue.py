@@ -3,7 +3,7 @@ import json
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Any, Literal
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 from onara_pipeline.config import Settings
 from onara_pipeline.schemas import GenerateRequest, QueueStats
@@ -50,8 +50,9 @@ class JobQueue:
 
     async def enqueue(self, request: GenerateRequest) -> EnqueueResult:
         async with self._lock:
-            project_id = request.project_id or f"pending:{request.user_id}:{request.place_id or uuid4()}"
-            existing_id = self._project_to_job_id.get(project_id)
+            project_key = _project_key_for_request(request)
+            project_id = _project_id_for_request(request)
+            existing_id = self._project_to_job_id.get(project_key)
 
             if existing_id:
                 existing_job = self._jobs[existing_id]
@@ -78,7 +79,7 @@ class JobQueue:
 
             self._jobs[job_id] = job
             self._queued_job_ids.append(job_id)
-            self._project_to_job_id[project_id] = job_id
+            self._project_to_job_id[project_key] = job_id
             return EnqueueResult(job=job, deduped=False)
 
     async def start_workers(self, settings: Settings) -> None:
@@ -171,12 +172,13 @@ class JobQueue:
                 await self._prepare_deployment_artifact(job, progress)
                 await self._commit_deployment_files_to_github(job, settings, progress)
                 await self._deploy_to_cloudflare_pages(job, settings, progress)
+                await self._store_project_record_in_supabase(job, settings, progress)
                 await self.record_progress(
                     job.job_id,
                     "phase_completed",
                     None,
-                    "Phase 22 Cloudflare deployment step completed.",
-                    {"phase": "phase_22_cloudflare"},
+                    "Phase 22 deployment pipeline completed.",
+                    {"phase": "phase_22"},
                 )
                 await self._mark_completed(job.job_id)
             except Exception as exc:
@@ -336,7 +338,7 @@ class JobQueue:
                 "status": "deployed",
             }
             job.blackboard["cloudflare_deployment"] = result
-            job.blackboard["public_url"] = deployment.deployment_url
+            job.blackboard["public_url"] = _public_job_url(settings.app_url, job.job_id)
             await progress(
                 "phase_completed",
                 "cloudflare",
@@ -358,6 +360,69 @@ class JobQueue:
                 {"cloudflare_deployment": result, "phase": "phase_22_cloudflare"},
             )
             raise
+
+    async def _store_project_record_in_supabase(
+        self,
+        job: PipelineJob,
+        settings: Settings,
+        progress: Any,
+    ) -> None:
+        from onara_pipeline.deployment import SupabaseProjectStoreError, upsert_project_record
+
+        cloudflare_deployment = job.blackboard.get("cloudflare_deployment")
+        github_commit = job.blackboard.get("github_commit")
+        cloudflare = cloudflare_deployment if isinstance(cloudflare_deployment, dict) else {}
+        github = github_commit if isinstance(github_commit, dict) else {}
+        cloudflare_status = str(cloudflare.get("status") or "")
+        site_status = "live" if cloudflare_status == "deployed" else "deploying"
+        public_url = str(job.blackboard.get("public_url") or cloudflare.get("deployment_url") or "") or None
+        generation_ms = max(0, int((datetime.now(timezone.utc) - job.created_at).total_seconds() * 1000))
+
+        try:
+            result = await upsert_project_record(
+                business_data=job.business_data,
+                cloudflare_project_name=str(cloudflare.get("project_name") or "") or None,
+                current_agent="done" if site_status == "live" else "deploying",
+                generation_ms=generation_ms,
+                github_path=str(github.get("path_prefix") or "") or None,
+                project_id=job.project_id,
+                public_url=public_url,
+                settings=settings,
+                status=site_status,
+                style_preferences=job.style_preferences,
+                user_id=job.user_id,
+            )
+            payload = result.to_dict()
+            job.blackboard["supabase_project"] = payload
+
+            if result.status == "skipped":
+                await progress(
+                    "deployment_skipped",
+                    "supabase",
+                    "Supabase project record store skipped because credentials are not configured.",
+                    {"phase": "phase_22_supabase", "supabase_project": payload},
+                )
+                return
+
+            await progress(
+                "phase_completed",
+                "supabase",
+                "Stored generated project record in Supabase.",
+                {"phase": "phase_22_supabase", "supabase_project": payload},
+            )
+        except SupabaseProjectStoreError as exc:
+            payload = {
+                "error": str(exc),
+                "project_id": job.project_id,
+                "status": "failed",
+            }
+            job.blackboard["supabase_project"] = payload
+            await progress(
+                "deployment_warning",
+                "supabase",
+                "Supabase project record store failed; deployment artifacts remain available.",
+                {"phase": "phase_22_supabase", "supabase_project": payload},
+            )
 
     async def _run_supervised_phase(
         self,
@@ -559,3 +624,22 @@ def request_signature(request: GenerateRequest) -> str:
         separators=(",", ":"),
         sort_keys=True,
     )
+
+
+def _project_key_for_request(request: GenerateRequest) -> str:
+    if request.project_id:
+        return request.project_id
+    return f"pending:{request.user_id}:{request.place_id or request_signature(request)}"
+
+
+def _project_id_for_request(request: GenerateRequest) -> str:
+    if request.project_id:
+        try:
+            return str(UUID(request.project_id))
+        except ValueError:
+            pass
+    return str(uuid4())
+
+
+def _public_job_url(app_url: str, job_id: str) -> str:
+    return f"{app_url.rstrip('/')}/{job_id}"

@@ -48,6 +48,32 @@ def ensure_onara_spacing(html: str) -> tuple[str, list[str]]:
     return fixed, fixes
 
 
+def ensure_first_fold_balance(html: str) -> tuple[str, list[str]]:
+    fixed = _normalize_hours_card_summary(html)
+    fixes: list[str] = []
+    if fixed != html:
+        fixes.append("Normalized awkward daily hours card summary copy")
+
+    lower = fixed.lower()
+    if any(
+        token in lower
+        for token in (
+            "<header",
+            "site-header",
+            "hero-side",
+            "panel-stack",
+            "hours-card",
+            "local-card",
+            "hero-photo",
+        )
+    ):
+        fixed, changed = _append_css_once(fixed, "onara-first-fold-balance-lock", ONARA_FIRST_FOLD_BALANCE_LOCK_CSS)
+        if changed:
+            fixes.append("Applied first-fold balance lock to align the header, compact hero side stacks, and close service-section whitespace")
+
+    return fixed, fixes
+
+
 def onara_typography_issues(html: str) -> list[str]:
     lower = html.lower()
     issues: list[str] = []
@@ -420,6 +446,30 @@ def hours_summary(context: BusinessContext) -> str:
         return f"Daily {unique_times[0]}"
 
     return "Weekly hours listed below"
+
+
+def _normalize_hours_card_summary(html: str) -> str:
+    fixed = html
+    tag_gap = r"(?:\s|&nbsp;|<[^>]+>)*"
+    fixed = re.sub(
+        rf"Daily{tag_gap}:?{tag_gap}Open{tag_gap}24{tag_gap}(?:hours|hrs)",
+        "Open 24 hours",
+        fixed,
+        flags=re.IGNORECASE,
+    )
+    fixed = re.sub(
+        rf"Every{tag_gap}day{tag_gap}:?{tag_gap}Open{tag_gap}24{tag_gap}(?:hours|hrs)",
+        "Open 24 hours",
+        fixed,
+        flags=re.IGNORECASE,
+    )
+    fixed = re.sub(
+        rf"Daily{tag_gap}:?{tag_gap}24{tag_gap}/{tag_gap}7",
+        "Open 24/7",
+        fixed,
+        flags=re.IGNORECASE,
+    )
+    return fixed
 
 
 def _local_hours_section(context: BusinessContext) -> str:
@@ -1302,6 +1352,237 @@ ONARA_SPACING_LOCK_CSS = """
         .hero,
         [data-component="hero"] {
           padding-block: clamp(40px, 11vw, 72px) !important;
+        }
+      }
+""".rstrip()
+
+
+ONARA_FIRST_FOLD_BALANCE_LOCK_CSS = """
+      /* onara-first-fold-balance-lock */
+      body > header,
+      .site-header {
+        align-items: center !important;
+        column-gap: clamp(24px, 4vw, 58px) !important;
+        display: grid !important;
+        grid-template-columns: minmax(0, 1fr) auto max-content !important;
+        min-height: 0 !important;
+        padding-block: clamp(18px, 2.2vw, 30px) !important;
+      }
+
+      body > header > :first-child,
+      .site-header > :first-child,
+      .brand {
+        align-items: center !important;
+        align-self: center !important;
+        display: flex !important;
+        line-height: 1.08 !important;
+        margin-block: 0 !important;
+        min-height: 0 !important;
+      }
+
+      body > header nav,
+      .site-header nav {
+        align-items: center !important;
+        align-self: center !important;
+        display: flex !important;
+        gap: clamp(18px, 2.5vw, 34px) !important;
+        justify-content: center !important;
+        line-height: 1 !important;
+        margin: 0 !important;
+        min-height: 0 !important;
+      }
+
+      body > header nav a,
+      .site-header nav a {
+        align-items: center !important;
+        display: inline-flex !important;
+        line-height: 1 !important;
+      }
+
+      body > header .cta,
+      body > header .button,
+      body > header .btn,
+      body > header a[href^="tel"],
+      .site-header .cta,
+      .site-header .button,
+      .site-header .btn,
+      .site-header a[href^="tel"] {
+        align-items: center !important;
+        align-self: center !important;
+        display: inline-flex !important;
+        justify-content: center !important;
+        line-height: 1 !important;
+        margin-block: 0 !important;
+        min-height: clamp(54px, 5vw, 70px) !important;
+        padding: 0 clamp(24px, 3vw, 40px) !important;
+        white-space: nowrap !important;
+      }
+
+      @media (min-width: 900px) {
+        .hero,
+        section.hero,
+        [data-component="hero"] {
+          padding-bottom: clamp(24px, 3.2vw, 46px) !important;
+        }
+
+        .hero + section,
+        [data-component="hero"] + section,
+        .hero + [data-component="services"],
+        [data-component="hero"] + [data-component="services"],
+        main > section[data-component="services"] {
+          margin-top: 0 !important;
+          padding-top: clamp(28px, 4vw, 54px) !important;
+        }
+
+        .hero-side,
+        .panel-stack,
+        .side-panel {
+          align-self: start !important;
+          display: grid;
+          gap: clamp(12px, 1.6vw, 18px) !important;
+        }
+
+        .hero-side > *,
+        .panel-stack > *,
+        .side-panel > * {
+          min-width: 0;
+        }
+
+        .hero-side .hero-photo,
+        .panel-stack .hero-photo,
+        .side-panel .hero-photo,
+        .hero-side figure,
+        .panel-stack figure,
+        .side-panel figure {
+          margin: 0 !important;
+        }
+
+        .hero-side .hero-photo img,
+        .panel-stack .hero-photo img,
+        .side-panel .hero-photo img,
+        .hero-side figure img,
+        .panel-stack figure img,
+        .side-panel figure img {
+          aspect-ratio: 16 / 9 !important;
+          display: block;
+          max-height: clamp(190px, 22vw, 255px) !important;
+          object-fit: cover;
+          width: 100%;
+        }
+
+        .hero-side .local-card,
+        .panel-stack .local-card,
+        .side-panel .local-card,
+        .hero-side .detail-card,
+        .panel-stack .detail-card,
+        .side-panel .detail-card,
+        .hero-side .proof-card,
+        .panel-stack .proof-card,
+        .side-panel .proof-card,
+        .hero-side .hours-card,
+        .panel-stack .hours-card,
+        .side-panel .hours-card {
+          padding: clamp(16px, 2vw, 24px) !important;
+        }
+      }
+
+      .hours-card {
+        display: grid !important;
+        gap: clamp(12px, 2vw, 18px) !important;
+        grid-template-columns: minmax(0, 1fr) auto !important;
+      }
+
+      .hours-card > strong:first-of-type,
+      .hours-card h3,
+      .hours-card h4 {
+        grid-column: 1 / 2 !important;
+        font-family: var(--serif, Georgia, serif);
+        font-size: clamp(1.35rem, 2.4vw, 2rem) !important;
+        font-weight: 400 !important;
+        letter-spacing: -0.035em !important;
+        line-height: 1 !important;
+        margin: 0 !important;
+        max-width: 12ch;
+      }
+
+      .hours-card > a[href^="tel"],
+      .hours-card .phone,
+      .hours-card .phone-number {
+        align-self: start !important;
+        color: var(--ink-2, #343434);
+        font-family: var(--mono, monospace);
+        font-size: clamp(0.9rem, 1.4vw, 1.1rem);
+        grid-column: 2 / 3 !important;
+        justify-self: end !important;
+        line-height: 1.15 !important;
+        margin-top: 0.2em !important;
+        white-space: nowrap;
+      }
+
+      .hours-card .hours-list {
+        display: grid !important;
+        gap: 7px 16px !important;
+        grid-column: 1 / -1 !important;
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+        list-style: none !important;
+        margin: clamp(8px, 1.5vw, 14px) 0 0 !important;
+        padding: 0 !important;
+      }
+
+      .hours-card .hours-list li {
+        color: var(--ink-3, #6a6a6a);
+        font-size: clamp(0.92rem, 1.25vw, 1rem);
+        line-height: 1.35;
+        min-width: 0;
+        overflow-wrap: anywhere;
+      }
+
+      .hours-card > a:not([href^="tel"]),
+      .hours-card > p,
+      .hours-card > .hours-cta,
+      .hours-card > .primary-cta {
+        grid-column: 1 / -1 !important;
+      }
+
+      .hours-card > .hours-cta,
+      .hours-card > .primary-cta {
+        justify-self: start !important;
+      }
+
+      @media (max-width: 640px) {
+        body > header,
+        .site-header {
+          grid-template-columns: 1fr !important;
+          row-gap: 18px !important;
+        }
+
+        body > header nav,
+        .site-header nav {
+          justify-content: start !important;
+        }
+
+        body > header .cta,
+        body > header .button,
+        body > header .btn,
+        .site-header .cta,
+        .site-header .button,
+        .site-header .btn {
+          justify-self: start !important;
+        }
+
+        .hours-card {
+          grid-template-columns: 1fr !important;
+        }
+
+        .hours-card > a[href^="tel"],
+        .hours-card .phone,
+        .hours-card .phone-number {
+          grid-column: 1 / -1 !important;
+          justify-self: start !important;
+        }
+
+        .hours-card .hours-list {
+          grid-template-columns: 1fr !important;
         }
       }
 """.rstrip()

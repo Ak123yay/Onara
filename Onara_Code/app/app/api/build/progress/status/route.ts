@@ -22,6 +22,7 @@ type PipelineStatusResponse = {
   job_id: string;
   preview_html?: string | null;
   progress_log: PipelineProgressEntry[];
+  public_url?: string | null;
   queue_position?: number | null;
   site_id?: string | null;
   status: "queued" | "running" | "completed" | "failed";
@@ -76,6 +77,7 @@ function mapPipelineStatus(status: PipelineStatusResponse, businessName: string)
     jobId: status.job_id,
     message: status.error_message || latestMessage || activeAgent?.task || "Build pipeline is running.",
     progress,
+    publicUrl: status.public_url || publicJobUrl(status.job_id),
     queued,
     queuePosition: status.queue_position ?? null,
     retrying: false,
@@ -103,6 +105,7 @@ function mockStatus(jobId: string, businessName: string, elapsedMs: number) {
           ? "Spacing mismatch caught. Retrying with stricter layout rules."
           : activeAgent?.task,
     progress: progress.progress,
+    publicUrl: publicJobUrl(jobId),
     queued: progress.queued,
     retrying,
     totalSteps: AGENT_STEPS.length,
@@ -206,6 +209,11 @@ function isMockJob(jobId: string) {
 
 function pipelineConfigured() {
   return Boolean(process.env.PIPELINE_SERVER_URL && process.env.PIPELINE_API_SECRET);
+}
+
+function publicJobUrl(jobId: string) {
+  const appUrl = (process.env.NEXT_PUBLIC_APP_URL || process.env.APP_URL || "https://onara.tech").replace(/\/+$/, "");
+  return `${appUrl}/${jobId}`;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

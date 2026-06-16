@@ -7,6 +7,7 @@ from onara_pipeline.agents.agent_06_codegen import extract_index_html, split_com
 from onara_pipeline.agents.context import build_business_context
 from onara_pipeline.agents.contracts import DebuggerOutput, PlannerOutput
 from onara_pipeline.agents.fact_repair import (
+    ensure_first_fold_balance,
     ensure_hours_rendered,
     ensure_onara_spacing,
     ensure_onara_typography,
@@ -48,6 +49,10 @@ Strict rules:
 - Enforce the Onara design contract: protected paper/ink/accent variables, selected palette through --choice-* details, Fraunces headings, Inter body copy, mono labels, low-radius panels.
 - Fix fact/rendering failures: full weekly hours, specific service-menu labels, no fake review cards, no fabricated credential claims, and no visible raw SEO keyword strings.
 - Tighten first-fold spacing when a side image/card stack creates a large blank gap before services.
+- If the hero side column stacks service menu + large photo + local proof, compact it to at most two major blocks or move lower proof/detail cards below the hero so Services starts immediately after the hero content.
+- Fix awkward hours headings such as "Daily Open 24 hours"; use "Open 24 hours" or "Open daily" and render the weekly schedule as compact rows below.
+- Fix header alignment by using one center-aligned grid/flex row for brand, nav, and CTA. The CTA must not sit visually above or below the nav baseline.
+- Fix cramped hours cards by separating summary, phone, CTA, and weekly list into clear rows/columns with no headline overlap.
 - Keep one self-contained index.html document.
 - Keep all CSS inside <style> in <head>.
 - Keep animation lightweight: opacity and transform only.
@@ -312,6 +317,7 @@ def _apply_fact_repairs(
 ) -> tuple[str, list[str]]:
     fixed, typography_fixes = ensure_onara_typography(html)
     fixed, spacing_fixes = ensure_onara_spacing(fixed)
+    fixed, balance_fixes = ensure_first_fold_balance(fixed)
     fixed, hours_fixes = ensure_hours_rendered(
         fixed,
         business_data=business_data,
@@ -336,6 +342,7 @@ def _apply_fact_repairs(
         [
             *typography_fixes,
             *spacing_fixes,
+            *balance_fixes,
             *hours_fixes,
             *integrity_fixes,
             *service_menu_fixes,

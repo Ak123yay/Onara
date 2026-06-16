@@ -50,6 +50,11 @@ Onara visual quality bar:
 - If no review quotes are supplied, use one aggregate Google rating/review summary with factual rows; do not create fake testimonials or three generic proof cards.
 - Never claim licensing, insurance, bonded status, certification, or "implied by trade" credentials unless the owner notes or business data supply those exact details.
 - Keep the first fold compact: do not let a tall side photo/card stack create a large blank gap before the services section.
+- The hero side column may contain at most two major blocks on desktop. Do not stack service menu + large photo + local proof in the same hero side column; move lower proof/detail cards into later sections or a compact strip.
+- The services section must begin immediately after the hero content. Avoid designs where the left hero column ends early while a taller right column forces a large blank area above Services.
+- If an hours card says the same hours every day, the card heading must be simple ("Open 24 hours" or "Open daily"), with the schedule below; never render awkward text like "Daily Open 24 hours" as a large heading.
+- Header must use one clean horizontal alignment: brand, nav, and CTA share the same vertical centerline; avoid CTA blocks that sit higher/lower than the logo or nav.
+- Hours cards must not squeeze the summary, phone, CTA, and weekly list into one cramped row. Use a small two-column card: summary left, phone right, CTA/list below.
 - Use strong editorial type scale, low-radius cards, section contrast, atmospheric background treatment, and conversion-first CTAs.
 - Use CSS grid, grid-template-columns, minmax/repeat, clamp() typography, and at least one gradient/texture/shaped visual treatment.
 - Avoid Tailwind-looking defaults, oversized empty whitespace, generic rounded pills, and bland template symmetry.
@@ -184,6 +189,11 @@ Final Agent 6 requirements:
 - Use the selected palette for CTAs and accents, while keeping Onara paper cards, ink panels, low-radius borders, rule-line separators, and subtle paper texture.
 - The desktop hero must be a composed grid/split layout; do not set .hero to text-align:center unless there is still a designed side panel.
 - Include a proof/contact/service panel near the hero so the first fold has more than centered copy.
+- Keep desktop hero side stacks shallow: one compact service/contact panel plus one compact photo/proof block is enough. Put extra local proof under Services or Proof, not under the photo in the hero.
+- Do not create a first-fold layout where Services starts far below the proof cards because the right hero column is taller than the left.
+- For same-hours-every-day businesses, use "Open 24 hours" or "Open daily" as the hours-card headline, then render the weekly list in compact rows.
+- Header layout must be a stable grid or flex row with align-items:center; brand, nav, and CTA should look vertically centered together.
+- Hours-card layout must reserve separate space for the phone number and avoid headline collisions or awkward wrapping.
 - Include at least four named composition surfaces in or near the first fold: hero-side, panel-stack, proof-strip, proof-grid, service-menu, local-card, hours-card, detail-card, review-card, contact-card.
 - Include at least three distinct card types across the page: service-card, proof-card, review-card, local-card, contact-card, hours-card, metric-card, or detail-card.
 - Include CSS grid with grid-template-columns, fluid typography with clamp(), and a visual atmosphere layer using gradients, texture, image framing, color-mix(), clip-path, or aspect-ratio panels.

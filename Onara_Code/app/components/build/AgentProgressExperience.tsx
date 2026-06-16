@@ -42,6 +42,7 @@ type StreamPayload = {
   message?: string;
   position?: number;
   progress?: number;
+  publicUrl?: string;
   siteId?: string;
   stepIndex?: number;
 };
@@ -99,6 +100,7 @@ export function AgentProgressExperience() {
   const [currentMessage, setCurrentMessage] = useState("Preparing the agent workspace.");
   const [previewHtml, setPreviewHtml] = useState(() => previewHtmlForStep(0, "Your Contractor Site"));
   const [progress, setProgress] = useState(0);
+  const [publicUrl, setPublicUrl] = useState<string | null>(null);
   const [queuePosition, setQueuePosition] = useState<number | null>(null);
   const [siteId, setSiteId] = useState<string | null>(null);
   const [statuses, setStatuses] = useState<AgentStatus[]>(emptyStatuses);
@@ -178,6 +180,8 @@ export function AgentProgressExperience() {
         setStatuses(AGENT_STEPS.map(() => "done"));
         setProgress(100);
         setCurrentMessage(data.message || "Generation complete.");
+        setPublicUrl(data.publicUrl || null);
+        setSiteId(data.siteId || null);
         return;
       }
 
@@ -297,6 +301,7 @@ export function AgentProgressExperience() {
       setStatuses(AGENT_STEPS.map(() => "done"));
       setProgress(100);
       setCurrentMessage(data.message || "Generation complete.");
+      setPublicUrl(data.publicUrl || null);
       setSiteId(data.siteId || null);
       eventSource.close();
     });
@@ -398,7 +403,7 @@ export function AgentProgressExperience() {
               <span className="window-dot window-dot-green" />
             </div>
             <div className="agent-preview-url">
-              preview - {connectionMode === "complete" ? "ready" : "building"}
+              {connectionMode === "complete" && publicUrl ? displayUrl(publicUrl) : `preview - ${connectionMode === "complete" ? "ready" : "building"}`}
             </div>
             <span className="badge agent-preview-badge">
               {connectionMode === "complete" ? "ready" : "live"}
@@ -424,15 +429,25 @@ export function AgentProgressExperience() {
               <Link className="btn btn-soft" href="/dashboard/build">
                 New build
               </Link>
-              <button className="btn btn-accent" disabled={connectionMode !== "complete"} type="button">
-                {siteId ? "Draft ready" : "Waiting"}
-              </button>
+              {connectionMode === "complete" && publicUrl ? (
+                <Link className="btn btn-accent" href={publicUrl} target="_blank" rel="noreferrer">
+                  Open site
+                </Link>
+              ) : (
+                <button className="btn btn-accent" disabled type="button">
+                  {siteId ? "Draft ready" : "Waiting"}
+                </button>
+              )}
             </div>
           </div>
         </section>
       </section>
     </div>
   );
+}
+
+function displayUrl(value: string) {
+  return value.replace(/^https?:\/\//, "").replace(/\/+$/, "");
 }
 
 function AgentStepRow({
