@@ -25,6 +25,7 @@ class SupervisorValidationError(ValueError):
 
 
 REPAIRABLE_CODEGEN_VISUAL_ISSUE_PREFIXES = (
+    "Hero is missing a clear conversion CTA",
     "Hero side stack is too tall",
     "Header brand, navigation, and CTA need a stable center-aligned grid",
     "Hours card uses awkward summary copy",

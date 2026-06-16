@@ -598,6 +598,8 @@ function SiteCard({ project, showUrl }: { project: Project; showUrl: boolean }) 
         )}
         <DeleteSiteButton
           businessName={project.business_name}
+          disabled={activeBuild}
+          disabledReason="Wait until this build finishes or fails before deleting it."
           projectId={project.id}
         />
       </div>

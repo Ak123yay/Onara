@@ -11,6 +11,23 @@ from onara_pipeline.agents.context import (
 )
 from onara_pipeline.agents.onara_theme import ONARA_FONT_IMPORT
 
+CTA_TARGET_TOKENS = (
+    "tel:",
+    "mailto:",
+    "#contact",
+    "#estimate",
+    "#quote",
+    "#booking",
+    "#book",
+    "#order",
+    "#schedule",
+)
+
+CTA_COPY_RE = re.compile(
+    r"\b(call|book|schedule|reserve|quote|estimate|contact|get|start|order|request|emergency|pickup)\b",
+    flags=re.IGNORECASE,
+)
+
 
 def ensure_onara_typography(html: str) -> tuple[str, list[str]]:
     fixed = html
@@ -71,6 +88,34 @@ def ensure_first_fold_balance(html: str) -> tuple[str, list[str]]:
         if changed:
             fixes.append("Applied first-fold balance lock to align the header, compact hero side stacks, and close service-section whitespace")
 
+    return fixed, fixes
+
+
+def ensure_hero_conversion_cta(
+    html: str,
+    *,
+    business_data: dict[str, Any],
+    style_preferences: dict[str, Any] | None = None,
+) -> tuple[str, list[str]]:
+    context = build_business_context(business_data, style_preferences or {})
+    hero = _hero_section(html)
+    if not hero or _has_conversion_cta(hero):
+        return html, []
+
+    href = f"tel:{_phone_digits(context.phone)}" if _phone_digits(context.phone) else "#contact"
+    cta = (
+        f'\n        <a class="primary-cta hero-cta onara-injected-hero-cta" '
+        f'href="{html_lib.escape(href, quote=True)}">{html_lib.escape(_conversion_cta_label(style_preferences, context))}</a>\n'
+    )
+    repaired_hero = re.sub(r"</section\s*>", cta + "    </section>", hero, count=1, flags=re.IGNORECASE)
+    if repaired_hero == hero:
+        return html, []
+
+    fixed = html.replace(hero, repaired_hero, 1)
+    fixed, css_changed = _append_css_once(fixed, "onara-hero-cta-lock", ONARA_HERO_CTA_LOCK_CSS)
+    fixes = ["Added a clear conversion CTA inside the hero"]
+    if css_changed:
+        fixes.append("Applied hero CTA visibility lock")
     return fixed, fixes
 
 
@@ -530,6 +575,57 @@ def _aggregate_review_section(context: BusinessContext) -> str:
 def _component_section(html: str, component_id: str) -> str:
     match = re.search(_component_section_pattern(component_id), html, flags=re.IGNORECASE | re.DOTALL)
     return match.group(0) if match else ""
+
+
+def _hero_section(html: str) -> str:
+    component = _component_section(html, "hero")
+    if component:
+        return component
+
+    match = re.search(
+        r"<section\b[^>]*class=[\"'][^\"']*\bhero\b[^\"']*[\"'][^>]*>.*?</section>",
+        html,
+        flags=re.IGNORECASE | re.DOTALL,
+    )
+    return match.group(0) if match else ""
+
+
+def _has_conversion_cta(markup: str) -> bool:
+    controls = re.finditer(
+        r"<(?P<tag>a|button)\b(?P<attrs>[^>]*)>(?P<body>.*?)</(?P=tag)>",
+        markup,
+        flags=re.IGNORECASE | re.DOTALL,
+    )
+    for control in controls:
+        attrs = control.group("attrs").lower()
+        text = _visible_text(control.group("body"))
+        if not text:
+            continue
+        if any(token in attrs for token in CTA_TARGET_TOKENS):
+            return True
+        if CTA_COPY_RE.search(text):
+            return True
+    return False
+
+
+def _conversion_cta_label(style_preferences: dict[str, Any] | None, context: BusinessContext) -> str:
+    preferences = style_preferences or {}
+    goal = str(preferences.get("conversionGoal") or preferences.get("conversion_goal") or "").lower()
+    industry = infer_industry(context)
+
+    if "book" in goal or industry in {"grocery", "campground"}:
+        return "Book Online" if "book" in goal else "Order Now" if industry == "grocery" else "Reserve Now"
+    if "emergency" in goal:
+        return "Get Emergency Help"
+    if "call" in goal:
+        return "Call Now"
+    if "quote" in goal:
+        return "Request a Quote"
+    return "Get a Free Estimate"
+
+
+def _phone_digits(phone: str) -> str:
+    return re.sub(r"[^0-9+]", "", phone)
 
 
 def _first_component_section(html: str, component_ids: tuple[str, ...]) -> str:
@@ -1353,6 +1449,30 @@ ONARA_SPACING_LOCK_CSS = """
         [data-component="hero"] {
           padding-block: clamp(40px, 11vw, 72px) !important;
         }
+      }
+""".rstrip()
+
+
+ONARA_HERO_CTA_LOCK_CSS = """
+      /* onara-hero-cta-lock */
+      .onara-injected-hero-cta {
+        align-items: center;
+        background: var(--accent, #c76f35);
+        color: var(--paper, #fbfaf6);
+        display: inline-flex;
+        font-family: var(--ui, Inter, sans-serif);
+        font-weight: 750;
+        justify-content: center;
+        line-height: 1;
+        margin-top: clamp(18px, 2vw, 28px);
+        min-height: 52px;
+        padding: 0 clamp(20px, 3vw, 34px);
+        text-decoration: none;
+      }
+
+      .onara-injected-hero-cta:focus-visible {
+        outline: 3px solid color-mix(in srgb, var(--accent, #c76f35) 35%, transparent);
+        outline-offset: 3px;
       }
 """.rstrip()
 

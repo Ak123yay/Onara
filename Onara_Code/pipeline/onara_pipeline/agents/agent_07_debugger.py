@@ -9,6 +9,7 @@ from onara_pipeline.agents.contracts import DebuggerOutput, PlannerOutput
 from onara_pipeline.agents.fact_repair import (
     ensure_first_fold_balance,
     ensure_hours_rendered,
+    ensure_hero_conversion_cta,
     ensure_onara_spacing,
     ensure_onara_typography,
     ensure_review_and_license_integrity,
@@ -318,6 +319,11 @@ def _apply_fact_repairs(
     fixed, typography_fixes = ensure_onara_typography(html)
     fixed, spacing_fixes = ensure_onara_spacing(fixed)
     fixed, balance_fixes = ensure_first_fold_balance(fixed)
+    fixed, hero_cta_fixes = ensure_hero_conversion_cta(
+        fixed,
+        business_data=business_data,
+        style_preferences=style_preferences,
+    )
     fixed, hours_fixes = ensure_hours_rendered(
         fixed,
         business_data=business_data,
@@ -343,6 +349,7 @@ def _apply_fact_repairs(
             *typography_fixes,
             *spacing_fixes,
             *balance_fixes,
+            *hero_cta_fixes,
             *hours_fixes,
             *integrity_fixes,
             *service_menu_fixes,
