@@ -7,6 +7,7 @@ import {
   Clock3,
   LoaderCircle,
   RefreshCw,
+  Sparkles,
 } from "lucide-react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
@@ -41,6 +42,7 @@ type StreamPayload = {
   elapsedSeconds?: number;
   html?: string;
   message?: string;
+  notice?: string;
   position?: number;
   progress?: number;
   publicUrl?: string;
@@ -133,6 +135,7 @@ export function AgentProgressExperience() {
   const [businessMeta, setBusinessMeta] = useState("Google Business data confirmed");
   const [connectionMode, setConnectionMode] = useState<ConnectionMode>("connecting");
   const [currentMessage, setCurrentMessage] = useState("Preparing the agent workspace.");
+  const [aiNotice, setAiNotice] = useState<string | null>(null);
   const [previewHtml, setPreviewHtml] = useState(() => previewHtmlForStep(0, "Your Contractor Site"));
   const [progress, setProgress] = useState(0);
   const [publicUrl, setPublicUrl] = useState<string | null>(null);
@@ -228,6 +231,7 @@ export function AgentProgressExperience() {
       pollingFailures = 0;
 
       applyPreview(data.html);
+      setAiNotice(data.notice || null);
 
       if (data.complete) {
         setConnectionMode("complete");
@@ -362,6 +366,15 @@ export function AgentProgressExperience() {
       applyPreview(data.html);
     });
 
+    eventSource.addEventListener("notice", (event) => {
+      const data = JSON.parse((event as MessageEvent).data) as StreamPayload;
+      const nextNotice = data.notice || data.message;
+
+      if (nextNotice) {
+        setAiNotice(nextNotice);
+      }
+    });
+
     eventSource.addEventListener("reconnecting", (event) => {
       const data = JSON.parse((event as MessageEvent).data) as StreamPayload;
       setConnectionMode("sse");
@@ -484,6 +497,16 @@ export function AgentProgressExperience() {
             <div className="agent-progress-notice agent-progress-notice-queue">
               <Clock3 size={15} aria-hidden="true" />
               Queue position {queuePosition}. Starting the build stream.
+            </div>
+          ) : null}
+
+          {aiNotice ? (
+            <div className="agent-progress-notice agent-progress-notice-ai">
+              <Sparkles size={15} aria-hidden="true" />
+              <span>
+                <strong>AI build note</strong>
+                {aiNotice}
+              </span>
             </div>
           ) : null}
 

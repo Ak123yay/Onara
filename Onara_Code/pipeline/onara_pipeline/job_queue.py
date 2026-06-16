@@ -518,9 +518,9 @@ class JobQueue:
                 style_preferences=job.style_preferences,
             )
             await progress(
-                "ai_blackboard_reviewer",
-                "ai_blackboard_reviewer",
-                str(ai_review.get("summary") or "AI blackboard reviewer completed."),
+                "blackboard_notice",
+                None,
+                str(ai_review.get("notice") or ai_review.get("summary") or "AI build note completed."),
                 {"ai_blackboard_review": ai_review},
             )
 

@@ -205,6 +205,38 @@ def ensure_hours_rendered(
     return fixed, ["Rendered supplied business hours in a local details section"]
 
 
+def ensure_core_page_structure(
+    html: str,
+    *,
+    business_data: dict[str, Any],
+    style_preferences: dict[str, Any] | None = None,
+) -> tuple[str, list[str]]:
+    context = build_business_context(business_data, style_preferences or {})
+    fixed = html
+    fixes: list[str] = []
+
+    fixed, changed = _ensure_services_section(fixed, context)
+    if changed:
+        fixes.append("Rendered four distinct service cards from business/category context")
+
+    fixed, changed = _ensure_trust_section(fixed, context)
+    if changed:
+        fixes.append("Rendered substantive trust proof from verifiable business facts")
+
+    fixed, changed = _ensure_service_area_section(fixed, context)
+    if changed:
+        fixes.append("Rendered natural service-area copy without raw SEO keyword text")
+
+    fixed, changed = _ensure_contact_section(fixed, context, style_preferences)
+    if changed:
+        fixes.append("Rendered a complete bottom contact section with clear conversion paths")
+
+    if fixes:
+        fixed, _ = _append_css_once(fixed, "onara-core-structure", ONARA_CORE_STRUCTURE_CSS)
+
+    return fixed, _unique(fixes)
+
+
 def ensure_review_and_license_integrity(
     html: str,
     *,
@@ -543,6 +575,279 @@ def _local_hours_section(context: BusinessContext) -> str:
       </div>
     </section>
 """.rstrip()
+
+
+def _ensure_services_section(html: str, context: BusinessContext) -> tuple[str, bool]:
+    services = service_candidates_for_context(context, infer_industry(context), limit=4)
+    if len(services) < 4:
+        return html, False
+
+    section = _component_section(html, "services")
+    if section and _distinct_service_card_count(section) >= 4:
+        return html, False
+
+    replacement = _services_section(context, services[:4])
+    if section:
+        return _replace_component_section(html, "services", replacement)
+
+    return _insert_before_first_component_or_body_end(
+        html,
+        ("trust", "proof", "reviews", "service_area", "contact", "site_footer"),
+        replacement,
+    ), True
+
+
+def _services_section(context: BusinessContext, services: list[str]) -> str:
+    service_cards = "\n".join(
+        f"""        <article class="service-card">
+          <span class="eyebrow">{html_lib.escape(str(index).zfill(2))}</span>
+          <h3>{html_lib.escape(service)}</h3>
+          <p>{html_lib.escape(_service_description(context, service))}</p>
+        </article>"""
+        for index, service in enumerate(services, start=1)
+    )
+    return f"""
+    <section class="optional-section services onara-repair-section" data-component="services" id="services">
+      <div class="section-head">
+        <span class="eyebrow">Services</span>
+        <h2>Practical help for {html_lib.escape(context.service_area)}.</h2>
+        <p>{html_lib.escape(context.name)} keeps the service menu clear so customers know exactly what to request.</p>
+      </div>
+      <div class="service-grid onara-card-grid">
+{service_cards}
+      </div>
+    </section>
+""".rstrip()
+
+
+def _ensure_trust_section(html: str, context: BusinessContext) -> tuple[str, bool]:
+    component_id = _first_existing_component_id(html, ("trust", "trust_proof", "proof", "social_proof"))
+    section = _component_section(html, component_id) if component_id else ""
+    if section and not _trust_section_is_weak(section):
+        return html, False
+
+    replacement = _trust_section(context)
+    if component_id:
+        return _replace_component_section(html, component_id, replacement)
+
+    return _insert_before_first_component_or_body_end(
+        html,
+        ("reviews", "service_area", "contact", "site_footer"),
+        replacement,
+    ), True
+
+
+def _trust_section(context: BusinessContext) -> str:
+    facts = _trust_facts(context)
+    fact_items = "\n".join(
+        f"""        <li class="proof-card">
+          <span>{html_lib.escape(label)}</span>
+          <strong>{html_lib.escape(value)}</strong>
+        </li>"""
+        for label, value in facts
+    )
+    return f"""
+    <section class="optional-section trust-proof onara-repair-section" data-component="trust" id="proof">
+      <div class="section-head">
+        <span class="eyebrow">Proof</span>
+        <h2>Public details customers can verify.</h2>
+        <p>Trust signals here come from the supplied business profile, not invented claims.</p>
+      </div>
+      <ul class="trust-facts onara-card-grid" aria-label="Business proof points">
+{fact_items}
+      </ul>
+    </section>
+""".rstrip()
+
+
+def _ensure_service_area_section(html: str, context: BusinessContext) -> tuple[str, bool]:
+    if context.service_area == "your area" and not context.address:
+        return html, False
+
+    section = _component_section(html, "service_area")
+    if section and not _service_area_section_is_raw(section):
+        return html, False
+
+    replacement = _service_area_section(context)
+    if section:
+        return _replace_component_section(html, "service_area", replacement)
+
+    return _insert_before_first_component_or_body_end(
+        html,
+        ("contact", "site_footer"),
+        replacement,
+    ), True
+
+
+def _service_area_section(context: BusinessContext) -> str:
+    address = context.address or context.service_area
+    local_line = (
+        f"{context.name} is listed at {address} and serves customers around {context.service_area}."
+        if address
+        else f"{context.name} serves customers around {context.service_area}."
+    )
+    return f"""
+    <section class="optional-section service-area onara-repair-section" data-component="service_area" id="service-area">
+      <div class="section-head">
+        <span class="eyebrow">Service area</span>
+        <h2>{html_lib.escape(context.service_area)}</h2>
+        <p>{html_lib.escape(local_line)}</p>
+      </div>
+      <div class="local-card">
+        <span class="eyebrow">Local details</span>
+        <strong>{html_lib.escape(address)}</strong>
+        <p>{html_lib.escape(_local_detail_sentence(context))}</p>
+      </div>
+    </section>
+""".rstrip()
+
+
+def _ensure_contact_section(
+    html: str,
+    context: BusinessContext,
+    style_preferences: dict[str, Any] | None,
+) -> tuple[str, bool]:
+    section = _component_section(html, "contact")
+    if section and _contact_section_is_complete(section, context):
+        return html, False
+
+    replacement = _contact_section(context, style_preferences)
+    if section:
+        return _replace_component_section(html, "contact", replacement)
+
+    return _insert_before_main_or_body_end(html, replacement), True
+
+
+def _contact_section(context: BusinessContext, style_preferences: dict[str, Any] | None) -> str:
+    phone = context.phone or "Phone not supplied"
+    phone_href = f"tel:{_phone_digits(context.phone)}" if _phone_digits(context.phone) else "#"
+    website_link = (
+        f'<a href="{html_lib.escape(context.website, quote=True)}" rel="noopener">Visit website</a>'
+        if context.website.startswith("http")
+        else ""
+    )
+    return f"""
+    <section class="optional-section contact onara-repair-section" data-component="contact" id="contact">
+      <div class="section-head">
+        <span class="eyebrow">Contact</span>
+        <h2>Ready for the next step?</h2>
+        <p>{html_lib.escape(context.name)} can be reached directly from this page.</p>
+      </div>
+      <div class="contact-card">
+        <div>
+          <span class="eyebrow">Call</span>
+          <strong>{html_lib.escape(phone)}</strong>
+          <p>{html_lib.escape(context.address or context.service_area)}</p>
+        </div>
+        <div class="contact-actions">
+          <a class="primary-cta" href="{html_lib.escape(phone_href, quote=True)}">{html_lib.escape(_conversion_cta_label(style_preferences, context))}</a>
+          {website_link}
+        </div>
+      </div>
+    </section>
+""".rstrip()
+
+
+def _distinct_service_card_count(section: str) -> int:
+    texts = _card_texts(section, class_names=("service-card",))
+    return len({re.sub(r"\s+", " ", text).strip().lower() for text in texts if text.strip()})
+
+
+def _service_description(context: BusinessContext, service: str) -> str:
+    area = context.service_area
+    service_lower = service.lower()
+    if "emergency" in service_lower:
+        return f"Fast response language and tap-to-call action for urgent requests in {area}."
+    if "water heater" in service_lower or "heating" in service_lower:
+        return f"Clear service copy for homeowners comparing repair, replacement, or maintenance options in {area}."
+    if "drain" in service_lower or "leak" in service_lower:
+        return f"Specific repair framing so customers can quickly identify the right next step in {area}."
+    return f"Plain-language service details for customers looking for {context.category.lower()} help in {area}."
+
+
+def _first_existing_component_id(html: str, component_ids: tuple[str, ...]) -> str:
+    for component_id in component_ids:
+        if _component_section(html, component_id):
+            return component_id
+    return ""
+
+
+def _trust_section_is_weak(section: str) -> bool:
+    text = _visible_text(section).lower()
+    card_count = _class_instance_count(section, "proof-card") + len(_list_item_texts(section))
+    generic_only = all(
+        phrase in text
+        for phrase in ("google reviews", "24/7 availability")
+    ) and len(text) < 160
+    return card_count < 3 or generic_only
+
+
+def _trust_facts(context: BusinessContext) -> list[tuple[str, str]]:
+    facts: list[tuple[str, str]] = []
+    if context.rating is not None and context.review_count is not None:
+        facts.append(("Google proof", f"{context.rating:g} rating from {context.review_count:,} reviews"))
+    elif context.rating is not None:
+        facts.append(("Google proof", f"{context.rating:g} Google rating"))
+
+    if context.hours:
+        facts.append(("Availability", hours_summary(context).replace("Daily ", "")))
+
+    if context.address:
+        facts.append(("Local profile", context.address))
+    else:
+        facts.append(("Service area", context.service_area))
+
+    if context.phone:
+        facts.append(("Direct contact", context.phone))
+
+    if context.photos:
+        facts.append(("Photos", f"{len(context.photos)} supplied business photo{'s' if len(context.photos) != 1 else ''}"))
+
+    return facts[:4] if len(facts) >= 3 else [*facts, ("Business profile", context.name)][:3]
+
+
+def _service_area_section_is_raw(section: str) -> bool:
+    text = _visible_text(section).lower()
+    return any(
+        phrase in text
+        for phrase in (
+            "built for",
+            "searches",
+            "seo keyword",
+            "near me",
+            "target keyword",
+        )
+    )
+
+
+def _local_detail_sentence(context: BusinessContext) -> str:
+    if context.phone:
+        return f"Call {context.phone} for service details around {context.service_area}."
+    return f"Service details are centered on {context.service_area}."
+
+
+def _contact_section_is_complete(section: str, context: BusinessContext) -> bool:
+    text = _visible_text(section)
+    lower = section.lower()
+    if len(text) < 40:
+        return False
+    if _phone_digits(context.phone) and "tel:" not in lower and context.phone not in text:
+        return False
+    return "#contact" in lower or "primary-cta" in lower or "contact-card" in lower or "tel:" in lower
+
+
+def _insert_before_first_component_or_body_end(html: str, component_ids: tuple[str, ...], section: str) -> str:
+    matches: list[re.Match[str]] = []
+    for component_id in component_ids:
+        match = re.search(_component_section_pattern(component_id), html, flags=re.IGNORECASE | re.DOTALL)
+        if match:
+            matches.append(match)
+
+    if matches:
+        first = min(matches, key=lambda match: match.start())
+        return f"{html[: first.start()]}{section}\n{html[first.start():]}"
+
+    return _insert_before_main_or_body_end(html, section)
 
 
 def _aggregate_review_section(context: BusinessContext) -> str:
@@ -1193,6 +1498,95 @@ def _daily_hours_summary_visible(lower_html: str, compact_html: str, hours: list
 
     has_daily_label = "daily" in lower_html or "every day" in lower_html or "open 7 days" in lower_html
     return has_daily_label and time_parts[0] in compact_html
+
+
+ONARA_CORE_STRUCTURE_CSS = """
+      /* onara-core-structure */
+      .onara-repair-section {
+        border-top: 1px solid var(--rule, #d8d6cf);
+        padding: clamp(42px, 6vw, 78px) clamp(18px, 4vw, 56px);
+      }
+
+      .onara-repair-section .section-head {
+        display: grid;
+        gap: 12px;
+        margin-bottom: clamp(22px, 4vw, 38px);
+        max-width: 760px;
+      }
+
+      .onara-card-grid {
+        display: grid;
+        gap: 14px;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+      }
+
+      .onara-repair-section .service-card,
+      .onara-repair-section .proof-card,
+      .onara-repair-section .local-card,
+      .onara-repair-section .contact-card {
+        background: var(--paper, #fbfaf6);
+        border: 1px solid var(--rule, #d8d6cf);
+        box-shadow: 0 18px 50px color-mix(in srgb, var(--ink, #181716) 8%, transparent);
+        display: grid;
+        gap: 12px;
+        min-width: 0;
+        padding: clamp(18px, 2.6vw, 28px);
+      }
+
+      .onara-repair-section .service-card h3,
+      .onara-repair-section .proof-card strong,
+      .onara-repair-section .local-card strong,
+      .onara-repair-section .contact-card strong {
+        color: var(--ink, #181716);
+        font-size: clamp(1.08rem, 1.6vw, 1.35rem);
+        line-height: 1.12;
+      }
+
+      .trust-facts {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+      }
+
+      .trust-facts span,
+      .contact-actions a:not(.primary-cta) {
+        color: var(--ink-3, #6f6b63);
+        font-family: var(--mono, monospace);
+        font-size: 0.72rem;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+      }
+
+      .contact-card {
+        align-items: center;
+        grid-template-columns: minmax(0, 1fr) auto;
+      }
+
+      .contact-actions {
+        align-items: stretch;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        justify-content: flex-end;
+      }
+
+      @media (max-width: 980px) {
+        .onara-card-grid {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+      }
+
+      @media (max-width: 680px) {
+        .onara-card-grid,
+        .contact-card {
+          grid-template-columns: 1fr;
+        }
+
+        .contact-actions {
+          justify-content: stretch;
+        }
+      }
+""".rstrip()
 
 
 REVIEW_FACTS_CSS = """

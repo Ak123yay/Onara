@@ -138,6 +138,7 @@ function mapPipelineStatus(status: PipelineStatusResponse, businessName: string)
     html: status.preview_html || previewHtmlForStep(fallbackStep, businessName),
     jobId: status.job_id,
     message: status.error_message || latestMessage || activeAgent?.task || "Build pipeline is running.",
+    notice: latestBlackboardNotice(status),
     progress,
     publicUrl: status.public_url || publicJobUrl(status.job_id),
     queued,
@@ -335,9 +336,25 @@ function messageForProjectStatus(status: ProjectResumeStatus["status"], activeTa
 
 function latestProgressMessage(status: PipelineStatusResponse) {
   for (let index = status.progress_log.length - 1; index >= 0; index -= 1) {
-    const message = status.progress_log[index]?.message;
+    const entry = status.progress_log[index];
+    if (entry?.event === "blackboard_notice") {
+      continue;
+    }
+
+    const message = entry?.message;
     if (message) {
       return message;
+    }
+  }
+
+  return null;
+}
+
+function latestBlackboardNotice(status: PipelineStatusResponse) {
+  for (let index = status.progress_log.length - 1; index >= 0; index -= 1) {
+    const entry = status.progress_log[index];
+    if (entry?.event === "blackboard_notice" && entry.message) {
+      return entry.message;
     }
   }
 

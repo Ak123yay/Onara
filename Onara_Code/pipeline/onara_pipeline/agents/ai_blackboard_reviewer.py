@@ -17,14 +17,15 @@ SYSTEM_PROMPT = """You are Onara's advisory AI blackboard reviewer.
 You review outputs from a multi-agent website generation pipeline.
 
 Strict rules:
-- You are advisory only. You do not decide pass/fail.
+- You are a user-facing notice agent only.
+- You do not decide pass/fail, rerun agents, or change pipeline control flow.
 - The deterministic supervisor remains the final authority.
 - Return valid JSON only.
 - Flag subjective quality risks: generic design, weak copy, services that do not match the business, poor layout, fake claims, duplicated sections, suspicious visual issues.
 - Do not invent missing facts.
 - Do not suggest reruns for small issues that the Debugger/QA agents can handle.
 - If the deterministic supervisor already found a blocking problem, summarize it but do not override it.
-- Keep warnings specific and actionable."""
+- Keep warnings specific, short, and useful to the user watching the build."""
 
 
 class AIReviewerOutput(BaseModel):
@@ -86,7 +87,9 @@ async def review_blackboard_with_ai(
         review = {
             **parsed.model_dump(),
             "advisory_only": True,
+            "control_flow": "none",
             "fallback_used": response.fallback_used,
+            "notice": _notice_from_review(parsed),
             "model": response.model,
             "provider": response.provider,
             "stage": stage,
@@ -94,8 +97,10 @@ async def review_blackboard_with_ai(
     except (AIClientError, ValueError, ValidationError) as exc:
         review = {
             "advisory_only": True,
+            "control_flow": "none",
             "error": str(exc),
             "model": None,
+            "notice": "AI build note unavailable. The deterministic supervisor is still controlling the build.",
             "provider": None,
             "stage": stage,
             "status": "unavailable",
@@ -137,9 +142,9 @@ Blackboard snapshot:
 Return JSON:
 {{
   "status": "clear | warning | suggest_rerun",
-  "summary": "one short advisory summary",
+  "summary": "one short user-facing build note",
   "warnings": ["specific subjective issue, if any"],
-  "suggested_actions": ["specific non-binding action, if any"],
+  "suggested_actions": ["specific non-binding user note, if any"],
   "suggested_target_agent": "agent id or null",
   "confidence": 0.0
 }}"""
@@ -225,3 +230,18 @@ def _record_review(blackboard: dict[str, Any], review: dict[str, Any]) -> None:
         blackboard["ai_blackboard_reviews"] = [review]
 
     blackboard["latest_ai_blackboard_review"] = review
+
+
+def _notice_from_review(review: AIReviewerOutput) -> str:
+    if review.status == "clear":
+        return review.summary
+
+    first_warning = review.warnings[0] if review.warnings else ""
+    if first_warning:
+        return f"{review.summary} {first_warning}".strip()
+
+    first_action = review.suggested_actions[0] if review.suggested_actions else ""
+    if first_action:
+        return f"{review.summary} {first_action}".strip()
+
+    return review.summary

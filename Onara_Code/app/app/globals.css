@@ -3367,6 +3367,33 @@ textarea.confirm-manual-control {
   color: var(--accent-ink);
 }
 
+.agent-progress-notice-ai {
+  border-color: color-mix(in oklab, var(--accent) 20%, var(--rule));
+  background: color-mix(in oklab, var(--accent-softer) 45%, var(--paper));
+  color: var(--ink-2);
+}
+
+.agent-progress-notice-ai svg {
+  color: var(--accent);
+  flex: 0 0 auto;
+  margin-top: 2px;
+}
+
+.agent-progress-notice-ai span {
+  display: grid;
+  gap: 3px;
+}
+
+.agent-progress-notice-ai strong {
+  color: var(--ink);
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
 .agent-progress-notice-error {
   border-color: color-mix(in oklab, var(--color-danger) 35%, var(--rule));
   background: color-mix(in oklab, var(--color-danger) 9%, var(--paper));

@@ -8,6 +8,7 @@ from onara_pipeline.agents.agent_06_codegen import extract_index_html, split_com
 from onara_pipeline.agents.context import build_business_context
 from onara_pipeline.agents.contracts import DebuggerOutput, PlannerOutput
 from onara_pipeline.agents.fact_repair import (
+    ensure_core_page_structure,
     ensure_first_fold_balance,
     ensure_hours_rendered,
     ensure_hero_conversion_cta,
@@ -338,6 +339,11 @@ def _apply_fact_repairs(
         business_data=business_data,
         style_preferences=style_preferences,
     )
+    fixed, structure_fixes = ensure_core_page_structure(
+        fixed,
+        business_data=business_data,
+        style_preferences=style_preferences,
+    )
     fixed, integrity_fixes = ensure_review_and_license_integrity(
         fixed,
         business_data=business_data,
@@ -360,6 +366,7 @@ def _apply_fact_repairs(
             *balance_fixes,
             *hero_cta_fixes,
             *hours_fixes,
+            *structure_fixes,
             *integrity_fixes,
             *service_menu_fixes,
             *dedupe_fixes,

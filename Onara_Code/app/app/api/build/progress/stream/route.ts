@@ -423,6 +423,13 @@ function emitProgressEntry(
       message: entry.message || "The build pipeline failed.",
     });
   }
+
+  if (entry.event === "blackboard_notice") {
+    send("notice", {
+      jobId: status.job_id,
+      message: entry.message || "AI build note completed.",
+    });
+  }
 }
 
 async function fetchPipelineStatus(jobId: string): Promise<PipelineStatusResponse | PipelineStatusError> {

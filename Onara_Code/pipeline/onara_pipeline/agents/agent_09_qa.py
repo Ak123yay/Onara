@@ -97,7 +97,12 @@ async def run_qa_agent(
             ),
         )
         review = parse_json_model(response.content, QAReview)
-        status, blocking_issues = _normalize_ai_blockers(review, deterministic)
+        status, blocking_issues = _normalize_ai_blockers(
+            review,
+            deterministic,
+            business_data=job.business_data,
+            style_preferences=job.style_preferences,
+        )
         output = QAOutput(
             blocking_issues=blocking_issues,
             checks=deterministic.checks,
@@ -387,11 +392,21 @@ def _load_qa_patterns(settings: Settings) -> str:
         return "RAG unavailable; use built-in QA rules."
 
 
-def _normalize_ai_blockers(review: QAReview, deterministic: QAOutput) -> tuple[QAStatus, list[str]]:
+def _normalize_ai_blockers(
+    review: QAReview,
+    deterministic: QAOutput,
+    *,
+    business_data: dict[str, Any],
+    style_preferences: dict[str, Any] | None,
+) -> tuple[QAStatus, list[str]]:
     if deterministic.status == "fail":
         return "fail", deterministic.blocking_issues
 
-    blockers = _unique(review.blocking_issues)
+    blockers = _filter_unsupported_license_missing_blockers(
+        _unique(review.blocking_issues),
+        business_data=business_data,
+        style_preferences=style_preferences,
+    )
     if review.status == "fail" and blockers:
         return "fail", blockers
 
@@ -414,6 +429,40 @@ def _credential_terms_supplied(notes: str) -> bool:
             notes,
         )
     )
+
+
+def _filter_unsupported_license_missing_blockers(
+    blockers: list[str],
+    *,
+    business_data: dict[str, Any],
+    style_preferences: dict[str, Any] | None,
+) -> list[str]:
+    context = build_business_context(business_data, style_preferences or {})
+    data_text = " ".join(
+        str(value)
+        for key, value in business_data.items()
+        if "license" in str(key).lower()
+        or "insurance" in str(key).lower()
+        or "bond" in str(key).lower()
+        or "cert" in str(key).lower()
+        or str(key).lower() in {"notes", "owner_notes", "additional_notes"}
+    )
+    credentials_supplied = _credential_terms_supplied(f"{context.notes} {data_text}")
+    if credentials_supplied:
+        return blockers
+
+    output: list[str] = []
+    for blocker in blockers:
+        lower = blocker.lower()
+        is_missing_license_section = (
+            ("license_proof" in lower or "license proof" in lower)
+            and any(token in lower for token in ("missing", "required", "selected", "not rendered", "entirely missing"))
+            and not any(token in lower for token in ("claim", "fabricat", "not supplied", "credential"))
+        )
+        if is_missing_license_section:
+            continue
+        output.append(blocker)
+    return output
 
 
 def _component_required(
