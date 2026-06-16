@@ -26,6 +26,7 @@ type Project = {
   google_review_count: number | null;
   id: string;
   last_deployed_at: string | null;
+  pipeline_job_id: string | null;
   public_url: string | null;
   status: ProjectStatus;
   updated_at: string;
@@ -153,7 +154,11 @@ function SiteThumb({ project }: { project: Project }) {
 }
 
 function SiteCard({ project, showUrl }: { project: Project; showUrl: boolean }) {
-  const siteHref = showUrl ? externalHref(project.public_url) : null;
+  const activeBuild = ["queued", "generating", "deploying"].includes(project.status);
+  const resumeHref = activeBuild && project.pipeline_job_id
+    ? `/dashboard/build/progress?jobId=${encodeURIComponent(project.pipeline_job_id)}&projectId=${encodeURIComponent(project.id)}`
+    : null;
+  const siteHref = showUrl && project.status === "live" ? externalHref(project.public_url) : null;
   const rating = formatRating(project.google_rating);
 
   return (
@@ -187,10 +192,17 @@ function SiteCard({ project, showUrl }: { project: Project; showUrl: boolean }) 
       </div>
 
       <div className="site-card-actions">
-        <Link className="btn btn-soft btn-sm" href={`/api/preview/${project.id}`} target="_blank">
-          <Eye aria-hidden="true" size={14} />
-          Preview
-        </Link>
+        {resumeHref ? (
+          <Link className="btn btn-accent btn-sm" href={resumeHref}>
+            <RefreshCw aria-hidden="true" size={14} />
+            Resume build
+          </Link>
+        ) : (
+          <Link className="btn btn-soft btn-sm" href={`/api/preview/${project.id}`} target="_blank">
+            <Eye aria-hidden="true" size={14} />
+            Preview
+          </Link>
+        )}
         {siteHref ? (
           <Link className="btn btn-soft btn-sm" href={siteHref} target="_blank">
             <ExternalLink aria-hidden="true" size={14} />
@@ -268,7 +280,7 @@ export default async function DashboardPage() {
     supabase
       .from("projects")
       .select(
-        "id, business_name, business_address, business_category, status, public_url, custom_domain, google_rating, google_review_count, generation_ms, error_message, created_at, updated_at, last_deployed_at",
+        "id, business_name, business_address, business_category, status, pipeline_job_id, public_url, custom_domain, google_rating, google_review_count, generation_ms, error_message, created_at, updated_at, last_deployed_at",
       )
       .eq("user_id", user.id)
       .order("updated_at", { ascending: false })

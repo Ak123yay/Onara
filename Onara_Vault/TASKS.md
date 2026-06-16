@@ -29,7 +29,7 @@ _This file is the single source of truth for all work. Claude updates this after
 
 ## 🔥 Active
 
-Current actionable phase: **Phase 22 — Deployment Pipeline**.
+Current actionable phase: **Phase 23 — Revision System**.
 
 Note: Mini PC FastAPI runs under PM2. The named Cloudflare Tunnel serves `https://pipeline.onara.tech`.
 
@@ -179,7 +179,7 @@ Execution rule:
 
 ### Phase 23 — Revision System
 
-- [ ] Allow users to leave or close the generation page while a site is building, then return to dashboard/progress and resume live status from the saved job
+- [x] Allow users to leave or close the generation page while a site is building, then return to dashboard/progress and resume live status from the saved job
 - [ ] Incremental component update logic
 - [ ] Revision counter decrement + monthly reset
 - [ ] Retry button on agent failure (no revision deducted)

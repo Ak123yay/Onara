@@ -125,6 +125,12 @@ class JobQueue:
                 ) -> None:
                     await self.record_progress(job.job_id, event, agent_id, message, extra)
 
+                await self._update_project_record_status(
+                    job,
+                    settings,
+                    current_agent="analyst",
+                    status="generating",
+                )
                 await self._enrich_business_photos(job, settings, progress)
                 await self._run_supervised_phase(
                     job=job,
@@ -170,6 +176,12 @@ class JobQueue:
                 )
                 await run_phase_21(job, settings, progress)
                 await self._prepare_deployment_artifact(job, progress)
+                await self._update_project_record_status(
+                    job,
+                    settings,
+                    current_agent="deploying",
+                    status="deploying",
+                )
                 await self._commit_deployment_files_to_github(job, settings, progress)
                 await self._deploy_to_cloudflare_pages(job, settings, progress)
                 await self._store_project_record_in_supabase(job, settings, progress)
@@ -183,6 +195,13 @@ class JobQueue:
                 await self._mark_completed(job.job_id)
             except Exception as exc:
                 await self._mark_failed(job.job_id, exc)
+                await self._update_project_record_status(
+                    job,
+                    settings,
+                    current_agent="error",
+                    error_message=str(exc),
+                    status="failed",
+                )
 
     async def _prepare_deployment_artifact(self, job: PipelineJob, progress: Any) -> None:
         from onara_pipeline.agents.contracts import PlannerOutput
@@ -385,6 +404,7 @@ class JobQueue:
                 current_agent="done" if site_status == "live" else "deploying",
                 generation_ms=generation_ms,
                 github_path=str(github.get("path_prefix") or "") or None,
+                pipeline_job_id=job.job_id,
                 project_id=job.project_id,
                 public_url=public_url,
                 settings=settings,
@@ -423,6 +443,41 @@ class JobQueue:
                 "Supabase project record store failed; deployment artifacts remain available.",
                 {"phase": "phase_22_supabase", "supabase_project": payload},
             )
+
+    async def _update_project_record_status(
+        self,
+        job: PipelineJob,
+        settings: Settings,
+        *,
+        current_agent: str,
+        error_message: str | None = None,
+        status: str,
+    ) -> None:
+        from onara_pipeline.deployment import SupabaseProjectStoreError, upsert_project_record
+
+        try:
+            result = await upsert_project_record(
+                business_data=job.business_data,
+                cloudflare_project_name=None,
+                current_agent=current_agent,
+                error_message=error_message,
+                generation_ms=_generation_ms(job),
+                github_path=None,
+                pipeline_job_id=job.job_id,
+                project_id=job.project_id,
+                public_url=_public_job_url(settings.app_url, job.job_id),
+                settings=settings,
+                status=status,
+                style_preferences=job.style_preferences,
+                user_id=job.user_id,
+            )
+            job.blackboard["supabase_project"] = result.to_dict()
+        except SupabaseProjectStoreError as exc:
+            job.blackboard["supabase_project"] = {
+                "error": str(exc),
+                "project_id": job.project_id,
+                "status": "failed",
+            }
 
     async def _run_supervised_phase(
         self,
@@ -639,6 +694,10 @@ def _project_id_for_request(request: GenerateRequest) -> str:
         except ValueError:
             pass
     return str(uuid4())
+
+
+def _generation_ms(job: PipelineJob) -> int:
+    return max(0, int((datetime.now(timezone.utc) - job.created_at).total_seconds() * 1000))
 
 
 def _public_job_url(app_url: str, job_id: str) -> str:

@@ -71,6 +71,8 @@ type GenerateApiResponse = {
   jobId?: string;
   job_id?: string;
   message?: string;
+  projectId?: string | null;
+  project_id?: string | null;
   queuePosition?: number | null;
   queue_position?: number | null;
 };
@@ -1128,6 +1130,7 @@ function GenerateStep({
         setErrorMessage("The pipeline started without returning a job id.");
         return;
       }
+      const projectId = payload.projectId ?? payload.project_id ?? null;
 
       const savedPackage = {
         ...selectedGenerationPackage,
@@ -1138,8 +1141,14 @@ function GenerateStep({
 
       window.sessionStorage.setItem(`onara:generation:${jobId}`, JSON.stringify(savedPackage));
       window.sessionStorage.setItem("onara:last-generation-package", JSON.stringify(savedPackage));
+      window.localStorage.setItem(`onara:generation:${jobId}`, JSON.stringify(savedPackage));
+      window.localStorage.setItem("onara:last-generation-package", JSON.stringify(savedPackage));
+      if (projectId) {
+        window.localStorage.setItem(`onara:generation:project:${projectId}`, JSON.stringify(savedPackage));
+      }
       setPrepared(true);
-      router.push(`/dashboard/build/progress?jobId=${encodeURIComponent(jobId)}`);
+      const projectParam = projectId ? `&projectId=${encodeURIComponent(projectId)}` : "";
+      router.push(`/dashboard/build/progress?jobId=${encodeURIComponent(jobId)}${projectParam}`);
     } catch {
       setErrorMessage("The pipeline server is unreachable. Confirm FastAPI and the tunnel are running.");
     } finally {

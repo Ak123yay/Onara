@@ -71,20 +71,27 @@ function safeProgress(value: number | undefined) {
   return Math.max(0, Math.min(100, Math.round(value)));
 }
 
-function readStoredPackage(jobId: string): StoredGenerationPackage | null {
-  const keys = [`onara:generation:${jobId}`, "onara:last-generation-package"];
+function readStoredPackage(jobId: string, projectId: string | null): StoredGenerationPackage | null {
+  const keys = [
+    `onara:generation:${jobId}`,
+    projectId ? `onara:generation:project:${projectId}` : "",
+    "onara:last-generation-package",
+  ].filter(Boolean);
+  const stores = [window.sessionStorage, window.localStorage];
 
-  for (const key of keys) {
-    const value = window.sessionStorage.getItem(key);
+  for (const store of stores) {
+    for (const key of keys) {
+      const value = store.getItem(key);
 
-    if (!value) {
-      continue;
-    }
+      if (!value) {
+        continue;
+      }
 
-    try {
-      return JSON.parse(value) as StoredGenerationPackage;
-    } catch {
-      continue;
+      try {
+        return JSON.parse(value) as StoredGenerationPackage;
+      } catch {
+        continue;
+      }
     }
   }
 
@@ -94,6 +101,7 @@ function readStoredPackage(jobId: string): StoredGenerationPackage | null {
 export function AgentProgressExperience() {
   const searchParams = useSearchParams();
   const jobId = searchParams.get("jobId") || "mock-local";
+  const projectId = searchParams.get("projectId");
   const [businessName, setBusinessName] = useState("Your Contractor Site");
   const [businessMeta, setBusinessMeta] = useState("Google Business data confirmed");
   const [connectionMode, setConnectionMode] = useState<ConnectionMode>("connecting");
@@ -122,7 +130,7 @@ export function AgentProgressExperience() {
   const activeAgent = AGENT_STEPS[activeIndex];
 
   useEffect(() => {
-    const storedPackage = readStoredPackage(jobId);
+    const storedPackage = readStoredPackage(jobId, projectId);
     const nextBusinessName = storedPackage?.business?.name?.trim() || "Your Contractor Site";
     const metaParts = [
       storedPackage?.business?.category,
@@ -134,7 +142,7 @@ export function AgentProgressExperience() {
     setBusinessMeta(metaParts.join(" - ") || "Google Business data confirmed");
     setPreviewHtml(previewHtmlForStep(0, nextBusinessName));
     setStartedAt(Date.now());
-  }, [jobId]);
+  }, [jobId, projectId]);
 
   useEffect(() => {
     if (!startedAt) {
@@ -143,7 +151,8 @@ export function AgentProgressExperience() {
 
     const streamStartedAt = startedAt;
     const businessParam = encodeURIComponent(businessName);
-    const streamUrl = `/api/build/progress/stream?jobId=${encodeURIComponent(jobId)}&businessName=${businessParam}`;
+    const projectParam = projectId ? `&projectId=${encodeURIComponent(projectId)}` : "";
+    const streamUrl = `/api/build/progress/stream?jobId=${encodeURIComponent(jobId)}&businessName=${businessParam}${projectParam}`;
     let pollingTimer: ReturnType<typeof setInterval> | null = null;
     let closedByComplete = false;
     let pollingFailures = 0;
@@ -156,7 +165,7 @@ export function AgentProgressExperience() {
 
     async function pollStatus() {
       const elapsedMs = Date.now() - streamStartedAt;
-      const statusUrl = `/api/build/progress/status?jobId=${encodeURIComponent(jobId)}&businessName=${businessParam}&elapsedMs=${elapsedMs}`;
+      const statusUrl = `/api/build/progress/status?jobId=${encodeURIComponent(jobId)}&businessName=${businessParam}&elapsedMs=${elapsedMs}${projectParam}`;
       const response = await fetch(statusUrl, { cache: "no-store" });
 
       if (!response.ok) {
@@ -333,7 +342,7 @@ export function AgentProgressExperience() {
         clearInterval(pollingTimer);
       }
     };
-  }, [businessName, jobId, startedAt]);
+  }, [businessName, jobId, projectId, startedAt]);
 
   return (
     <div className="agent-progress-shell fadein-up">
@@ -346,7 +355,7 @@ export function AgentProgressExperience() {
             <p className="eyebrow">{connectionMode === "complete" ? "Website draft ready" : "Building your site"}</p>
             <h1 className="serif">{businessName}</h1>
             <span className="agent-progress-heading-meta">{businessMeta}</span>
-            <p>Your draft is saved in this browser while the agent pipeline runs.</p>
+            <p>You can leave this page and resume the live build from your dashboard.</p>
           </div>
 
           <div className="agent-progress-meter card">

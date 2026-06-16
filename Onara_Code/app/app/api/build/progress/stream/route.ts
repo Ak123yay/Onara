@@ -4,6 +4,7 @@ import {
   MOCK_STEP_MS,
   previewHtmlForStep,
 } from "@/lib/build/agent-progress";
+import { createClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -35,6 +36,16 @@ type PipelineStatusError = {
   message: string;
 };
 
+type ProjectResumeStatus = {
+  business_name: string;
+  current_agent: string | null;
+  error_message: string | null;
+  id: string;
+  pipeline_job_id: string | null;
+  public_url: string | null;
+  status: "queued" | "generating" | "deploying" | "live" | "failed" | "suspended";
+};
+
 const PIPELINE_AGENT_TO_STEP_INDEX: Record<string, number> = {
   agent_01_analyst: 0,
   agent_02_content: 1,
@@ -63,16 +74,17 @@ function encodeEvent(event: string, data: Record<string, unknown>) {
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const jobId = searchParams.get("jobId") || crypto.randomUUID();
+  const projectId = searchParams.get("projectId");
   const businessName = searchParams.get("businessName") || "Your Contractor Site";
 
   if (!isMockJob(jobId) && pipelineConfigured()) {
-    return pipelineStream(jobId, businessName);
+    return pipelineStream(jobId, businessName, projectId);
   }
 
   return mockStream(jobId, businessName);
 }
 
-function pipelineStream(jobId: string, businessName: string) {
+function pipelineStream(jobId: string, businessName: string, projectId: string | null) {
   const encoder = new TextEncoder();
   let closed = false;
   let emittedProgressCount = 0;
@@ -104,6 +116,44 @@ function pipelineStream(jobId: string, businessName: string) {
           const status = await fetchPipelineStatus(jobId);
 
           if ("error" in status) {
+            const projectStatus = projectId ? await fetchProjectResumeStatus(projectId) : null;
+            if (projectStatus) {
+              if (projectStatus.status === "live") {
+                send("preview", {
+                  html: previewHtmlForStep(AGENT_STEPS.length, projectStatus.business_name || businessName),
+                  jobId,
+                  stepIndex: AGENT_STEPS.length,
+                });
+                send("complete", {
+                  elapsedSeconds: Math.max(1, Math.round((Date.now() - startedAt) / 1000)),
+                  jobId,
+                  message: "Website draft ready. Review the preview before publishing.",
+                  previewUrl: "/dashboard/build/progress",
+                  progress: 100,
+                  publicUrl: projectStatus.public_url || publicJobUrl(jobId),
+                  siteId: projectStatus.id,
+                });
+                break;
+              }
+
+              if (projectStatus.status === "failed" || projectStatus.status === "suspended") {
+                send("error", {
+                  jobId,
+                  message: projectStatus.error_message || "The saved build needs attention.",
+                });
+                break;
+              }
+
+              transientErrorCount += 1;
+              send("reconnecting", {
+                jobId,
+                message: "Build stream is reconnecting from the saved dashboard job.",
+                retryCount: transientErrorCount,
+              });
+              await sleep(Math.min(5_000, POLL_INTERVAL_MS * transientErrorCount));
+              continue;
+            }
+
             if (status.fatal) {
               send("error", {
                 jobId,
@@ -209,6 +259,26 @@ function pipelineStream(jobId: string, businessName: string) {
   });
 
   return sseResponse(stream);
+}
+
+async function fetchProjectResumeStatus(projectId: string) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return null;
+  }
+
+  const { data } = await supabase
+    .from("projects")
+    .select("id, business_name, status, current_agent, error_message, pipeline_job_id, public_url")
+    .eq("id", projectId)
+    .eq("user_id", user.id)
+    .maybeSingle<ProjectResumeStatus>();
+
+  return data ?? null;
 }
 
 function mockStream(jobId: string, businessName: string) {

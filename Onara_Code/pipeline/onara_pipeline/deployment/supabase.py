@@ -48,6 +48,8 @@ async def upsert_project_record(
     status: str,
     style_preferences: dict[str, Any],
     user_id: str,
+    error_message: str | None = None,
+    pipeline_job_id: str | None = None,
     http_client: httpx.AsyncClient | None = None,
 ) -> SupabaseProjectStoreResult:
     missing = missing_supabase_project_settings(settings)
@@ -62,8 +64,10 @@ async def upsert_project_record(
         business_data=business_data,
         cloudflare_project_name=cloudflare_project_name,
         current_agent=current_agent,
+        error_message=error_message,
         generation_ms=generation_ms,
         github_path=github_path,
+        pipeline_job_id=pipeline_job_id,
         project_id=project_id,
         public_url=public_url,
         status=status,
@@ -109,9 +113,11 @@ def project_record_payload(
     status: str,
     style_preferences: dict[str, Any],
     user_id: str,
+    error_message: str | None = None,
+    pipeline_job_id: str | None = None,
 ) -> dict[str, Any]:
     now = datetime.now(timezone.utc).isoformat()
-    return {
+    payload = {
         "business_address": _optional_str(business_data.get("address")),
         "business_category": _optional_str(business_data.get("category")),
         "business_email": _optional_str(business_data.get("email")),
@@ -122,13 +128,14 @@ def project_record_payload(
         "business_website": _optional_str(business_data.get("website")),
         "cloudflare_project_name": cloudflare_project_name,
         "current_agent": current_agent,
+        "error_message": error_message,
         "generation_ms": generation_ms,
         "github_path": github_path,
         "google_place_id": _optional_str(business_data.get("place_id")),
         "google_rating": _rating_value(business_data.get("rating")),
         "google_review_count": _int_value(business_data.get("review_count")),
         "id": project_id,
-        "last_deployed_at": now if status == "live" else None,
+        "pipeline_job_id": pipeline_job_id,
         "public_url": public_url,
         "seo_description": _meta_description(business_data),
         "seo_keywords": _seo_keywords(business_data),
@@ -138,6 +145,9 @@ def project_record_payload(
         "updated_at": now,
         "user_id": user_id,
     }
+    if status == "live":
+        payload["last_deployed_at"] = now
+    return payload
 
 
 def _service_role_key(settings: Settings) -> str | None:

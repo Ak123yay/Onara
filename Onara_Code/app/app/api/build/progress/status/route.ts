@@ -4,6 +4,7 @@ import {
   previewHtmlForStep,
   progressForElapsed,
 } from "@/lib/build/agent-progress";
+import { createClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
 
@@ -28,6 +29,16 @@ type PipelineStatusResponse = {
   status: "queued" | "running" | "completed" | "failed";
 };
 
+type ProjectResumeStatus = {
+  business_name: string;
+  current_agent: string | null;
+  error_message: string | null;
+  id: string;
+  pipeline_job_id: string | null;
+  public_url: string | null;
+  status: "queued" | "generating" | "deploying" | "live" | "failed" | "suspended";
+};
+
 const PIPELINE_AGENT_TO_STEP_INDEX: Record<string, number> = {
   agent_01_analyst: 0,
   agent_02_content: 1,
@@ -44,6 +55,7 @@ const PIPELINE_AGENT_TO_STEP_INDEX: Record<string, number> = {
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const jobId = searchParams.get("jobId") || "mock-job";
+  const projectId = searchParams.get("projectId");
   const businessName = searchParams.get("businessName") || "Your Contractor Site";
   const elapsedMs = Number(searchParams.get("elapsedMs") || "0");
 
@@ -51,6 +63,11 @@ export async function GET(request: Request) {
     const status = await fetchPipelineStatus(jobId);
 
     if ("error" in status) {
+      const projectStatus = projectId ? await fetchProjectResumeStatus(projectId) : null;
+      if (projectStatus) {
+        return Response.json(mapProjectResumeStatus(projectStatus, jobId, businessName));
+      }
+
       return Response.json(status, { status: status.statusCode });
     }
 
@@ -58,6 +75,49 @@ export async function GET(request: Request) {
   }
 
   return Response.json(mockStatus(jobId, businessName, Number.isFinite(elapsedMs) ? elapsedMs : 0));
+}
+
+async function fetchProjectResumeStatus(projectId: string) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return null;
+  }
+
+  const { data } = await supabase
+    .from("projects")
+    .select("id, business_name, status, current_agent, error_message, pipeline_job_id, public_url")
+    .eq("id", projectId)
+    .eq("user_id", user.id)
+    .maybeSingle<ProjectResumeStatus>();
+
+  return data ?? null;
+}
+
+function mapProjectResumeStatus(project: ProjectResumeStatus, jobId: string, businessName: string) {
+  const pipelineStatus = projectStatusToPipelineStatus(project.status);
+  const currentStepIndex = currentStepIndexForProject(project);
+  const activeAgent = AGENT_STEPS[currentStepIndex];
+  const complete = pipelineStatus === "completed";
+
+  return {
+    activeAgent,
+    complete,
+    currentStepIndex,
+    html: previewHtmlForStep(complete ? AGENT_STEPS.length : currentStepIndex, project.business_name || businessName),
+    jobId: project.pipeline_job_id || jobId,
+    message: project.error_message || messageForProjectStatus(project.status, activeAgent?.task),
+    progress: progressForProjectStatus(project.status, currentStepIndex),
+    publicUrl: project.public_url || publicJobUrl(project.pipeline_job_id || jobId),
+    queued: project.status === "queued",
+    queuePosition: null,
+    retrying: false,
+    siteId: project.id,
+    totalSteps: AGENT_STEPS.length,
+  };
 }
 
 function mapPipelineStatus(status: PipelineStatusResponse, businessName: string) {
@@ -176,6 +236,99 @@ function progressForPipeline(status: PipelineStatusResponse, currentStepIndex: n
   const total = Math.max(status.agents_total || AGENT_STEPS.length, AGENT_STEPS.length);
   const activeOffset = status.current_agent ? 0.18 : 0;
   return Math.max(1, Math.min(99, Math.round(((status.agents_completed + activeOffset) / total) * 100)));
+}
+
+function currentStepIndexForProject(project: ProjectResumeStatus) {
+  const currentAgent = project.current_agent;
+  if (currentAgent) {
+    const mappedAgent = PROJECT_PHASE_TO_PIPELINE_AGENT[currentAgent];
+    if (mappedAgent && mappedAgent in PIPELINE_AGENT_TO_STEP_INDEX) {
+      return PIPELINE_AGENT_TO_STEP_INDEX[mappedAgent];
+    }
+  }
+
+  if (project.status === "live") {
+    return AGENT_STEPS.length - 1;
+  }
+
+  if (project.status === "deploying") {
+    return AGENT_STEPS.length - 1;
+  }
+
+  return 0;
+}
+
+const PROJECT_PHASE_TO_PIPELINE_AGENT: Record<string, string> = {
+  analyst: "agent_01_analyst",
+  code_generator: "agent_06_codegen",
+  content_writer: "agent_02_content",
+  debugger: "agent_07_debugger",
+  mobile_agent: "agent_10_mobile",
+  planner: "agent_04_planner",
+  prompt_engineer: "agent_05_prompt_engineer",
+  qa_agent: "agent_09_qa",
+  seo_agent: "agent_08_seo",
+  style_agent: "agent_03_style",
+};
+
+function projectStatusToPipelineStatus(status: ProjectResumeStatus["status"]): PipelineStatusResponse["status"] {
+  if (status === "live") {
+    return "completed";
+  }
+
+  if (status === "failed" || status === "suspended") {
+    return "failed";
+  }
+
+  if (status === "queued") {
+    return "queued";
+  }
+
+  return "running";
+}
+
+function progressForProjectStatus(status: ProjectResumeStatus["status"], currentStepIndex: number) {
+  if (status === "live") {
+    return 100;
+  }
+
+  if (status === "queued") {
+    return 0;
+  }
+
+  if (status === "deploying") {
+    return 92;
+  }
+
+  if (status === "failed" || status === "suspended") {
+    return Math.max(1, progressAfterProjectStep(currentStepIndex));
+  }
+
+  return Math.max(1, Math.min(88, progressAfterProjectStep(currentStepIndex)));
+}
+
+function progressAfterProjectStep(currentStepIndex: number) {
+  return Math.round(((currentStepIndex + 0.18) / AGENT_STEPS.length) * 100);
+}
+
+function messageForProjectStatus(status: ProjectResumeStatus["status"], activeTask: string | undefined) {
+  if (status === "queued") {
+    return "Your site is queued. Reconnecting to the saved build.";
+  }
+
+  if (status === "generating") {
+    return activeTask || "Your site is still generating.";
+  }
+
+  if (status === "deploying") {
+    return "Deployment is running. Your generated site is being published.";
+  }
+
+  if (status === "live") {
+    return "Website draft ready. Review the preview before publishing.";
+  }
+
+  return "The saved build needs attention.";
 }
 
 function latestProgressMessage(status: PipelineStatusResponse) {

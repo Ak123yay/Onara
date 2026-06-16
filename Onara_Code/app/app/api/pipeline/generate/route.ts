@@ -125,6 +125,21 @@ export async function POST(request: Request) {
     );
   }
 
+  const returnedProjectId = typeof payload.project_id === "string" && payload.project_id.trim()
+    ? payload.project_id.trim()
+    : null;
+  const projectPersistResult = returnedProjectId
+    ? await persistQueuedProject({
+        businessData,
+        jobId: payload.job_id,
+        pipelineStatus: payload.status ?? "queued",
+        projectId: returnedProjectId,
+        stylePreferences: isPlainObject(stylePreferences) ? stylePreferences : {},
+        supabase,
+        userId: user.id,
+      })
+    : { error: "Pipeline did not return a project id.", stored: false };
+
   return NextResponse.json(
     {
       agent6Model: payload.agent_6_model,
@@ -136,8 +151,12 @@ export async function POST(request: Request) {
       deduped: Boolean(payload.deduped),
       jobId: payload.job_id,
       job_id: payload.job_id,
-      projectId: payload.project_id ?? null,
-      project_id: payload.project_id ?? null,
+      projectId: returnedProjectId,
+      project_id: returnedProjectId,
+      projectPersisted: projectPersistResult.stored,
+      project_persisted: projectPersistResult.stored,
+      projectPersistError: projectPersistResult.error,
+      project_persist_error: projectPersistResult.error,
       queuePosition: payload.queue_position ?? null,
       queue_position: payload.queue_position ?? null,
       queued: payload.queued ?? true,
@@ -145,6 +164,57 @@ export async function POST(request: Request) {
     },
     { status: 202 },
   );
+}
+
+async function persistQueuedProject({
+  businessData,
+  jobId,
+  pipelineStatus,
+  projectId,
+  stylePreferences,
+  supabase,
+  userId,
+}: {
+  businessData: Record<string, unknown>;
+  jobId: string;
+  pipelineStatus: string;
+  projectId: string;
+  stylePreferences: Record<string, unknown>;
+  supabase: Awaited<ReturnType<typeof createClient>>;
+  userId: string;
+}) {
+  const { error } = await supabase
+    .from("projects")
+    .upsert(
+      {
+        business_address: optionalString(businessData.address),
+        business_category: optionalString(businessData.category),
+        business_email: optionalString(businessData.email),
+        business_hours: jsonValue(businessData.hours),
+        business_name: requiredBusinessName(businessData),
+        business_phone: optionalString(businessData.phone),
+        business_photos: photoSources(businessData),
+        business_website: optionalString(businessData.website),
+        current_agent: "analyst",
+        google_place_id: optionalString(businessData.place_id),
+        google_rating: ratingValue(businessData.rating),
+        google_review_count: intValue(businessData.review_count),
+        id: projectId,
+        pipeline_job_id: jobId,
+        public_url: publicJobUrl(jobId),
+        status: pipelineStatus === "running" ? "generating" : "queued",
+        style_preferences: stylePreferences,
+        updated_at: new Date().toISOString(),
+        user_id: userId,
+      },
+      { onConflict: "id" },
+    );
+
+  if (error) {
+    return { error: error.message, stored: false };
+  }
+
+  return { error: null, stored: true };
 }
 
 function agent6ModelFromBody(body: GenerateRequestBody) {
@@ -215,4 +285,92 @@ function planForPipeline(profile: UserProfile | null) {
   }
 
   return "free";
+}
+
+function requiredBusinessName(businessData: Record<string, unknown>) {
+  return optionalString(businessData.name) || "Generated Business";
+}
+
+function optionalString(value: unknown) {
+  if (value === null || value === undefined || value === "") {
+    return null;
+  }
+
+  const text = String(value).trim();
+  return text || null;
+}
+
+function jsonValue(value: unknown) {
+  if (
+    value === null ||
+    Array.isArray(value) ||
+    ["boolean", "number", "string"].includes(typeof value) ||
+    isPlainObject(value)
+  ) {
+    return value;
+  }
+
+  return String(value);
+}
+
+function ratingValue(value: unknown) {
+  const rating = Number(value);
+  if (!Number.isFinite(rating) || rating < 0 || rating > 5) {
+    return null;
+  }
+
+  return Math.round(rating * 10) / 10;
+}
+
+function intValue(value: unknown) {
+  const number = Number(value);
+  if (!Number.isInteger(number) || number < 0) {
+    return null;
+  }
+
+  return number;
+}
+
+function photoSources(businessData: Record<string, unknown>) {
+  const sources: string[] = [];
+
+  for (const key of ["resolved_photos", "photos"]) {
+    const collection = businessData[key];
+    if (!Array.isArray(collection)) {
+      continue;
+    }
+
+    for (const item of collection) {
+      const src = photoSource(item);
+      if (src && !sources.includes(src)) {
+        sources.push(src);
+      }
+    }
+  }
+
+  return sources;
+}
+
+function photoSource(value: unknown) {
+  if (typeof value === "string") {
+    return value.startsWith("https://") || value.startsWith("data:image/") ? value : null;
+  }
+
+  if (!isPlainObject(value)) {
+    return null;
+  }
+
+  for (const key of ["src", "url", "photo_url", "photoUrl", "preview_url"]) {
+    const text = optionalString(value[key]);
+    if (text?.startsWith("https://") || text?.startsWith("data:image/")) {
+      return text;
+    }
+  }
+
+  return null;
+}
+
+function publicJobUrl(jobId: string) {
+  const appUrl = (process.env.NEXT_PUBLIC_APP_URL || process.env.APP_URL || "https://onara.tech").replace(/\/+$/, "");
+  return `${appUrl}/${jobId}`;
 }
