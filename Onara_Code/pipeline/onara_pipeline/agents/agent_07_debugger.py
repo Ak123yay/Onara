@@ -1,4 +1,5 @@
 import re
+from difflib import SequenceMatcher
 from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
@@ -44,9 +45,14 @@ Your job is to inspect Agent 6's self-contained contractor website HTML and retu
 
 Strict rules:
 - Return valid JSON only.
+- Work like a surgical patcher, not a second code generator.
+- Do not regenerate the page from scratch.
+- Keep unrelated components and copy as close to byte-for-byte unchanged as possible.
+- Limit edits to the smallest affected data-component sections and the smallest necessary CSS rules.
+- Prefer adding or replacing a few local rules/snippets over restructuring the whole document.
 - Preserve the business copy, content order, component IDs, and visual direction.
 - Fix broken or risky HTML/CSS/accessibility/performance issues.
-- If the deterministic audit flags generic visual composition or off-theme Onara styling, redesign the layout while preserving copy and component IDs.
+- If the deterministic audit flags generic visual composition or off-theme Onara styling, repair only the affected component or CSS block while preserving copy and component IDs.
 - Enforce the Onara design contract: protected paper/ink/accent variables, selected palette through --choice-* details, Fraunces headings, Inter body copy, mono labels, low-radius panels.
 - Fix fact/rendering failures: full weekly hours, specific service-menu labels, no fake review cards, no fabricated credential claims, and no visible raw SEO keyword strings.
 - Tighten first-fold spacing when a side image/card stack creates a large blank gap before services.
@@ -68,6 +74,7 @@ class DebuggerAIOutput(BaseModel):
     status: DebuggerStatus
     issues: list[str] = Field(default_factory=list)
     fixes: list[str] = Field(default_factory=list)
+    changed_components: list[str] = Field(default_factory=list)
     html: str = Field(min_length=500)
 
 
@@ -128,6 +135,8 @@ async def run_debugger(
         )
         ai_output = parse_json_model(response.content, DebuggerAIOutput)
         html = _clean_html_document(ai_output.html)
+        if _looks_like_broad_ai_rewrite(source_html, html):
+            raise SupervisorValidationError("Debugger AI returned a broad rewrite instead of a surgical repair")
         status: DebuggerStatus = ai_output.status
         if status == "pass" and html != source_html:
             status = "fixed"
@@ -390,6 +399,7 @@ Return exactly this JSON:
   "status": "pass" | "fixed",
   "issues": ["specific issue strings"],
   "fixes": ["specific fix strings"],
+  "changed_components": ["component ids changed, or css-only"],
   "html": "<!doctype html>..."
 }}
 
@@ -429,6 +439,72 @@ def _clean_html_document(value: str) -> str:
         stripped = re.sub(r"\s*```$", "", stripped)
 
     return stripped.strip()
+
+
+def _looks_like_broad_ai_rewrite(source_html: str, candidate_html: str) -> bool:
+    """Reject debugger responses that behave like fresh codegen instead of repair.
+
+    The debugger may return a full HTML document because downstream stages expect
+    one, but the changed document should still be recognizably the same draft.
+    """
+    source = _normalize_for_rewrite_check(source_html)
+    candidate = _normalize_for_rewrite_check(candidate_html)
+    if not source or source == candidate:
+        return False
+
+    source_components = _component_sequence(source_html)
+    candidate_components = _component_sequence(candidate_html)
+    if source_components:
+        source_component_set = set(source_components)
+        candidate_component_set = set(candidate_components)
+        if not source_component_set.issubset(candidate_component_set):
+            return True
+        if _sequence_without_duplicates(source_components) != _sequence_without_duplicates(candidate_components):
+            return True
+
+    change_ratio = 1 - SequenceMatcher(None, source, candidate, autojunk=False).ratio()
+    if change_ratio <= 0.2:
+        return False
+
+    # A larger CSS-only repair can be legitimate; a large body rewrite is not.
+    source_body = _body_only(source_html)
+    candidate_body = _body_only(candidate_html)
+    body_change_ratio = 1 - SequenceMatcher(
+        None,
+        _normalize_for_rewrite_check(source_body),
+        _normalize_for_rewrite_check(candidate_body),
+        autojunk=False,
+    ).ratio()
+    return body_change_ratio > 0.24
+
+
+def _normalize_for_rewrite_check(html: str) -> str:
+    normalized = re.sub(r"\s+", " ", html or "")
+    normalized = re.sub(r">\s+<", "><", normalized)
+    return normalized.strip().lower()
+
+
+def _component_sequence(html: str) -> list[str]:
+    return [
+        match.group(1).strip().lower()
+        for match in re.finditer(r"data-component\s*=\s*['\"]([^'\"]+)['\"]", html, flags=re.IGNORECASE)
+        if match.group(1).strip()
+    ]
+
+
+def _sequence_without_duplicates(values: list[str]) -> list[str]:
+    output: list[str] = []
+    seen: set[str] = set()
+    for value in values:
+        if value not in seen:
+            seen.add(value)
+            output.append(value)
+    return output
+
+
+def _body_only(html: str) -> str:
+    match = re.search(r"<body\b[^>]*>(.*?)</body>", html, flags=re.IGNORECASE | re.DOTALL)
+    return match.group(1) if match else html
 
 
 def _insert_after_head_open(html: str, insertion: str) -> str:
