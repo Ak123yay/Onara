@@ -24,6 +24,33 @@ class SupervisorValidationError(ValueError):
     pass
 
 
+REPAIRABLE_CODEGEN_VISUAL_ISSUE_PREFIXES = (
+    "Hero side stack is too tall",
+    "Header brand, navigation, and CTA need a stable center-aligned grid",
+    "Hours card uses awkward summary copy",
+)
+
+
+def repairable_codegen_visual_issues(issues: list[str]) -> list[str]:
+    return [
+        issue
+        for issue in issues
+        if issue.startswith(REPAIRABLE_CODEGEN_VISUAL_ISSUE_PREFIXES)
+    ]
+
+
+def blocking_codegen_visual_issues(
+    issues: list[str],
+    *,
+    allow_repairable_visual_issues: bool = False,
+) -> list[str]:
+    if not allow_repairable_visual_issues:
+        return issues
+
+    repairable = set(repairable_codegen_visual_issues(issues))
+    return [issue for issue in issues if issue not in repairable]
+
+
 def validate_analyst_output(output: AnalystOutput) -> None:
     if not output.mustHaveSections:
         raise SupervisorValidationError("Analyst output must include at least one required section")
@@ -94,7 +121,11 @@ def validate_prompt_output(output: PromptOutput) -> None:
         raise SupervisorValidationError(f"Prompt output missing Onara theme instruction: {missing_theme[0]}")
 
 
-def validate_codegen_output(output: CodegenOutput) -> None:
+def validate_codegen_output(
+    output: CodegenOutput,
+    *,
+    allow_repairable_visual_issues: bool = False,
+) -> None:
     html = output.html.strip()
     lower = html.lower()
 
@@ -122,8 +153,12 @@ def validate_codegen_output(output: CodegenOutput) -> None:
         raise SupervisorValidationError("Codegen animation must use opacity and transform")
 
     visual_issues = professional_visual_issues(html)
-    if visual_issues:
-        raise SupervisorValidationError(f"Codegen output failed visual quality gate: {visual_issues[0]}")
+    blocking_visual_issues = blocking_codegen_visual_issues(
+        visual_issues,
+        allow_repairable_visual_issues=allow_repairable_visual_issues,
+    )
+    if blocking_visual_issues:
+        raise SupervisorValidationError(f"Codegen output failed visual quality gate: {blocking_visual_issues[0]}")
 
 
 def validate_debugger_output(output: DebuggerOutput) -> None:

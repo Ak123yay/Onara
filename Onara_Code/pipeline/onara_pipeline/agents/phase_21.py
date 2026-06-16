@@ -37,8 +37,16 @@ async def run_phase_21(job: PipelineJob, settings: Settings, progress: ProgressC
     content = ContentOutput.model_validate(job.blackboard.get("content_output"))
     planner = PlannerOutput.model_validate(job.blackboard.get("planner_output"))
     ai_client = build_ai_client(settings)
+    codegen_visual_repair_issues = _list_blackboard_strings(job, "codegen_visual_repair_issues")
 
-    await _run_debugger_step(job, ai_client, settings, planner, progress=progress)
+    await _run_debugger_step(
+        job,
+        ai_client,
+        settings,
+        planner,
+        progress=progress,
+        extra_issues=codegen_visual_repair_issues or None,
+    )
     await _run_seo_step(job, ai_client, settings, analyst, content, planner, progress=progress)
     await _run_pre_qa_gate(job, ai_client, settings, analyst, content, planner, progress=progress)
     qa = await _run_qa_step(job, ai_client, settings, planner, progress=progress)
@@ -549,7 +557,7 @@ async def _run_mobile_step(
 
 
 def _attempt_metadata(repair_attempt: int, *, extra_issues: list[str] | None = None) -> dict[str, Any] | None:
-    if not repair_attempt:
+    if not repair_attempt and not extra_issues:
         return None
 
     return {
@@ -593,3 +601,10 @@ def _ordered_unique(values: list[str]) -> list[str]:
             seen.add(value)
             output.append(value)
     return output
+
+
+def _list_blackboard_strings(job: PipelineJob, key: str) -> list[str]:
+    value = job.blackboard.get(key)
+    if not isinstance(value, list):
+        return []
+    return [item for item in value if isinstance(item, str) and item.strip()]
