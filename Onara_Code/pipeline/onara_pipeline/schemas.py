@@ -25,12 +25,17 @@ class RevisionStartRequest(BaseModel):
 
     business_data: dict[str, Any] = Field(default_factory=dict)
     cloudflare_project_name: str | None = None
+    component_selection: list[str] = Field(default_factory=list, max_length=16)
     github_path: str | None = None
     instruction: str = Field(min_length=3, max_length=4000)
     is_trial: bool = False
+    parent_revision_id: str | None = None
     project_id: str = Field(min_length=1)
     public_url: str | None = None
     revision_id: str = Field(min_length=1)
+    revision_kind: Literal["edit", "rollback"] = "edit"
+    source_files: dict[str, str] | None = None
+    source_public_url: str | None = None
     style_preferences: dict[str, Any] = Field(default_factory=dict)
     user_id: str = Field(min_length=1)
     user_plan: PlanType = "free"
@@ -57,6 +62,9 @@ class RevisionEnqueueResponse(BaseModel):
 
 class RevisionStatusResponse(BaseModel):
     affected_components: list[str] = Field(default_factory=list)
+    agent_summary: str | None = None
+    before_public_url: str | None = None
+    changed_files: list[dict[str, Any]] = Field(default_factory=list)
     cloudflare_deployment_url: str | None = None
     created_at: datetime
     current_step: str | None = None
@@ -67,6 +75,7 @@ class RevisionStatusResponse(BaseModel):
     public_url: str | None = None
     result_public_url: str | None = None
     revision_id: str
+    revision_kind: str = "edit"
     status: str
     updated_at: datetime
 

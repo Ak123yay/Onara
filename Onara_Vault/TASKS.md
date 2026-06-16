@@ -183,6 +183,11 @@ Execution rule:
 - [x] Incremental component update logic
 - [x] Revision counter decrement + monthly reset
 - [x] Retry button on agent failure (no revision deducted)
+- [x] Multi-message back-and-forth revision threads
+- [x] Visual before/after diff view
+- [x] Manual component selection for exact edit targeting
+- [x] Rollback UI using stored before-file snapshots
+- [x] Advanced agent changed-file explanation view
 
 ### Phase 24 — Stripe Billing
 

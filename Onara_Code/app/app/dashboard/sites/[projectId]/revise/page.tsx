@@ -17,12 +17,27 @@ type ProfileForRevisionPage = {
 };
 
 type RevisionHistoryRow = {
+  affected_components: string[] | null;
+  agent_summary: string | null;
+  before_public_url: string | null;
+  changed_files: Array<Record<string, unknown>> | null;
   created_at: string;
   error_message: string | null;
   id: string;
   instruction: string;
+  parent_revision_id: string | null;
+  revision_kind: "edit" | "rollback";
   result_public_url: string | null;
   status: "pending" | "running" | "done" | "failed";
+};
+
+type RevisionMessageRow = {
+  content: string;
+  created_at: string;
+  id: string;
+  metadata: Record<string, unknown>;
+  revision_id: string;
+  role: "user" | "assistant" | "system";
 };
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -46,7 +61,7 @@ export default async function ReviseSitePage(
   }
 
   const db = createAdminClient();
-  const [{ data: project }, { data: profile }, { data: revisions }] = await Promise.all([
+  const [{ data: project }, { data: profile }, { data: revisions }, { data: messages }] = await Promise.all([
     db
       .from("projects")
       .select("id, business_name, public_url, status")
@@ -60,12 +75,22 @@ export default async function ReviseSitePage(
       .maybeSingle<ProfileForRevisionPage>(),
     db
       .from("revisions")
-      .select("id, instruction, status, created_at, result_public_url, error_message")
+      .select(
+        "id, instruction, status, created_at, result_public_url, error_message, affected_components, before_public_url, changed_files, agent_summary, revision_kind, parent_revision_id",
+      )
       .eq("project_id", projectId)
       .eq("user_id", user.id)
       .order("created_at", { ascending: false })
       .limit(6)
       .returns<RevisionHistoryRow[]>(),
+    db
+      .from("revision_messages")
+      .select("id, revision_id, role, content, metadata, created_at")
+      .eq("project_id", projectId)
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: true })
+      .limit(40)
+      .returns<RevisionMessageRow[]>(),
   ]);
 
   if (!project) {
@@ -77,7 +102,7 @@ export default async function ReviseSitePage(
       <div className="revision-page-header">
         <div>
           <Link className="mono revision-back-link" href="/dashboard">
-            ← Dashboard
+            &larr; Dashboard
           </Link>
           <p className="eyebrow">Phase 23 revision system</p>
           <h1 className="serif">Revise {project.business_name}</h1>
@@ -93,12 +118,13 @@ export default async function ReviseSitePage(
           <h2 className="serif">This site is not live yet.</h2>
           <p>Finish the build or retry the failed build before requesting a revision.</p>
           <Link className="btn btn-accent" href="/dashboard">
-            Return to dashboard
+            &larr; Dashboard
           </Link>
         </section>
       ) : (
         <RevisionWorkspace
           latestRevisions={revisions ?? []}
+          messages={messages ?? []}
           project={project}
           revisionsLimit={profile?.revisions_limit ?? 0}
           revisionsUsed={profile?.revisions_used ?? 0}

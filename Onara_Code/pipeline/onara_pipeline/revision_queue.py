@@ -52,17 +52,27 @@ Rules:
 class RevisionJob:
     business_data: dict[str, Any]
     cloudflare_project_name: str | None
+    component_selection: list[str]
     github_path: str | None
     instruction: str
     is_trial: bool
     job_id: str
+    parent_revision_id: str | None
     project_id: str
     public_url: str | None
+    revision_kind: Literal["edit", "rollback"]
     revision_id: str
+    source_files: dict[str, str] | None
+    source_public_url: str | None
     style_preferences: dict[str, Any]
     user_id: str
     user_plan: str
     affected_components: list[str] = field(default_factory=list)
+    after_files: dict[str, str] | None = None
+    agent_summary: str | None = None
+    before_files: dict[str, str] | None = None
+    before_public_url: str | None = None
+    changed_files: list[dict[str, Any]] = field(default_factory=list)
     cloudflare_deployment_url: str | None = None
     current_step: str | None = None
     error_message: str | None = None
@@ -86,13 +96,18 @@ class RevisionQueue:
             job = RevisionJob(
                 business_data=request.business_data,
                 cloudflare_project_name=request.cloudflare_project_name,
+                component_selection=request.component_selection,
                 github_path=request.github_path,
                 instruction=request.instruction,
                 is_trial=request.is_trial,
                 job_id=str(uuid4()),
+                parent_revision_id=request.parent_revision_id,
                 project_id=request.project_id,
                 public_url=request.public_url,
+                revision_kind=request.revision_kind,
                 revision_id=request.revision_id,
+                source_files=request.source_files,
+                source_public_url=request.source_public_url,
                 style_preferences=request.style_preferences,
                 user_id=request.user_id,
                 user_plan=request.user_plan,
@@ -128,6 +143,9 @@ class RevisionQueue:
 
         return RevisionStatusResponse(
             affected_components=job.affected_components,
+            agent_summary=job.agent_summary,
+            before_public_url=job.before_public_url,
+            changed_files=job.changed_files,
             cloudflare_deployment_url=job.cloudflare_deployment_url,
             created_at=job.created_at,
             current_step=job.current_step,
@@ -138,6 +156,7 @@ class RevisionQueue:
             public_url=job.result_public_url,
             result_public_url=job.result_public_url,
             revision_id=job.revision_id,
+            revision_kind=job.revision_kind,
             status=job.status,
             updated_at=job.updated_at,
         )
@@ -170,6 +189,8 @@ class RevisionQueue:
 
     async def _run_revision(self, job: RevisionJob, settings: Settings) -> None:
         files, source = await self._load_source_files(job, settings)
+        job.before_files = dict(files)
+        job.before_public_url = job.public_url
         await self.record_progress(job, "revision_source_loaded", f"Loaded current site files from {source}.")
 
         current_html = files.get("index.html")
@@ -177,19 +198,32 @@ class RevisionQueue:
             raise RuntimeError("Current site source does not include index.html")
 
         await self.record_progress(job, "revision_planning", "Planning affected components")
-        job.affected_components = select_affected_components(job.instruction, files)
+        job.affected_components = selected_components_or_plan(job.component_selection, job.instruction, files)
         await self._sync_revision(job, settings)
 
-        await self.record_progress(
-            job,
-            "revision_patching",
-            "Updating selected components and shared CSS",
-            {"affected_components": job.affected_components},
-        )
-        updated_html = await generate_revised_html(job, settings, current_html, files)
+        if job.revision_kind == "rollback":
+            await self.record_progress(
+                job,
+                "revision_rollback",
+                "Restoring the selected previous version",
+                {"affected_components": job.affected_components},
+            )
+            updated_files = rollback_files(job)
+            updated_html = updated_files.get("index.html") or ""
+        else:
+            await self.record_progress(
+                job,
+                "revision_patching",
+                "Updating selected components and shared CSS",
+                {"affected_components": job.affected_components},
+            )
+            updated_html = await generate_revised_html(job, settings, current_html, files)
+            updated_files = {}
 
         hard_issues, warnings = revision_quality_review(updated_html, business_data=job.business_data)
         if hard_issues:
+            if job.revision_kind == "rollback":
+                raise RuntimeError("; ".join(hard_issues))
             await self.record_progress(
                 job,
                 "revision_repair",
@@ -207,19 +241,47 @@ class RevisionQueue:
 
         await self.record_progress(job, "revision_checking", "Checking safe HTML and deployment files")
         planner = planner_from_files(files, updated_html)
-        artifact = build_deployment_artifact(
-            updated_html,
-            business_data=job.business_data,
-            job_id=job.job_id,
-            planner=planner,
-            project_id=job.project_id,
-            user_id=job.user_id,
+        if updated_files:
+            artifact_files = normalize_deployment_files(updated_files)
+            artifact_files["deployment-manifest.json"] = json.dumps(
+                {
+                    "business_name": str(job.business_data.get("name") or "Unknown Business"),
+                    "component_order": component_ids_from_files(artifact_files),
+                    "created_at": datetime.now(timezone.utc).isoformat(),
+                    "file_paths": sorted(path for path in artifact_files if path != "deployment-manifest.json"),
+                    "job_id": job.job_id,
+                    "project_id": job.project_id,
+                    "revision_kind": "rollback",
+                    "user_id": job.user_id,
+                },
+                ensure_ascii=False,
+                indent=2,
+                sort_keys=True,
+            )
+        else:
+            artifact = build_deployment_artifact(
+                updated_html,
+                business_data=job.business_data,
+                job_id=job.job_id,
+                planner=planner,
+                project_id=job.project_id,
+                user_id=job.user_id,
+            )
+            artifact_files = artifact.files
+        job.after_files = dict(artifact_files)
+        job.changed_files = summarize_changed_files(job.before_files or {}, artifact_files)
+        job.agent_summary = summarize_revision(job)
+        await self.record_progress(
+            job,
+            "revision_summary",
+            job.agent_summary,
+            {"changed_files": job.changed_files},
         )
 
         await self.record_progress(job, "revision_committing", "Committing updated site files")
         commit = await commit_deployment_files(
             business_name=str(job.business_data.get("name") or "Unknown Business"),
-            files=artifact.files,
+            files=artifact_files,
             job_id=job.job_id,
             project_id=job.project_id,
             settings=settings,
@@ -228,7 +290,7 @@ class RevisionQueue:
 
         await self.record_progress(job, "revision_deploying", "Deploying revision")
         deployment = await deploy_to_cloudflare_pages(
-            files=artifact.files,
+            files=artifact_files,
             project_id=job.project_id,
             settings=settings,
         )
@@ -311,8 +373,14 @@ class RevisionQueue:
             status=status or ("done" if job.status == "completed" else job.status),
             user_id=job.user_id,
             affected_components=job.affected_components,
+            after_files=job.after_files,
+            agent_summary=job.agent_summary,
+            before_files=job.before_files,
+            before_public_url=job.before_public_url,
             charged_at=charged_at,
+            changed_files=job.changed_files,
             cloudflare_deployment_url=job.cloudflare_deployment_url,
+            component_selection=job.component_selection,
             completed_at=completed_at,
             error_message=job.error_message,
             github_commit_sha=job.github_commit_sha,
@@ -429,6 +497,25 @@ Current full index.html:
         raise RuntimeError(f"Revision model did not return deployable HTML: {exc}") from exc
 
 
+def selected_components_or_plan(
+    component_selection: list[str],
+    instruction: str,
+    files: dict[str, str],
+) -> list[str]:
+    available = set(component_ids_from_files(files))
+    clean_selection = [
+        component
+        for component in dict.fromkeys(component_selection)
+        if re.fullmatch(r"[a-z][a-z0-9_]*", component)
+    ]
+    if clean_selection:
+        if not available:
+            return clean_selection
+        return [component for component in clean_selection if component in available or component == "shared_styles"] or clean_selection
+
+    return select_affected_components(instruction, files)
+
+
 def select_affected_components(instruction: str, files: dict[str, str]) -> list[str]:
     lower = instruction.lower()
     component_ids = component_ids_from_files(files)
@@ -460,6 +547,79 @@ def select_affected_components(instruction: str, files: dict[str, str]) -> list[
         selected.extend(["site_header", "hero", "services"])
 
     return sorted(dict.fromkeys(selected or ["hero", "services"]))
+
+
+def rollback_files(job: RevisionJob) -> dict[str, str]:
+    if not job.source_files:
+        raise RuntimeError("Rollback snapshot is missing source files")
+
+    files = normalize_deployment_files(job.source_files)
+    if "index.html" not in files:
+        raise RuntimeError("Rollback snapshot does not include index.html")
+    return files
+
+
+def normalize_deployment_files(files: dict[str, str]) -> dict[str, str]:
+    normalized: dict[str, str] = {}
+    for raw_path, content in files.items():
+        path = str(raw_path).replace("\\", "/").strip("/")
+        if not path or ".." in path.split("/"):
+            continue
+        if not isinstance(content, str):
+            continue
+        normalized[path] = content
+    return normalized
+
+
+def summarize_changed_files(before: dict[str, str], after: dict[str, str]) -> list[dict[str, Any]]:
+    paths = sorted(set(before) | set(after))
+    changes: list[dict[str, Any]] = []
+    for path in paths:
+        old = before.get(path)
+        new = after.get(path)
+        if old == new:
+            continue
+        if old is None:
+            status = "added"
+        elif new is None:
+            status = "removed"
+        else:
+            status = "changed"
+        changes.append(
+            {
+                "path": path,
+                "status": status,
+                "summary": file_change_summary(path, old, new),
+            }
+        )
+    return changes
+
+
+def file_change_summary(path: str, old: str | None, new: str | None) -> str:
+    if old is None:
+        return "Added as part of this revision."
+    if new is None:
+        return "Removed because it is no longer needed."
+    if path == "index.html":
+        return "Updated the assembled page HTML."
+    if path.endswith(".metadata.json"):
+        return "Updated component metadata generated from the revised HTML."
+    if path.startswith("components/"):
+        component = path.removeprefix("components/").removesuffix(".html").replace("_", " ")
+        return f"Updated the {component} component."
+    if path == "deployment-manifest.json":
+        return "Updated deployment manifest metadata."
+    return "Updated generated site artifact."
+
+
+def summarize_revision(job: RevisionJob) -> str:
+    changed = len(job.changed_files)
+    components = ", ".join(component.replace("_", " ") for component in job.affected_components[:5])
+    if job.revision_kind == "rollback":
+        return f"Restored the previous deployed snapshot and changed {changed} file{'s' if changed != 1 else ''}."
+    if components:
+        return f"Applied the requested change to {components}; changed {changed} file{'s' if changed != 1 else ''}."
+    return f"Applied the requested revision; changed {changed} file{'s' if changed != 1 else ''}."
 
 
 def planner_from_files(files: dict[str, str], html: str) -> PlannerOutput:

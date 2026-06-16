@@ -4,13 +4,18 @@ import { createClient } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
 
-type RevisionStartBody = {
-  componentSelection?: unknown;
-  message?: unknown;
-  projectId?: unknown;
+type UserPlan = "free" | "starter" | "pro";
+
+type RevisionForRollback = {
+  affected_components: string[] | null;
+  before_files: unknown;
+  before_public_url: string | null;
+  id: string;
+  project_id: string;
+  status: string;
 };
 
-type ProjectForRevision = {
+type ProjectForRollback = {
   business_address: string | null;
   business_category: string | null;
   business_email: string | null;
@@ -38,20 +43,26 @@ type UserProfile = {
 };
 
 type PipelineRevisionStartResponse = {
-  job_id?: string;
-  queue_position?: number | null;
-  revision_id?: string;
-  status?: string;
   detail?: unknown;
   error?: string;
+  job_id?: string;
   message?: string;
+  queue_position?: number | null;
+  status?: string;
 };
-
-type UserPlan = "free" | "starter" | "pro";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-export async function POST(request: Request) {
+export async function POST(
+  _request: Request,
+  context: { params: Promise<{ revisionId: string }> },
+) {
+  const { revisionId } = await context.params;
+
+  if (!UUID_RE.test(revisionId)) {
+    return NextResponse.json({ error: "invalid_revision_id", message: "Revision id is invalid." }, { status: 400 });
+  }
+
   const supabase = await createClient();
   const {
     data: { user },
@@ -59,35 +70,6 @@ export async function POST(request: Request) {
 
   if (!user) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-  }
-
-  let body: RevisionStartBody;
-  try {
-    body = (await request.json()) as RevisionStartBody;
-  } catch {
-    return NextResponse.json({ error: "invalid_request", message: "Request body must be JSON." }, { status: 400 });
-  }
-
-  const projectId = typeof body.projectId === "string" ? body.projectId.trim() : "";
-  const instruction = typeof body.message === "string" ? body.message.trim() : "";
-  const componentSelection = componentSelectionFromBody(body.componentSelection);
-
-  if (!UUID_RE.test(projectId)) {
-    return NextResponse.json({ error: "invalid_project_id", message: "Project id is invalid." }, { status: 400 });
-  }
-
-  if (instruction.length < 3) {
-    return NextResponse.json(
-      { error: "validation_error", message: "Tell Onara what to change." },
-      { status: 422 },
-    );
-  }
-
-  if (instruction.length > 4000) {
-    return NextResponse.json(
-      { error: "validation_error", message: "Revision instructions must be under 4,000 characters." },
-      { status: 422 },
-    );
   }
 
   const pipelineServerUrl = process.env.PIPELINE_SERVER_URL?.replace(/\/+$/, "");
@@ -98,15 +80,45 @@ export async function POST(request: Request) {
   }
 
   const db = createAdminClient();
+  const { data: sourceRevision, error: revisionError } = await db
+    .from("revisions")
+    .select("id, project_id, status, affected_components, before_files, before_public_url")
+    .eq("id", revisionId)
+    .eq("user_id", user.id)
+    .maybeSingle<RevisionForRollback>();
+
+  if (revisionError) {
+    return NextResponse.json({ error: "revision_lookup_failed", message: revisionError.message }, { status: 500 });
+  }
+
+  if (!sourceRevision) {
+    return NextResponse.json({ error: "not_found", message: "Revision was not found." }, { status: 404 });
+  }
+
+  if (sourceRevision.status !== "done") {
+    return NextResponse.json(
+      { error: "rollback_not_allowed", message: "Only completed revisions can be rolled back." },
+      { status: 409 },
+    );
+  }
+
+  const sourceFiles = sourceFilesFromSnapshot(sourceRevision.before_files);
+  if (!sourceFiles) {
+    return NextResponse.json(
+      { error: "rollback_snapshot_missing", message: "This revision does not have a rollback snapshot." },
+      { status: 409 },
+    );
+  }
+
   const [{ data: project, error: projectError }, { data: profile, error: profileError }] = await Promise.all([
     db
       .from("projects")
       .select(
         "id, business_name, business_address, business_phone, business_email, business_website, business_hours, business_photos, business_category, google_place_id, google_rating, google_review_count, style_preferences, status, github_path, public_url, cloudflare_project_name",
       )
-      .eq("id", projectId)
+      .eq("id", sourceRevision.project_id)
       .eq("user_id", user.id)
-      .maybeSingle<ProjectForRevision>(),
+      .maybeSingle<ProjectForRollback>(),
     db
       .from("users")
       .select("plan, is_trial, revisions_used, revisions_limit")
@@ -121,49 +133,41 @@ export async function POST(request: Request) {
     );
   }
 
-  if (!project) {
-    return NextResponse.json({ error: "not_found", message: "Site was not found." }, { status: 404 });
-  }
-
-  if (project.status !== "live") {
+  if (!project || project.status !== "live") {
     return NextResponse.json(
-      { error: "revision_not_allowed", message: "Revisions are available after a site is live." },
+      { error: "rollback_not_allowed", message: "Rollback is available only for live sites." },
       { status: 409 },
     );
   }
 
   if (!hasRevisionCredit(profile)) {
     return NextResponse.json(
-      {
-        error: "revision_limit_reached",
-        message: "You have no revisions remaining this month.",
-        revisionsLimit: profile?.revisions_limit ?? 0,
-        revisionsUsed: profile?.revisions_used ?? 0,
-      },
+      { error: "revision_limit_reached", message: "You have no revisions remaining this month." },
       { status: 403 },
     );
   }
 
-  const initialProgress = [
-    progressEntry("revision_created", "Revision request received."),
-  ];
-  const { data: revision, error: revisionError } = await db
+  const instruction = `Rollback to the version before revision ${sourceRevision.id}.`;
+  const componentSelection = sourceRevision.affected_components ?? [];
+  const initialProgress = [progressEntry("rollback_created", "Rollback request received.")];
+  const { data: rollbackRevision, error: createError } = await db
     .from("revisions")
     .insert({
       component_selection: componentSelection,
       instruction,
+      parent_revision_id: sourceRevision.id,
       project_id: project.id,
       progress_log: initialProgress,
-      revision_kind: "edit",
+      revision_kind: "rollback",
       status: "pending",
       user_id: user.id,
     })
     .select("id")
     .single<{ id: string }>();
 
-  if (revisionError || !revision) {
+  if (createError || !rollbackRevision) {
     return NextResponse.json(
-      { error: "revision_create_failed", message: revisionError?.message ?? "Revision could not be created." },
+      { error: "rollback_create_failed", message: createError?.message ?? "Rollback could not be created." },
       { status: 500 },
     );
   }
@@ -183,10 +187,13 @@ export async function POST(request: Request) {
         github_path: project.github_path,
         instruction,
         is_trial: Boolean(profile?.is_trial),
+        parent_revision_id: sourceRevision.id,
         project_id: project.id,
         public_url: project.public_url,
-        revision_id: revision.id,
-        revision_kind: "edit",
+        revision_id: rollbackRevision.id,
+        revision_kind: "rollback",
+        source_files: sourceFiles,
+        source_public_url: sourceRevision.before_public_url,
         style_preferences: project.style_preferences ?? {},
         user_id: user.id,
         user_plan: planForPipeline(profile),
@@ -194,7 +201,7 @@ export async function POST(request: Request) {
       cache: "no-store",
     });
   } catch {
-    await markRevisionFailed(db, revision.id, "FastAPI pipeline server is unreachable.", initialProgress);
+    await markRevisionFailed(db, rollbackRevision.id, "FastAPI pipeline server is unreachable.", initialProgress);
     return NextResponse.json(
       { error: "pipeline_unavailable", message: "FastAPI pipeline server is unreachable." },
       { status: 503 },
@@ -203,39 +210,36 @@ export async function POST(request: Request) {
 
   const payload = (await pipelineResponse.json().catch(() => ({}))) as PipelineRevisionStartResponse;
   if (!pipelineResponse.ok || !payload.job_id) {
-    const message = payload.message ?? errorMessageFromDetail(payload.detail) ?? "Revision job could not start.";
-    await markRevisionFailed(db, revision.id, message, initialProgress);
-    return NextResponse.json(
-      { error: payload.error ?? "revision_start_failed", message },
-      { status: pipelineResponse.status },
-    );
+    const message = payload.message ?? errorMessageFromDetail(payload.detail) ?? "Rollback job could not start.";
+    await markRevisionFailed(db, rollbackRevision.id, message, initialProgress);
+    return NextResponse.json({ error: payload.error ?? "rollback_start_failed", message }, { status: pipelineResponse.status });
   }
 
   await db
     .from("revisions")
     .update({
       pipeline_job_id: payload.job_id,
-      progress_log: [...initialProgress, progressEntry("revision_queued", "Revision job queued.")],
+      progress_log: [...initialProgress, progressEntry("rollback_queued", "Rollback job queued.")],
       started_at: new Date().toISOString(),
       status: "running",
     })
-    .eq("id", revision.id)
+    .eq("id", rollbackRevision.id)
     .eq("user_id", user.id);
 
   await db.from("revision_messages").insert([
     {
       content: instruction,
-      metadata: { component_selection: componentSelection },
+      metadata: { rollback_of_revision_id: sourceRevision.id },
       project_id: project.id,
-      revision_id: revision.id,
+      revision_id: rollbackRevision.id,
       role: "user",
       user_id: user.id,
     },
     {
-      content: "Started a revision job. I will read the current files, update the selected areas, check hard blockers, and deploy when ready.",
+      content: "Started rollback. I will redeploy the stored previous snapshot and update the live site if deployment succeeds.",
       metadata: { pipeline_job_id: payload.job_id },
       project_id: project.id,
-      revision_id: revision.id,
+      revision_id: rollbackRevision.id,
       role: "assistant",
       user_id: user.id,
     },
@@ -245,42 +249,29 @@ export async function POST(request: Request) {
     {
       jobId: payload.job_id,
       job_id: payload.job_id,
-      queuePosition: payload.queue_position ?? null,
-      queue_position: payload.queue_position ?? null,
-      remainingRevisions: remainingRevisions(profile),
-      revisionId: revision.id,
-      revision_id: revision.id,
+      revisionId: rollbackRevision.id,
+      revision_id: rollbackRevision.id,
       status: payload.status ?? "queued",
     },
     { status: 202 },
   );
 }
 
-function hasRevisionCredit(profile: UserProfile | null) {
-  if (!profile) {
-    return false;
+function sourceFilesFromSnapshot(value: unknown) {
+  if (!isPlainObject(value)) {
+    return null;
   }
 
-  if (profile.revisions_limit === -1) {
-    return true;
+  const files: Record<string, string> = {};
+  for (const [key, content] of Object.entries(value)) {
+    if (typeof content === "string") {
+      files[key] = content;
+    }
   }
-
-  return profile.revisions_used < profile.revisions_limit;
+  return files["index.html"] ? files : null;
 }
 
-function remainingRevisions(profile: UserProfile | null) {
-  if (!profile) {
-    return 0;
-  }
-
-  if (profile.revisions_limit === -1) {
-    return -1;
-  }
-
-  return Math.max(0, profile.revisions_limit - profile.revisions_used);
-}
-
-function businessDataFromProject(project: ProjectForRevision) {
+function businessDataFromProject(project: ProjectForRollback) {
   return {
     address: project.business_address,
     category: project.business_category,
@@ -296,26 +287,20 @@ function businessDataFromProject(project: ProjectForRevision) {
   };
 }
 
-function componentSelectionFromBody(value: unknown) {
-  if (!Array.isArray(value)) {
-    return [];
+function hasRevisionCredit(profile: UserProfile | null) {
+  if (!profile) {
+    return false;
   }
-
-  return value
-    .map((item) => (typeof item === "string" ? item.trim() : ""))
-    .filter((item) => /^[a-z][a-z0-9_]*$/.test(item))
-    .slice(0, 16);
+  return profile.revisions_limit === -1 || profile.revisions_used < profile.revisions_limit;
 }
 
 function planForPipeline(profile: UserProfile | null): UserPlan {
   if (profile?.is_trial) {
     return "pro";
   }
-
   if (profile?.plan === "starter" || profile?.plan === "pro") {
     return profile.plan;
   }
-
   return "free";
 }
 
@@ -348,14 +333,12 @@ function errorMessageFromDetail(detail: unknown) {
   if (typeof detail === "string") {
     return detail;
   }
-
   if (Array.isArray(detail)) {
     return detail
       .map((item) => (isPlainObject(item) && typeof item.msg === "string" ? item.msg : null))
       .filter(Boolean)
       .join("; ");
   }
-
   return null;
 }
 

@@ -5,6 +5,10 @@ import { createClient } from "@/lib/supabase/server";
 export const runtime = "nodejs";
 
 type RevisionRow = {
+  affected_components: string[] | null;
+  agent_summary: string | null;
+  before_public_url: string | null;
+  changed_files: Array<Record<string, unknown>> | null;
   error_message: string | null;
   id: string;
   pipeline_job_id: string | null;
@@ -15,6 +19,9 @@ type RevisionRow = {
 
 type PipelineRevisionStatus = {
   affected_components?: string[];
+  agent_summary?: string | null;
+  before_public_url?: string | null;
+  changed_files?: Array<Record<string, unknown>>;
   cloudflare_deployment_url?: string | null;
   current_step?: string | null;
   error_message?: string | null;
@@ -51,7 +58,7 @@ export async function GET(
   const db = createAdminClient();
   const { data: revision, error } = await db
     .from("revisions")
-    .select("id, status, pipeline_job_id, progress_log, result_public_url, error_message")
+    .select("id, status, pipeline_job_id, progress_log, result_public_url, error_message, affected_components, before_public_url, changed_files, agent_summary")
     .eq("id", revisionId)
     .eq("user_id", user.id)
     .maybeSingle<RevisionRow>();
@@ -118,6 +125,9 @@ export async function GET(
           if (payload.status === "completed" || payload.status === "done") {
             send("complete", {
               affectedComponents: payload.affected_components ?? [],
+              agentSummary: payload.agent_summary ?? null,
+              beforePublicUrl: payload.before_public_url ?? null,
+              changedFiles: payload.changed_files ?? [],
               cloudflareDeploymentUrl: payload.cloudflare_deployment_url ?? null,
               githubCommitSha: payload.github_commit_sha ?? null,
               publicUrl: payload.result_public_url ?? payload.public_url ?? null,
@@ -161,6 +171,10 @@ function sendTerminalFromRevision(
 ) {
   if (revision.status === "done") {
     send("complete", {
+      affectedComponents: revision.affected_components ?? [],
+      agentSummary: revision.agent_summary,
+      beforePublicUrl: revision.before_public_url,
+      changedFiles: revision.changed_files ?? [],
       publicUrl: revision.result_public_url,
       revisionId: revision.id,
       status: revision.status,
