@@ -3107,9 +3107,7 @@ textarea.confirm-manual-control {
 .agent-command-card.card {
   overflow: visible;
   border-color: color-mix(in oklab, var(--rule) 82%, var(--accent));
-  background:
-    radial-gradient(circle at 0% 0%, color-mix(in oklab, var(--accent-soft) 48%, transparent), transparent 34%),
-    linear-gradient(145deg, color-mix(in oklab, var(--paper) 94%, white), var(--paper));
+  background: color-mix(in oklab, var(--accent-softer) 36%, var(--paper));
   box-shadow: 0 22px 60px rgb(26 26 26 / 0.055);
   padding: 18px 18px 20px;
 }

@@ -107,7 +107,7 @@ def ensure_hero_conversion_cta(
         f'\n        <a class="primary-cta hero-cta onara-injected-hero-cta" '
         f'href="{html_lib.escape(href, quote=True)}">{html_lib.escape(_conversion_cta_label(style_preferences, context))}</a>\n'
     )
-    repaired_hero = re.sub(r"</section\s*>", cta + "    </section>", hero, count=1, flags=re.IGNORECASE)
+    repaired_hero = _insert_before_closing_component_tag(hero, cta)
     if repaired_hero == hero:
         return html, []
 
@@ -583,11 +583,25 @@ def _hero_section(html: str) -> str:
         return component
 
     match = re.search(
-        r"<section\b[^>]*class=[\"'][^\"']*\bhero\b[^\"']*[\"'][^>]*>.*?</section>",
+        r"<(?P<tag>section|div|main|article)\b"
+        r"(?=[^>]*(?:data-component=[\"']hero[\"']|id=[\"']hero[\"']|class=[\"'][^\"']*\bhero\b[^\"']*[\"']))"
+        r"[^>]*>.*?</(?P=tag)>",
         html,
         flags=re.IGNORECASE | re.DOTALL,
     )
     return match.group(0) if match else ""
+
+
+def _insert_before_closing_component_tag(markup: str, insertion: str) -> str:
+    closing = re.search(
+        r"</(?P<tag>section|div|main|article)\s*>\s*$",
+        markup,
+        flags=re.IGNORECASE,
+    )
+    if not closing:
+        return markup
+
+    return f"{markup[: closing.start()]}{insertion}    {closing.group(0)}"
 
 
 def _has_conversion_cta(markup: str) -> bool:
