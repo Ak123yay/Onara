@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
@@ -39,7 +40,8 @@ export async function DELETE(
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 
-  const { data: project, error: lookupError } = await supabase
+  const db = createAdminClient();
+  const { data: project, error: lookupError } = await db
     .from("projects")
     .select("id, business_name, status, cloudflare_project_name, public_url")
     .eq("id", projectId)
@@ -79,7 +81,7 @@ export async function DELETE(
     );
   }
 
-  const { error: deleteError } = await supabase
+  const { error: deleteError } = await db
     .from("projects")
     .delete()
     .eq("id", project.id)

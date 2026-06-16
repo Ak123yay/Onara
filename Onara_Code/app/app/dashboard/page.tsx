@@ -13,6 +13,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { CopyLinkButton } from "@/components/dashboard/CopyLinkButton";
 import { DeleteSiteButton } from "@/components/dashboard/DeleteSiteButton";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
 type ProjectStatus = "queued" | "generating" | "deploying" | "live" | "failed" | "suspended";
@@ -251,7 +252,7 @@ function normalizeDashboardBrief(
 }
 
 async function loadDashboardBriefCache(
-  supabase: Awaited<ReturnType<typeof createClient>>,
+  supabase: ReturnType<typeof createAdminClient>,
   userId: string,
 ): Promise<DashboardBriefCacheRow | null> {
   const { data, error } = await supabase
@@ -268,7 +269,7 @@ async function loadDashboardBriefCache(
 }
 
 async function cacheDashboardBrief(
-  supabase: Awaited<ReturnType<typeof createClient>>,
+  supabase: ReturnType<typeof createAdminClient>,
   userId: string,
   brief: DashboardBrief,
 ) {
@@ -303,7 +304,7 @@ async function getDashboardBrief({
   liveCount: number;
   profile: Profile | null;
   projectList: Project[];
-  supabase: Awaited<ReturnType<typeof createClient>>;
+  supabase: ReturnType<typeof createAdminClient>;
   userId: string;
 }): Promise<DashboardBrief> {
   const today = todayKey();
@@ -658,13 +659,14 @@ export default async function DashboardPage() {
     redirect("/auth/login?next=/dashboard");
   }
 
+  const db = createAdminClient();
   const [{ data: profile }, { data: projects, error: projectsError }] = await Promise.all([
-    supabase
+    db
       .from("users")
       .select("full_name, is_trial, plan, revisions_used, revisions_limit, show_url")
       .eq("id", user.id)
       .maybeSingle<Profile>(),
-    supabase
+    db
       .from("projects")
       .select(
         "id, business_name, business_address, business_category, status, pipeline_job_id, public_url, custom_domain, google_rating, google_review_count, generation_ms, error_message, created_at, updated_at, last_deployed_at",
@@ -710,7 +712,7 @@ export default async function DashboardPage() {
     liveCount,
     profile,
     projectList,
-    supabase,
+    supabase: db,
     userId: user.id,
   });
 

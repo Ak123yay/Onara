@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { BusinessSearchFlow } from "@/components/places/BusinessSearchFlow";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
 type BuildProfile = {
@@ -29,7 +30,8 @@ export default async function DashboardBuildPage({ searchParams }: DashboardBuil
   const resolvedSearchParams = searchParams ? await searchParams : {};
   const queryParam = resolvedSearchParams.query;
   const initialQuery = Array.isArray(queryParam) ? queryParam[0] : queryParam;
-  const { data: profile } = await supabase
+  const db = createAdminClient();
+  const { data: profile } = await db
     .from("users")
     .select("full_name, plan, is_trial")
     .eq("id", user.id)

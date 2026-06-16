@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useRef, useState, useTransition, type ReactNode } from "react";
+import { useEffect, useState, useTransition, type ReactNode } from "react";
 import { createClient } from "@/lib/supabase/client";
 
 export type DashboardUser = {
@@ -83,15 +83,8 @@ function trialLabel(daysLeft: number) {
 export function DashboardShell({ children, user }: DashboardShellProps) {
   const pathname = usePathname();
   const router = useRouter();
-  const sidebarToggleRef = useRef<HTMLInputElement>(null);
   const [trialDaysLeft, setTrialDaysLeft] = useState(user.trialDaysLeft);
   const [isPending, startTransition] = useTransition();
-
-  useEffect(() => {
-    if (sidebarToggleRef.current) {
-      sidebarToggleRef.current.checked = window.localStorage.getItem("onara-sidebar-collapsed") === "true";
-    }
-  }, []);
 
   useEffect(() => {
     if (!user.trialEndsAt) {
@@ -127,8 +120,12 @@ export function DashboardShell({ children, user }: DashboardShellProps) {
         onChange={(event) => {
           window.localStorage.setItem("onara-sidebar-collapsed", String(event.currentTarget.checked));
         }}
-        ref={sidebarToggleRef}
         type="checkbox"
+      />
+      <script
+        dangerouslySetInnerHTML={{
+          __html: `try{var e=document.getElementById("dashboard-sidebar-control");if(e)e.checked=window.localStorage.getItem("onara-sidebar-collapsed")==="true";}catch(_){}`,
+        }}
       />
       <aside className="dashboard-sidebar">
         <div className="dashboard-sidebar-header">

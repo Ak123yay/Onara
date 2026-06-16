@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { DashboardShell, type DashboardUser } from "@/components/dashboard/DashboardShell";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
 type DashboardLayoutProps = {
@@ -29,7 +30,8 @@ export default async function DashboardLayout({ children }: DashboardLayoutProps
     redirect("/auth/login?next=/dashboard");
   }
 
-  const { data: profile } = await supabase
+  const db = createAdminClient();
+  const { data: profile } = await db
     .from("users")
     .select("full_name, plan, is_trial, trial_ends_at")
     .eq("id", user.id)

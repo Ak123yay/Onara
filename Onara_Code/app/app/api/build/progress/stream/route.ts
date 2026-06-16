@@ -4,6 +4,7 @@ import {
   MOCK_STEP_MS,
   previewHtmlForStep,
 } from "@/lib/build/agent-progress";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
@@ -271,7 +272,8 @@ async function fetchProjectResumeStatus(projectId: string) {
     return null;
   }
 
-  const { data } = await supabase
+  const db = createAdminClient();
+  const { data } = await db
     .from("projects")
     .select("id, business_name, status, current_agent, error_message, pipeline_job_id, public_url")
     .eq("id", projectId)

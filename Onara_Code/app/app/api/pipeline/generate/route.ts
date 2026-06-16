@@ -1,5 +1,6 @@
 import { randomUUID } from "crypto";
 import { NextResponse } from "next/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
@@ -77,7 +78,8 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "pipeline_not_configured" }, { status: 500 });
   }
 
-  const { data: profile, error: profileError } = await supabase
+  const db = createAdminClient();
+  const { data: profile, error: profileError } = await db
     .from("users")
     .select("plan, is_trial")
     .eq("id", user.id)
@@ -98,7 +100,7 @@ export async function POST(request: Request) {
   const projectIdForPipeline = projectId ?? randomUUID();
   const siteLimitCheck = await checkSiteLimit({
     projectId,
-    supabase,
+    supabase: db,
     userId: user.id,
     userPlan,
   });
@@ -136,7 +138,7 @@ export async function POST(request: Request) {
       businessData,
       projectId: projectIdForPipeline,
       stylePreferences: isPlainObject(stylePreferences) ? stylePreferences : {},
-      supabase,
+      supabase: db,
       userId: user.id,
     });
 
@@ -179,7 +181,7 @@ export async function POST(request: Request) {
     });
   } catch {
     if (reservedProjectId) {
-      await deleteReservedProject({ projectId: reservedProjectId, supabase, userId: user.id });
+      await deleteReservedProject({ projectId: reservedProjectId, supabase: db, userId: user.id });
     }
 
     return NextResponse.json(
@@ -197,7 +199,7 @@ export async function POST(request: Request) {
 
   if (!pipelineResponse.ok || !payload.job_id) {
     if (reservedProjectId) {
-      await deleteReservedProject({ projectId: reservedProjectId, supabase, userId: user.id });
+      await deleteReservedProject({ projectId: reservedProjectId, supabase: db, userId: user.id });
     }
 
     return NextResponse.json(
@@ -219,7 +221,7 @@ export async function POST(request: Request) {
         pipelineStatus: payload.status ?? "queued",
         projectId: returnedProjectId,
         stylePreferences: isPlainObject(stylePreferences) ? stylePreferences : {},
-        supabase,
+        supabase: db,
         userId: user.id,
       })
     : { error: "Pipeline did not return a project id.", stored: false };
@@ -257,7 +259,7 @@ async function checkSiteLimit({
   userPlan,
 }: {
   projectId: string | undefined;
-  supabase: Awaited<ReturnType<typeof createClient>>;
+  supabase: ReturnType<typeof createAdminClient>;
   userId: string;
   userPlan: UserPlan;
 }) {
@@ -326,7 +328,7 @@ async function reserveQueuedProject({
   businessData: Record<string, unknown>;
   projectId: string;
   stylePreferences: Record<string, unknown>;
-  supabase: Awaited<ReturnType<typeof createClient>>;
+  supabase: ReturnType<typeof createAdminClient>;
   userId: string;
 }) {
   const { error } = await supabase
@@ -370,7 +372,7 @@ async function deleteReservedProject({
   userId,
 }: {
   projectId: string;
-  supabase: Awaited<ReturnType<typeof createClient>>;
+  supabase: ReturnType<typeof createAdminClient>;
   userId: string;
 }) {
   await supabase
@@ -396,7 +398,7 @@ async function persistQueuedProject({
   pipelineStatus: string;
   projectId: string;
   stylePreferences: Record<string, unknown>;
-  supabase: Awaited<ReturnType<typeof createClient>>;
+  supabase: ReturnType<typeof createAdminClient>;
   userId: string;
 }) {
   const { error } = await supabase
