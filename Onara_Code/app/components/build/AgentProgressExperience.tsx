@@ -48,9 +48,17 @@ type StreamPayload = {
   stepIndex?: number;
 };
 
+type StatusPayload = StreamPayload & {
+  complete?: boolean;
+  currentStepIndex?: number;
+  queued?: boolean;
+  retrying?: boolean;
+};
+
 type ConnectionMode = "connecting" | "sse" | "polling" | "complete" | "error";
 
 const emptyStatuses = AGENT_STEPS.map<AgentStatus>(() => "pending");
+const previewCachePrefix = "onara:build-preview:";
 
 function statusForStep(index: number, activeIndex: number, status: AgentStatus) {
   if (index < activeIndex) {
@@ -97,6 +105,24 @@ function readStoredPackage(jobId: string, projectId: string | null): StoredGener
   }
 
   return null;
+}
+
+function readCachedPreview(jobId: string) {
+  try {
+    return window.sessionStorage.getItem(`${previewCachePrefix}${jobId}`);
+  } catch {
+    return null;
+  }
+}
+
+function cachePreview(jobId: string, html: string) {
+  try {
+    if (html.length <= 500_000) {
+      window.sessionStorage.setItem(`${previewCachePrefix}${jobId}`, html);
+    }
+  } catch {
+    // Preview caching is an instant-render optimization, not required state.
+  }
 }
 
 export function AgentProgressExperience() {
@@ -148,7 +174,7 @@ export function AgentProgressExperience() {
 
     setBusinessName(nextBusinessName);
     setBusinessMeta(metaParts.join(" / ") || "Google Business data confirmed");
-    setPreviewHtml(previewHtmlForStep(0, nextBusinessName));
+    setPreviewHtml(readCachedPreview(jobId) || previewHtmlForStep(0, nextBusinessName));
     setStartedAt(Date.now());
   }, [jobId, projectId]);
 
@@ -163,12 +189,26 @@ export function AgentProgressExperience() {
     const streamUrl = `/api/build/progress/stream?jobId=${encodeURIComponent(jobId)}&businessName=${businessParam}${projectParam}`;
     let pollingTimer: ReturnType<typeof setInterval> | null = null;
     let closedByComplete = false;
+    let disposed = false;
     let pollingFailures = 0;
 
     function applyStep(stepIndex: number, status: AgentStatus, message?: string, nextProgress?: number) {
+      if (disposed) {
+        return;
+      }
+
       setStatuses(AGENT_STEPS.map((_, index) => statusForStep(index, stepIndex, status)));
       setCurrentMessage(message || AGENT_STEPS[stepIndex]?.task || "Working through the build pipeline.");
       setProgress(safeProgress(nextProgress));
+    }
+
+    function applyPreview(html: string | undefined) {
+      if (disposed || !html) {
+        return;
+      }
+
+      setPreviewHtml(html);
+      cachePreview(jobId, html);
     }
 
     async function pollStatus() {
@@ -180,17 +220,14 @@ export function AgentProgressExperience() {
         throw new Error("Progress status unavailable.");
       }
 
-      const data = (await response.json()) as StreamPayload & {
-        complete?: boolean;
-        currentStepIndex?: number;
-        queued?: boolean;
-        retrying?: boolean;
-      };
+      const data = (await response.json()) as StatusPayload;
+      if (disposed) {
+        return;
+      }
+
       pollingFailures = 0;
 
-      if (data.html) {
-        setPreviewHtml(data.html);
-      }
+      applyPreview(data.html);
 
       if (data.complete) {
         setConnectionMode("complete");
@@ -217,6 +254,17 @@ export function AgentProgressExperience() {
       );
     }
 
+    function hydrateSnapshot() {
+      void pollStatus().catch(() => {
+        if (disposed) {
+          return;
+        }
+
+        pollingFailures += 1;
+        setCurrentMessage("Build stream is reconnecting. The job is still saved.");
+      });
+    }
+
     function startPolling() {
       if (pollingTimer) {
         return;
@@ -225,6 +273,10 @@ export function AgentProgressExperience() {
       setConnectionMode("polling");
       pollingTimer = setInterval(() => {
         pollStatus().catch(() => {
+          if (disposed) {
+            return;
+          }
+
           pollingFailures += 1;
           setCurrentMessage("Build stream is reconnecting. The job is still saved.");
 
@@ -235,6 +287,10 @@ export function AgentProgressExperience() {
         });
       }, 900);
       void pollStatus().catch(() => {
+        if (disposed) {
+          return;
+        }
+
         pollingFailures += 1;
         setCurrentMessage("Build stream is reconnecting. The job is still saved.");
       });
@@ -243,12 +299,15 @@ export function AgentProgressExperience() {
     if (!("EventSource" in window)) {
       startPolling();
       return () => {
+        disposed = true;
+
         if (pollingTimer) {
           clearInterval(pollingTimer);
         }
       };
     }
 
+    hydrateSnapshot();
     setConnectionMode("connecting");
     const eventSource = new EventSource(streamUrl);
     eventSourceRef.current = eventSource;
@@ -300,9 +359,7 @@ export function AgentProgressExperience() {
     eventSource.addEventListener("preview", (event) => {
       const data = JSON.parse((event as MessageEvent).data) as StreamPayload;
 
-      if (data.html) {
-        setPreviewHtml(data.html);
-      }
+      applyPreview(data.html);
     });
 
     eventSource.addEventListener("reconnecting", (event) => {
@@ -343,6 +400,7 @@ export function AgentProgressExperience() {
     });
 
     return () => {
+      disposed = true;
       closedByComplete = true;
       eventSource.close();
 

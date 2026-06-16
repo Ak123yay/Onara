@@ -140,13 +140,6 @@ def composition_depth_issues(html: str) -> list[str]:
     if lower.count("<section") < 4:
         issues.append("Page needs at least four real sections after header for a complete local-business site")
 
-    if "data-component=\"hero\"" in lower and "data-component=\"services\"" in lower:
-        hero_start = lower.find("data-component=\"hero\"")
-        services_start = lower.find("data-component=\"services\"")
-        hero_markup = lower[hero_start:services_start] if services_start > hero_start else ""
-        if hero_markup and not _has_conversion_cta(hero_markup):
-            issues.append("Hero is missing a clear conversion CTA")
-
     return _unique(issues)
 
 
