@@ -2,6 +2,7 @@
 
 import {
   AlertTriangle,
+  ArrowLeft,
   Check,
   Clock3,
   LoaderCircle,
@@ -128,6 +129,13 @@ export function AgentProgressExperience() {
   const completedCount = statuses.filter((status) => status === "done").length;
   const etaSeconds = connectionMode === "complete" ? 0 : Math.max(6, Math.round((100 - progress) * 0.82));
   const activeAgent = AGENT_STEPS[activeIndex];
+  const progressLabel = connectionMode === "complete"
+    ? "Complete"
+    : connectionMode === "error"
+      ? "Needs attention"
+      : `${progress}% complete`;
+  const etaLabel = connectionMode === "complete" ? "Ready" : `${etaSeconds}s est.`;
+  const hasConnectionIssue = connectionMode === "error";
 
   useEffect(() => {
     const storedPackage = readStoredPackage(jobId, projectId);
@@ -139,7 +147,7 @@ export function AgentProgressExperience() {
     ].filter(Boolean);
 
     setBusinessName(nextBusinessName);
-    setBusinessMeta(metaParts.join(" - ") || "Google Business data confirmed");
+    setBusinessMeta(metaParts.join(" / ") || "Google Business data confirmed");
     setPreviewHtml(previewHtmlForStep(0, nextBusinessName));
     setStartedAt(Date.now());
   }, [jobId, projectId]);
@@ -348,14 +356,44 @@ export function AgentProgressExperience() {
     <div className="agent-progress-shell fadein-up">
       <section className="agent-progress-grid">
         <aside className="agent-progress-panel">
-          <div className="agent-progress-heading">
-            <div className="agent-progress-kicker">
-              <span>{connectionLabel(connectionMode)}</span>
+          <Link className="agent-progress-back" href="/dashboard">
+            <ArrowLeft aria-hidden="true" size={14} />
+            Dashboard
+          </Link>
+
+          <div className="agent-progress-heading card">
+            <div className="agent-progress-heading-top">
+              <div>
+                <p className="eyebrow">Build command center</p>
+                <div className={`agent-progress-kicker agent-progress-kicker-${connectionMode}`}>
+                  <span>{connectionLabel(connectionMode)}</span>
+                </div>
+              </div>
+              <div className="agent-progress-monogram" aria-hidden="true">
+                {initialForName(businessName)}
+              </div>
             </div>
-            <p className="eyebrow">{connectionMode === "complete" ? "Website draft ready" : "Building your site"}</p>
             <h1 className="serif">{businessName}</h1>
             <span className="agent-progress-heading-meta">{businessMeta}</span>
-            <p>You can leave this page and resume the live build from your dashboard.</p>
+            <div className="agent-progress-save-note">
+              <Clock3 aria-hidden="true" size={15} />
+              <span>Saved build. Leave anytime and reopen live status from the dashboard.</span>
+            </div>
+          </div>
+
+          <div className="agent-progress-stats" aria-label="Build summary">
+            <div className="agent-progress-stat card">
+              <p className="mono">Progress</p>
+              <strong>{progressLabel}</strong>
+            </div>
+            <div className="agent-progress-stat card">
+              <p className="mono">Agents</p>
+              <strong>{completedCount} / {AGENT_STEPS.length}</strong>
+            </div>
+            <div className="agent-progress-stat card">
+              <p className="mono">Time</p>
+              <strong>{etaLabel}</strong>
+            </div>
           </div>
 
           <div className="agent-progress-meter card">
@@ -372,8 +410,16 @@ export function AgentProgressExperience() {
             </div>
           </div>
 
-          <div className="agent-active-card card">
-            <p className="mono">{connectionMode === "complete" ? "Ready" : "Now"}</p>
+          <div className={`agent-active-card card${hasConnectionIssue ? " agent-active-card-error" : ""}`}>
+            <div className="agent-active-card-head">
+              <p className="mono">{connectionMode === "complete" ? "Ready" : "Current agent"}</p>
+              {hasConnectionIssue ? (
+                <span className="agent-active-state">
+                  <AlertTriangle size={12} aria-hidden="true" />
+                  Attention
+                </span>
+              ) : null}
+            </div>
             <strong>{connectionMode === "complete" ? "Generation complete" : activeAgent.name}</strong>
             <span>{currentMessage}</span>
           </div>
@@ -385,22 +431,21 @@ export function AgentProgressExperience() {
             </div>
           ) : null}
 
-          {connectionMode === "error" ? (
-            <div className="agent-progress-notice agent-progress-notice-error">
-              <AlertTriangle size={15} aria-hidden="true" />
-              {currentMessage}
+          <div className="agent-step-list-card card">
+            <div className="agent-step-list-head">
+              <p className="mono">Agent queue</p>
+              <span>{AGENT_STEPS.length} steps</span>
             </div>
-          ) : null}
-
-          <div className="agent-step-list" aria-label="Agent progress">
-            {AGENT_STEPS.map((agent, index) => (
-              <AgentStepRow
-                agent={agent}
-                index={index}
-                key={agent.id}
-                status={statuses[index]}
-              />
-            ))}
+            <div className="agent-step-list" aria-label="Agent progress">
+              {AGENT_STEPS.map((agent, index) => (
+                <AgentStepRow
+                  agent={agent}
+                  index={index}
+                  key={agent.id}
+                  status={statuses[index]}
+                />
+              ))}
+            </div>
           </div>
         </aside>
 
@@ -457,6 +502,11 @@ export function AgentProgressExperience() {
 
 function displayUrl(value: string) {
   return value.replace(/^https?:\/\//, "").replace(/\/+$/, "");
+}
+
+function initialForName(value: string) {
+  const first = value.trim().charAt(0).toUpperCase();
+  return first || "O";
 }
 
 function AgentStepRow({

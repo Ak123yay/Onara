@@ -194,6 +194,8 @@ Execution rule:
 ### Phase 25 — Account Page
 
 - [ ] Plan display + upgrade CTA
+- [x] Enforce active site limits before generation starts and in Supabase (Free/Starter 1, Pro/Trial 3)
+- [x] Allow users to delete finished/failed sites from the dashboard and free the site slot
 - [ ] Plan gating for Agent 6 model picker
 - [ ] Cancellation flow (deploy placeholder page to Cloudflare)
 
@@ -208,6 +210,7 @@ Execution rule:
 - [x] Generated-site visual quality gate: move Style Agent to GLM, reject generic centered brochure layouts, and require professional Onara-style local-business composition before deploy
 - [x] Generated-site photo resolver: convert Google Places photo references into deploy-safe image URLs and require photo usage when photos are available
 - [x] Generated-site Onara theme enforcement: require paper/ink/terracotta variables, Fraunces/Inter/mono typography, low-radius panels, and Onara QA gate before deploy
+- [x] Build progress page redesign: structured live build summary, status cards, agent queue, and cleaner preview workspace
 - [ ] 11 production fixes (document each in wiki as identified)
 - [ ] PM2 setup on pipeline server
 - [ ] UptimeRobot monitoring on /health endpoint

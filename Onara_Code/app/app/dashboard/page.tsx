@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { DeleteSiteButton } from "@/components/dashboard/DeleteSiteButton";
 import { createClient } from "@/lib/supabase/server";
 
 type ProjectStatus = "queued" | "generating" | "deploying" | "live" | "failed" | "suspended";
@@ -194,8 +195,8 @@ function SiteCard({ project, showUrl }: { project: Project; showUrl: boolean }) 
       <div className="site-card-actions">
         {resumeHref ? (
           <Link className="btn btn-accent btn-sm" href={resumeHref}>
-            <RefreshCw aria-hidden="true" size={14} />
-            Resume build
+            <Eye aria-hidden="true" size={14} />
+            View live build
           </Link>
         ) : (
           <Link className="btn btn-soft btn-sm" href={`/api/preview/${project.id}`} target="_blank">
@@ -219,6 +220,12 @@ function SiteCard({ project, showUrl }: { project: Project; showUrl: boolean }) 
             Revise
           </button>
         )}
+        <DeleteSiteButton
+          businessName={project.business_name}
+          disabled={activeBuild}
+          disabledReason="This site is still building. Wait until it finishes or fails before deleting it."
+          projectId={project.id}
+        />
       </div>
     </article>
   );

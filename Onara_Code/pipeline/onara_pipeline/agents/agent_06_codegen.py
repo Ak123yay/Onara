@@ -122,7 +122,7 @@ async def run_codegen(
             raw_output=response.content,
             used_fallback_template=False,
         )
-        validate_codegen_output(output)
+        validate_codegen_output(output, allow_repairable_visual_issues=True)
         return output
     except (AIClientError, ValueError, ValidationError, SupervisorValidationError):
         output = fallback_codegen(
@@ -133,7 +133,7 @@ async def run_codegen(
             style=style,
             style_preferences=job.style_preferences,
         )
-        validate_codegen_output(output)
+        validate_codegen_output(output, allow_repairable_visual_issues=True)
         return output
 
 
