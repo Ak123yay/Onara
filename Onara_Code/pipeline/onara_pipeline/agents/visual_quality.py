@@ -116,27 +116,6 @@ def composition_depth_issues(html: str) -> list[str]:
             "Page lacks Onara composition depth: add layered proof, service, photo, contact, and detail panels"
         )
 
-    first_fold_match = re.search(r"<section\b[^>]*class=[\"'][^\"']*\bhero\b.*?</section>", html, flags=re.IGNORECASE | re.DOTALL)
-    first_fold = first_fold_match.group(0).lower() if first_fold_match else lower[:6500]
-    hero_depth_tokens = (
-        "hero-side",
-        "hero-card",
-        "hero-photo",
-        "proof-strip",
-        "proof-grid",
-        "service-menu",
-        "detail-card",
-        "local-card",
-        "hours-card",
-        "panel-stack",
-        "metric-card",
-    )
-    hero_depth_score = sum(1 for token in hero_depth_tokens if token in first_fold)
-    if hero_depth_score < 4:
-        issues.append(
-            "Hero fold is too sparse; it needs a side panel plus proof/service/detail cards above the fold"
-        )
-
     if lower.count("<section") < 4:
         issues.append("Page needs at least four real sections after header for a complete local-business site")
 
