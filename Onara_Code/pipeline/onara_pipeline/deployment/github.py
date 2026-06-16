@@ -1,9 +1,11 @@
 import inspect
+import base64
 import re
 import time
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from typing import Any
+from urllib.parse import quote
 
 import httpx
 
@@ -32,6 +34,22 @@ class GitHubCommitResult:
             "commit_sha": self.commit_sha,
             "commit_url": self.commit_url,
             "file_count": self.file_count,
+            "path_prefix": self.path_prefix,
+            "repository": self.repository,
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class GitHubSiteFilesResult:
+    branch: str
+    files: dict[str, str]
+    path_prefix: str
+    repository: str
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "branch": self.branch,
+            "file_count": len(self.files),
             "path_prefix": self.path_prefix,
             "repository": self.repository,
         }
@@ -154,6 +172,87 @@ class GitHubDeploymentClient:
             if close_client:
                 await client.aclose()
 
+    async def fetch_site_files(self, *, project_id: str) -> GitHubSiteFilesResult:
+        path_prefix = site_path_prefix(project_id)
+        close_client = self._http_client is None
+        client = self._http_client or httpx.AsyncClient(base_url=self.api_url, timeout=self.timeout)
+
+        try:
+            token = await self._installation_token(client)
+            ref = await self._request_json(
+                client,
+                "GET",
+                f"/repos/{self.repo_owner}/{self.repo_name}/git/ref/heads/{self.branch}",
+                auth_token=token,
+            )
+            base_commit_sha = _nested(ref, "object", "sha")
+            if not isinstance(base_commit_sha, str) or not base_commit_sha:
+                raise GitHubDeploymentError("GitHub ref response did not include a base commit SHA")
+
+            tree = await self._request_json(
+                client,
+                "GET",
+                f"/repos/{self.repo_owner}/{self.repo_name}/git/trees/{base_commit_sha}?recursive=1",
+                auth_token=token,
+            )
+            entries = tree.get("tree")
+            if not isinstance(entries, list):
+                raise GitHubDeploymentError("GitHub tree response did not include files")
+
+            paths = [
+                str(entry.get("path"))
+                for entry in entries
+                if isinstance(entry, dict)
+                and entry.get("type") == "blob"
+                and isinstance(entry.get("path"), str)
+                and str(entry.get("path")).startswith(f"{path_prefix}/")
+            ]
+            if not paths:
+                raise GitHubDeploymentError(f"No committed files found at {path_prefix}")
+
+            files: dict[str, str] = {}
+            for path in sorted(paths):
+                artifact_path = path.removeprefix(f"{path_prefix}/")
+                content = await self._fetch_file_content(client, path, token)
+                if content is not None:
+                    files[artifact_path] = content
+
+            if not files:
+                raise GitHubDeploymentError(f"No readable committed files found at {path_prefix}")
+
+            return GitHubSiteFilesResult(
+                branch=self.branch,
+                files=files,
+                path_prefix=path_prefix,
+                repository=f"{self.repo_owner}/{self.repo_name}",
+            )
+        finally:
+            if close_client:
+                await client.aclose()
+
+    async def _fetch_file_content(
+        self,
+        client: httpx.AsyncClient,
+        path: str,
+        auth_token: str,
+    ) -> str | None:
+        encoded_path = quote(path, safe="/")
+        payload = await self._request_json(
+            client,
+            "GET",
+            f"/repos/{self.repo_owner}/{self.repo_name}/contents/{encoded_path}?ref={quote(self.branch, safe='')}",
+            auth_token=auth_token,
+        )
+        encoding = payload.get("encoding")
+        content = payload.get("content")
+        if encoding != "base64" or not isinstance(content, str):
+            return None
+
+        try:
+            return base64.b64decode(content).decode("utf-8")
+        except (UnicodeDecodeError, ValueError):
+            return None
+
     async def _installation_token(self, client: httpx.AsyncClient) -> str:
         if self._token_provider:
             token = self._token_provider()
@@ -243,6 +342,28 @@ async def commit_deployment_files(
         job_id=job_id,
         project_id=project_id,
     )
+
+
+async def fetch_site_files(
+    *,
+    project_id: str,
+    settings: Settings,
+) -> GitHubSiteFilesResult:
+    missing = missing_github_settings(settings)
+    if missing:
+        raise GitHubDeploymentError(f"Missing GitHub deployment settings: {', '.join(missing)}")
+
+    client = GitHubDeploymentClient(
+        api_url=settings.github_api_url,
+        app_id=str(settings.github_app_id),
+        branch=settings.github_repo_branch,
+        installation_id=str(settings.github_app_installation_id),
+        private_key=str(settings.github_app_private_key),
+        repo_name=settings.github_repo_name,
+        repo_owner=str(settings.github_repo_owner),
+        timeout=settings.ai_request_timeout,
+    )
+    return await client.fetch_site_files(project_id=project_id)
 
 
 def missing_github_settings(settings: Settings) -> list[str]:

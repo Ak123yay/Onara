@@ -20,6 +20,22 @@ class GenerateRequest(BaseModel):
     style_preferences: dict[str, Any] = Field(default_factory=dict)
 
 
+class RevisionStartRequest(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    business_data: dict[str, Any] = Field(default_factory=dict)
+    cloudflare_project_name: str | None = None
+    github_path: str | None = None
+    instruction: str = Field(min_length=3, max_length=4000)
+    is_trial: bool = False
+    project_id: str = Field(min_length=1)
+    public_url: str | None = None
+    revision_id: str = Field(min_length=1)
+    style_preferences: dict[str, Any] = Field(default_factory=dict)
+    user_id: str = Field(min_length=1)
+    user_plan: PlanType = "free"
+
+
 class JobEnqueueResponse(BaseModel):
     agent_6_model: str
     agent_6_model_reason: str | None = None
@@ -30,6 +46,29 @@ class JobEnqueueResponse(BaseModel):
     deduped: bool
     queue_position: int | None
     status: str
+
+
+class RevisionEnqueueResponse(BaseModel):
+    job_id: str
+    queue_position: int | None
+    revision_id: str
+    status: str
+
+
+class RevisionStatusResponse(BaseModel):
+    affected_components: list[str] = Field(default_factory=list)
+    cloudflare_deployment_url: str | None = None
+    created_at: datetime
+    current_step: str | None = None
+    error_message: str | None = None
+    github_commit_sha: str | None = None
+    job_id: str
+    progress_log: list[dict[str, Any]] = Field(default_factory=list)
+    public_url: str | None = None
+    result_public_url: str | None = None
+    revision_id: str
+    status: str
+    updated_at: datetime
 
 
 class HealthResponse(BaseModel):

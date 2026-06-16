@@ -54,6 +54,7 @@ Onara visual quality bar:
 - The services section must begin immediately after the hero content. Avoid designs where the left hero column ends early while a taller right column forces a large blank area above Services.
 - If an hours card says the same hours every day, the card heading must be simple ("Open 24 hours" or "Open daily"), with the schedule below; never render awkward text like "Daily Open 24 hours" as a large heading.
 - Header must use one clean horizontal alignment: brand, nav, and CTA share the same vertical centerline; avoid CTA blocks that sit higher/lower than the logo or nav.
+- Use the whole browser width. Do not wrap the entire page, header, hero, or main sections in a narrow centered max-width shell; only constrain inner text lines and individual cards.
 - Hours cards must not squeeze the summary, phone, CTA, and weekly list into one cramped row. Use a small two-column card: summary left, phone right, CTA/list below.
 - Use strong editorial type scale, low-radius cards, section contrast, atmospheric background treatment, and conversion-first CTAs.
 - Use CSS grid, grid-template-columns, minmax/repeat, clamp() typography, and at least one gradient/texture/shaped visual treatment.
@@ -202,6 +203,7 @@ Final Agent 6 requirements:
 - Do not create a first-fold layout where Services starts far below the proof cards because the right hero column is taller than the left.
 - For same-hours-every-day businesses, use "Open 24 hours" or "Open daily" as the hours-card headline, then render the weekly list in compact rows.
 - Header layout must be a stable grid or flex row with align-items:center; brand, nav, and CTA should look vertically centered together.
+- The page should feel full-screen on desktop: header, hero, and sections span 100% width with responsive side padding; avoid a single centered 1100px wrapper around the whole site.
 - Hours-card layout must reserve separate space for the phone number and avoid headline collisions or awkward wrapping.
 - Include at least four named composition surfaces in or near the first fold: hero-side, panel-stack, proof-strip, proof-grid, service-menu, local-card, hours-card, detail-card, review-card, contact-card.
 - Include at least three distinct card types across the page: service-card, proof-card, review-card, local-card, contact-card, hours-card, metric-card, or detail-card.

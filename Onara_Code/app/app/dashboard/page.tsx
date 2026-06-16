@@ -13,6 +13,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { CopyLinkButton } from "@/components/dashboard/CopyLinkButton";
 import { DeleteSiteButton } from "@/components/dashboard/DeleteSiteButton";
+import { RetryBuildButton } from "@/components/dashboard/RetryBuildButton";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
@@ -213,6 +214,10 @@ function todayKey() {
   }).format(new Date());
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
 function normalizeDashboardBrief(
   value: unknown,
   generatedOn: string | null,
@@ -272,11 +277,13 @@ async function cacheDashboardBrief(
   supabase: ReturnType<typeof createAdminClient>,
   userId: string,
   brief: DashboardBrief,
+  cacheKey: string,
 ) {
   await supabase
     .from("users")
     .update({
       dashboard_brief: {
+        cache_key: cacheKey,
         generated_on: brief.generated_on,
         headline: brief.headline,
         model: brief.model ?? null,
@@ -308,13 +315,15 @@ async function getDashboardBrief({
   userId: string;
 }): Promise<DashboardBrief> {
   const today = todayKey();
+  const cacheKey = dashboardBriefCacheKey({ profile, projectList });
   const cachedRow = await loadDashboardBriefCache(supabase, userId);
   const cachedBrief = normalizeDashboardBrief(
     cachedRow?.dashboard_brief,
     cachedRow?.dashboard_brief_generated_on ?? null,
   );
+  const cachedCacheKey = dashboardBriefCacheKeyFromRecord(cachedRow?.dashboard_brief);
 
-  if (cachedBrief && cachedRow?.dashboard_brief_generated_on === today) {
+  if (cachedBrief && cachedRow?.dashboard_brief_generated_on === today && cachedCacheKey === cacheKey) {
     return cachedBrief;
   }
 
@@ -327,9 +336,46 @@ async function getDashboardBrief({
     today,
   });
 
-  await cacheDashboardBrief(supabase, userId, generatedBrief);
+  await cacheDashboardBrief(supabase, userId, generatedBrief, cacheKey);
 
   return generatedBrief;
+}
+
+function dashboardBriefCacheKey({
+  profile,
+  projectList,
+}: {
+  profile: Profile | null;
+  projectList: Project[];
+}) {
+  const profilePart = [
+    profile?.plan ?? "free",
+    profile?.is_trial ? "trial" : "paid",
+    profile?.revisions_used ?? 0,
+    profile?.revisions_limit ?? 0,
+  ].join(":");
+  const projectPart = projectList
+    .map((project) => [
+      project.id,
+      project.status,
+      project.public_url ?? "",
+      project.pipeline_job_id ?? "",
+      project.updated_at,
+      project.last_deployed_at ?? "",
+      project.error_message ?? "",
+    ].join(":"))
+    .sort()
+    .join("|");
+
+  return `${profilePart}::${projectList.length}::${projectPart}`;
+}
+
+function dashboardBriefCacheKeyFromRecord(value: unknown) {
+  if (!isRecord(value)) {
+    return null;
+  }
+
+  return typeof value.cache_key === "string" ? value.cache_key : null;
 }
 
 async function requestDashboardBrief({
@@ -574,12 +620,7 @@ function SiteCard({ project, showUrl }: { project: Project; showUrl: boolean }) 
             <Eye aria-hidden="true" size={14} />
             View live build
           </Link>
-        ) : (
-          <Link className="btn btn-soft btn-sm" href={`/api/preview/${project.id}`} target="_blank">
-            <Eye aria-hidden="true" size={14} />
-            Preview
-          </Link>
-        )}
+        ) : null}
         {siteHref ? (
           <Link className="btn btn-soft btn-sm" href={siteHref} target="_blank">
             <ExternalLink aria-hidden="true" size={14} />
@@ -587,15 +628,17 @@ function SiteCard({ project, showUrl }: { project: Project; showUrl: boolean }) 
           </Link>
         ) : null}
         {project.status === "failed" ? (
-          <Link className="btn btn-accent btn-sm" href={`/dashboard/build?retry=${project.id}`}>
+          <RetryBuildButton projectId={project.id} />
+        ) : project.status === "live" ? (
+          <Link className="btn btn-accent btn-sm" href={`/dashboard/sites/${project.id}/revise`}>
             <RefreshCw aria-hidden="true" size={14} />
-            Retry
+            Revise
           </Link>
-        ) : (
+        ) : !resumeHref ? (
           <button className="btn btn-soft btn-sm" disabled type="button">
             Revise
           </button>
-        )}
+        ) : null}
         <DeleteSiteButton
           businessName={project.business_name}
           disabled={activeBuild}
@@ -701,10 +744,10 @@ export default async function DashboardPage() {
       : "No public sites yet";
   const workspaceStatus = activeBuilds > 0
     ? `${activeBuilds} build${activeBuilds === 1 ? " is" : "s are"} still running.`
-    : failedCount > 0
-      ? `${failedCount} site${failedCount === 1 ? " needs" : "s need"} attention before publishing.`
-      : hasSites
-        ? "Everything is clear. Copy a link, preview a draft, or start another site."
+      : failedCount > 0
+        ? `${failedCount} site${failedCount === 1 ? " needs" : "s need"} attention before publishing.`
+        : hasSites
+        ? "Everything is clear. Copy a link, revise a live site, or start another site."
         : "Search a Google Business Profile to create the first draft.";
   const dashboardBrief = await getDashboardBrief({
     activeBuilds,

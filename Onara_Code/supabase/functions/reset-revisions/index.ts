@@ -20,7 +20,7 @@ Deno.serve(async (request) => {
       revisions_used: 0,
       revisions_reset_at: nextResetAt.toISOString(),
     })
-    .eq("plan", "free")
+    .neq("revisions_limit", -1)
     .select("id");
 
   if (error) {

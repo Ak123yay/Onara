@@ -5,7 +5,7 @@ type PipelineStatusResponse = {
   cloudflare_deployment_url?: string | null;
   error_message?: string | null;
   job_id: string;
-  status: "queued" | "running" | "completed" | "failed";
+  status: "queued" | "running" | "completed" | "done" | "failed";
 };
 
 type PipelineStatusError = {
@@ -43,7 +43,7 @@ export async function GET(
     return new Response(status.message, { status: status.statusCode });
   }
 
-  if (status.status !== "completed") {
+  if (status.status !== "completed" && status.status !== "done") {
     return Response.redirect(`${appBaseUrl()}/dashboard/build/progress?jobId=${encodeURIComponent(jobId)}`, 307);
   }
 
@@ -88,6 +88,42 @@ async function fetchPipelineStatus(jobId: string): Promise<PipelineStatusRespons
 
   try {
     const response = await fetch(`${pipelineServerUrl}/pipeline/status/${encodeURIComponent(jobId)}`, {
+      cache: "no-store",
+      headers: {
+        "X-Pipeline-Secret": pipelineSecret,
+      },
+    });
+    const body = await response.json().catch(() => null);
+
+    if (!response.ok) {
+      if (response.status === 404) {
+        return await fetchPipelineRevisionStatus(jobId, pipelineServerUrl, pipelineSecret);
+      }
+
+      return {
+        error: "pipeline_status_failed",
+        message: errorMessageFromBody(body) || "Site not found.",
+        statusCode: response.status === 404 ? 404 : 502,
+      };
+    }
+
+    return body as PipelineStatusResponse;
+  } catch {
+    return {
+      error: "pipeline_unavailable",
+      message: "Public site lookup is unavailable.",
+      statusCode: 503,
+    };
+  }
+}
+
+async function fetchPipelineRevisionStatus(
+  jobId: string,
+  pipelineServerUrl: string,
+  pipelineSecret: string,
+): Promise<PipelineStatusResponse | PipelineStatusError> {
+  try {
+    const response = await fetch(`${pipelineServerUrl}/pipeline/revisions/status/${encodeURIComponent(jobId)}`, {
       cache: "no-store",
       headers: {
         "X-Pipeline-Secret": pipelineSecret,

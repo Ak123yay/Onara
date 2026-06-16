@@ -5,6 +5,7 @@ from onara_pipeline.config import Settings, get_settings
 from onara_pipeline.dashboard_brief import build_dashboard_brief
 from onara_pipeline.health import build_health_response
 from onara_pipeline.job_queue import JobQueue
+from onara_pipeline.revision_queue import RevisionQueue
 from onara_pipeline.schemas import (
     DashboardBriefRequest,
     DashboardBriefResponse,
@@ -15,10 +16,14 @@ from onara_pipeline.schemas import (
     RAGSearchRequest,
     RAGSearchResponse,
     RAGSearchResult,
+    RevisionEnqueueResponse,
+    RevisionStartRequest,
+    RevisionStatusResponse,
 )
 
 app = FastAPI(title="Onara Pipeline Server", version="0.1.0")
 queue = JobQueue()
+revision_queue = RevisionQueue()
 
 
 def verify_pipeline_secret(
@@ -108,6 +113,39 @@ async def pipeline_status(job_id: str) -> JobStatusResponse:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Job not found")
 
     return JobStatusResponse.from_job(job, queue_position=await queue.position(job_id))
+
+
+@app.post(
+    "/pipeline/revisions/start",
+    response_model=RevisionEnqueueResponse,
+    status_code=status.HTTP_202_ACCEPTED,
+    dependencies=[Depends(verify_pipeline_secret)],
+)
+async def start_revision(body: RevisionStartRequest) -> RevisionEnqueueResponse:
+    settings = get_settings()
+    job = await revision_queue.enqueue(body)
+    await revision_queue.start_workers(settings)
+
+    return RevisionEnqueueResponse(
+        job_id=job.job_id,
+        queue_position=await revision_queue.position(job.job_id),
+        revision_id=job.revision_id,
+        status=job.status,
+    )
+
+
+@app.get(
+    "/pipeline/revisions/status/{job_id}",
+    response_model=RevisionStatusResponse,
+    dependencies=[Depends(verify_pipeline_secret)],
+)
+async def revision_status(job_id: str) -> RevisionStatusResponse:
+    revision = await revision_queue.status(job_id)
+
+    if not revision:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Revision job not found")
+
+    return revision
 
 
 @app.post(

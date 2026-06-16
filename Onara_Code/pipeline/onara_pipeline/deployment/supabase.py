@@ -26,6 +26,20 @@ class SupabaseProjectStoreResult:
         }
 
 
+@dataclass(frozen=True, slots=True)
+class SupabaseRevisionStoreResult:
+    revision_id: str
+    status: str
+    error: str | None = None
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "error": self.error,
+            "revision_id": self.revision_id,
+            "status": self.status,
+        }
+
+
 def missing_supabase_project_settings(settings: Settings) -> list[str]:
     missing: list[str] = []
     if not settings.supabase_url:
@@ -33,6 +47,115 @@ def missing_supabase_project_settings(settings: Settings) -> list[str]:
     if not _service_role_key(settings):
         missing.append("SUPABASE_SERVICE_ROLE_KEY")
     return missing
+
+
+async def update_revision_record(
+    *,
+    revision_id: str,
+    settings: Settings,
+    status: str,
+    user_id: str,
+    affected_components: list[str] | None = None,
+    charged_at: str | None = None,
+    cloudflare_deployment_url: str | None = None,
+    completed_at: str | None = None,
+    error_message: str | None = None,
+    github_commit_sha: str | None = None,
+    pipeline_job_id: str | None = None,
+    progress_log: list[dict[str, Any]] | None = None,
+    result_public_url: str | None = None,
+    started_at: str | None = None,
+    http_client: httpx.AsyncClient | None = None,
+) -> SupabaseRevisionStoreResult:
+    missing = missing_supabase_project_settings(settings)
+    if missing:
+        return SupabaseRevisionStoreResult(
+            error=f"Missing Supabase revision settings: {', '.join(missing)}",
+            revision_id=revision_id,
+            status="skipped",
+        )
+
+    payload: dict[str, Any] = {
+        "status": status,
+    }
+    optional_values = {
+        "affected_components": affected_components,
+        "charged_at": charged_at,
+        "cloudflare_deployment_url": cloudflare_deployment_url,
+        "completed_at": completed_at,
+        "error_message": error_message,
+        "github_commit_sha": github_commit_sha,
+        "pipeline_job_id": pipeline_job_id,
+        "progress_log": progress_log,
+        "result_public_url": result_public_url,
+        "started_at": started_at,
+    }
+    payload.update({key: value for key, value in optional_values.items() if value is not None})
+
+    service_role_key = _service_role_key(settings)
+    if not settings.supabase_url or not service_role_key:
+        raise SupabaseProjectStoreError("Supabase settings unexpectedly missing after validation")
+
+    close_client = http_client is None
+    client = http_client or httpx.AsyncClient(timeout=min(settings.ai_request_timeout, 20.0))
+    try:
+        response = await client.patch(
+            f"{settings.supabase_url}/rest/v1/revisions",
+            params={"id": f"eq.{revision_id}", "user_id": f"eq.{user_id}"},
+            headers={
+                "Authorization": f"Bearer {service_role_key}",
+                "Content-Type": "application/json",
+                "Prefer": "return=minimal",
+                "apikey": service_role_key,
+            },
+            json=payload,
+        )
+        if response.status_code not in {200, 204}:
+            raise SupabaseProjectStoreError(_supabase_error_message(response))
+    finally:
+        if close_client:
+            await client.aclose()
+
+    return SupabaseRevisionStoreResult(revision_id=revision_id, status="stored")
+
+
+async def consume_revision_credit(
+    *,
+    settings: Settings,
+    user_id: str,
+    http_client: httpx.AsyncClient | None = None,
+) -> dict[str, Any] | None:
+    missing = missing_supabase_project_settings(settings)
+    if missing:
+        return None
+
+    service_role_key = _service_role_key(settings)
+    if not settings.supabase_url or not service_role_key:
+        raise SupabaseProjectStoreError("Supabase settings unexpectedly missing after validation")
+
+    close_client = http_client is None
+    client = http_client or httpx.AsyncClient(timeout=min(settings.ai_request_timeout, 20.0))
+    try:
+        response = await client.post(
+            f"{settings.supabase_url}/rest/v1/rpc/consume_revision_credit",
+            headers={
+                "Authorization": f"Bearer {service_role_key}",
+                "Content-Type": "application/json",
+                "apikey": service_role_key,
+            },
+            json={"p_user_id": user_id},
+        )
+        if response.status_code not in {200, 204}:
+            raise SupabaseProjectStoreError(_supabase_error_message(response))
+        if not response.content:
+            return None
+        payload = response.json()
+        if isinstance(payload, list) and payload and isinstance(payload[0], dict):
+            return payload[0]
+        return payload if isinstance(payload, dict) else None
+    finally:
+        if close_client:
+            await client.aclose()
 
 
 async def upsert_project_record(

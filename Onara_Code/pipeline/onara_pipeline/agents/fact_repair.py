@@ -1846,14 +1846,57 @@ ONARA_SPACING_LOCK_CSS = """
       body {
         margin: 0 !important;
         padding: 0 !important;
+        width: 100% !important;
       }
 
       body {
+        max-width: none !important;
         overflow-x: clip;
+      }
+
+      body > .site-shell,
+      body > .page-shell,
+      body > .site-wrapper,
+      body > .page-wrapper,
+      body > .site-wrap,
+      body > .page-wrap,
+      body > main,
+      .site-shell,
+      .page-shell,
+      .site-wrapper,
+      .page-wrapper,
+      .site-wrap,
+      .page-wrap {
+        margin-inline: 0 !important;
+        max-width: none !important;
+        width: 100% !important;
       }
 
       main {
         overflow: clip;
+      }
+
+      .site-header,
+      header.site-header,
+      [data-component="site_header"],
+      [data-component="site-header"],
+      main > section,
+      main > [data-component] {
+        margin-inline: 0 !important;
+        max-width: none !important;
+        width: 100% !important;
+      }
+
+      .site-header,
+      header.site-header,
+      [data-component="site_header"],
+      [data-component="site-header"],
+      .hero,
+      section.hero,
+      [data-component="hero"],
+      main > section:not([data-component="hero"]),
+      section.optional-section {
+        padding-inline: clamp(24px, 6vw, 92px) !important;
       }
 
       .hero,

@@ -12,7 +12,9 @@ from onara_pipeline.deployment.github import (
     GitHubCommitResult,
     GitHubDeploymentClient,
     GitHubDeploymentError,
+    GitHubSiteFilesResult,
     commit_deployment_files,
+    fetch_site_files,
     missing_github_settings,
     site_path_prefix,
 )
@@ -26,8 +28,11 @@ from onara_pipeline.deployment.parser import (
 from onara_pipeline.deployment.supabase import (
     SupabaseProjectStoreError,
     SupabaseProjectStoreResult,
+    SupabaseRevisionStoreResult,
+    consume_revision_credit,
     missing_supabase_project_settings,
     project_record_payload,
+    update_revision_record,
     upsert_project_record,
 )
 
@@ -41,13 +46,17 @@ __all__ = [
     "GitHubCommitResult",
     "GitHubDeploymentClient",
     "GitHubDeploymentError",
+    "GitHubSiteFilesResult",
     "SupabaseProjectStoreError",
     "SupabaseProjectStoreResult",
+    "SupabaseRevisionStoreResult",
     "build_deployment_artifact",
     "cloudflare_project_name",
     "commit_deployment_files",
+    "consume_revision_credit",
     "deploy_to_cloudflare_pages",
     "extract_final_html",
+    "fetch_site_files",
     "missing_cloudflare_settings",
     "missing_github_settings",
     "missing_supabase_project_settings",
@@ -56,4 +65,5 @@ __all__ = [
     "site_path_prefix",
     "split_atomic_files",
     "upsert_project_record",
+    "update_revision_record",
 ]
