@@ -10,9 +10,14 @@ type ProjectForDelete = {
   business_name: string;
   cloudflare_project_name: string | null;
   id: string;
+  pipeline_job_id: string | null;
   public_url: string | null;
   status: ProjectStatus;
 };
+
+type PipelineDeleteCheck =
+  | { deletable: true; reason: "missing_job_id" | "pipeline_finished" | "pipeline_not_found" }
+  | { deletable: false; message: string };
 
 type CloudflareDeleteResult =
   | { projectName: string | null; status: "deleted" | "skipped" }
@@ -43,7 +48,7 @@ export async function DELETE(
   const db = createAdminClient();
   const { data: project, error: lookupError } = await db
     .from("projects")
-    .select("id, business_name, status, cloudflare_project_name, public_url")
+    .select("id, business_name, status, pipeline_job_id, cloudflare_project_name, public_url")
     .eq("id", projectId)
     .eq("user_id", user.id)
     .maybeSingle<ProjectForDelete>();
@@ -60,13 +65,17 @@ export async function DELETE(
   }
 
   if (ACTIVE_BUILD_STATUSES.includes(project.status)) {
-    return NextResponse.json(
-      {
-        error: "active_build_cannot_be_deleted",
-        message: "This site is still building. Wait until it finishes or fails before deleting it.",
-      },
-      { status: 409 },
-    );
+    const deleteCheck = await activeBuildDeleteCheck(project);
+
+    if (!deleteCheck.deletable) {
+      return NextResponse.json(
+        {
+          error: "active_build_cannot_be_deleted",
+          message: deleteCheck.message,
+        },
+        { status: 409 },
+      );
+    }
   }
 
   const cloudflareResult = await deleteCloudflareProject(project);
@@ -100,6 +109,59 @@ export async function DELETE(
     deleted: true,
     projectId: project.id,
   });
+}
+
+async function activeBuildDeleteCheck(project: ProjectForDelete): Promise<PipelineDeleteCheck> {
+  if (!project.pipeline_job_id) {
+    return { deletable: true, reason: "missing_job_id" };
+  }
+
+  const pipelineServerUrl = process.env.PIPELINE_SERVER_URL?.replace(/\/+$/, "");
+  const pipelineSecret = process.env.PIPELINE_API_SECRET;
+
+  if (!pipelineServerUrl || !pipelineSecret) {
+    return {
+      deletable: false,
+      message: "This site is marked building and pipeline status is not configured, so it cannot be safely deleted yet.",
+    };
+  }
+
+  try {
+    const response = await fetch(`${pipelineServerUrl}/pipeline/status/${encodeURIComponent(project.pipeline_job_id)}`, {
+      cache: "no-store",
+      headers: {
+        "X-Pipeline-Secret": pipelineSecret,
+      },
+    });
+
+    if (response.status === 404) {
+      return { deletable: true, reason: "pipeline_not_found" };
+    }
+
+    if (!response.ok) {
+      return {
+        deletable: false,
+        message: "This site is marked building and pipeline status could not be confirmed. Try again after the pipeline reconnects.",
+      };
+    }
+
+    const payload = await response.json().catch(() => null);
+    const status = isPlainObject(payload) && typeof payload.status === "string" ? payload.status : null;
+
+    if (status === "completed" || status === "failed") {
+      return { deletable: true, reason: "pipeline_finished" };
+    }
+
+    return {
+      deletable: false,
+      message: "This site is still building. Wait until it finishes or fails before deleting it.",
+    };
+  } catch {
+    return {
+      deletable: false,
+      message: "This site is marked building and the pipeline server is unreachable. Try again after the pipeline reconnects.",
+    };
+  }
 }
 
 async function deleteCloudflareProject(project: ProjectForDelete): Promise<CloudflareDeleteResult> {

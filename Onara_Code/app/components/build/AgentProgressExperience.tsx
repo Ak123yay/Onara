@@ -361,49 +361,52 @@ export function AgentProgressExperience() {
             Dashboard
           </Link>
 
-          <div className="agent-progress-heading card">
-            <div className="agent-progress-titlebar">
-              <p className="eyebrow">Build command center</p>
+          <section className="agent-command-card card">
+            <div className="agent-command-card-top">
+              <div className="agent-command-card-copy">
+                <p className="eyebrow">Build command center</p>
+                <h1 className="serif">{businessName}</h1>
+                <span className="agent-progress-heading-meta">{businessMeta}</span>
+              </div>
               <div className={`agent-progress-kicker agent-progress-kicker-${connectionMode}`}>
                 <span>{connectionLabel(connectionMode)}</span>
               </div>
             </div>
-            <h1 className="serif">{businessName}</h1>
-            <span className="agent-progress-heading-meta">{businessMeta}</span>
+
+            <div className="agent-command-meter">
+              <div className="agent-progress-meter-head">
+                <p className="mono">Progress</p>
+                <strong>{completedCount} / {AGENT_STEPS.length}</strong>
+              </div>
+              <div className="agent-progress-bar" aria-label={`${progress}% complete`}>
+                <span style={{ width: `${progress}%` }} />
+              </div>
+              <div className="agent-progress-meter-footer">
+                <span>{progress}% complete</span>
+                <span>{etaSeconds}s est.</span>
+              </div>
+            </div>
+
+            <dl className="agent-progress-stats" aria-label="Build summary">
+              <div className="agent-progress-stat">
+                <dt>Status</dt>
+                <dd>{progressLabel}</dd>
+              </div>
+              <div className="agent-progress-stat">
+                <dt>Agents</dt>
+                <dd>{completedCount} / {AGENT_STEPS.length}</dd>
+              </div>
+              <div className="agent-progress-stat">
+                <dt>ETA</dt>
+                <dd>{etaLabel}</dd>
+              </div>
+            </dl>
+
             <div className="agent-progress-save-note">
               <Clock3 aria-hidden="true" size={15} />
-              <span>Saved. Leave anytime and reopen live status from Dashboard.</span>
+              <span>Saved automatically. You can leave and reopen live status from the dashboard.</span>
             </div>
-          </div>
-
-          <dl className="agent-progress-stats card" aria-label="Build summary">
-            <div className="agent-progress-stat">
-              <dt>Progress</dt>
-              <dd>{progressLabel}</dd>
-            </div>
-            <div className="agent-progress-stat">
-              <dt>Agents</dt>
-              <dd>{completedCount} / {AGENT_STEPS.length}</dd>
-            </div>
-            <div className="agent-progress-stat">
-              <dt>Time</dt>
-              <dd>{etaLabel}</dd>
-            </div>
-          </dl>
-
-          <div className="agent-progress-meter card">
-            <div className="agent-progress-meter-head">
-              <p className="mono">Progress</p>
-              <strong>{completedCount} / {AGENT_STEPS.length}</strong>
-            </div>
-            <div className="agent-progress-bar" aria-label={`${progress}% complete`}>
-              <span style={{ width: `${progress}%` }} />
-            </div>
-            <div className="agent-progress-meter-footer">
-              <span>{progress}% complete</span>
-              <span>{etaSeconds}s est.</span>
-            </div>
-          </div>
+          </section>
 
           <div className={`agent-active-card card${hasConnectionIssue ? " agent-active-card-error" : ""}`}>
             <div className="agent-active-card-head">
