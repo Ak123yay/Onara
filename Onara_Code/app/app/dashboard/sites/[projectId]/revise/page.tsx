@@ -100,12 +100,18 @@ export default async function ReviseSitePage(
   return (
     <main className="revision-page">
       <div className="revision-page-header">
-        <div>
-          <Link className="mono revision-back-link" href="/dashboard">
-            &larr; Dashboard
+        <div className="revision-page-brand">
+          <Link className="onara-logo revision-page-logo" href="/dashboard">
+            <span className="onara-logo-mark" aria-hidden="true">
+              <span className="onara-logo-dot" />
+            </span>
+            <span className="onara-logo-word">Onara</span>
           </Link>
-          <p className="eyebrow">Phase 23 revision system</p>
-          <h1 className="serif">Revise {project.business_name}</h1>
+          <span className="revision-page-divider" aria-hidden="true" />
+          <div className="revision-page-title">
+            <h1 className="serif">Revision studio</h1>
+            <p>{project.business_name}</p>
+          </div>
         </div>
         <Link className="btn btn-soft btn-sm" href="/dashboard">
           Back to sites

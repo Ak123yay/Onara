@@ -77,7 +77,7 @@ export async function GET(
 
   const stream = new ReadableStream<Uint8Array>({
     async start(controller) {
-      let sentCount = 0;
+      const sentProgressKeys = new Set<string>();
 
       function send(event: string, payload: Record<string, unknown>) {
         controller.enqueue(encoder.encode(`event: ${event}\n`));
@@ -85,10 +85,14 @@ export async function GET(
       }
 
       function sendProgress(entries: Array<Record<string, unknown>>) {
-        for (const entry of entries.slice(sentCount)) {
+        for (const entry of entries) {
+          const key = progressEntryKey(entry);
+          if (sentProgressKeys.has(key)) {
+            continue;
+          }
+          sentProgressKeys.add(key);
           send("progress", entry);
         }
-        sentCount = entries.length;
       }
 
       sendProgress(revision.progress_log ?? []);
@@ -195,4 +199,11 @@ function sleep(ms: number) {
   return new Promise((resolve) => {
     setTimeout(resolve, ms);
   });
+}
+
+function progressEntryKey(entry: Record<string, unknown>) {
+  const event = typeof entry.event === "string" ? entry.event : "progress";
+  const timestamp = typeof entry.timestamp === "string" ? entry.timestamp : "";
+  const message = typeof entry.message === "string" ? entry.message : JSON.stringify(entry);
+  return `${event}:${timestamp}:${message}`;
 }
