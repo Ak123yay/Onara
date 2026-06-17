@@ -1,12 +1,12 @@
 import { DashboardShell } from "@/components/dashboard/DashboardShell";
 import { getDashboardUserOrRedirect } from "@/lib/dashboard/user";
 
-type DashboardLayoutProps = {
+type AccountLayoutProps = {
   children: React.ReactNode;
 };
 
-export default async function DashboardLayout({ children }: DashboardLayoutProps) {
-  const dashboardUser = await getDashboardUserOrRedirect("/dashboard");
+export default async function AccountLayout({ children }: AccountLayoutProps) {
+  const dashboardUser = await getDashboardUserOrRedirect("/account/billing");
 
   return <DashboardShell user={dashboardUser}>{children}</DashboardShell>;
 }

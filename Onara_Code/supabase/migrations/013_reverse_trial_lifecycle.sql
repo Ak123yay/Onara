@@ -3,7 +3,8 @@
 
 create extension if not exists pg_cron;
 create extension if not exists pg_net;
-create extension if not exists vault with schema vault;
+create schema if not exists vault;
+create extension if not exists supabase_vault with schema vault;
 
 create or replace function public.handle_new_user()
 returns trigger

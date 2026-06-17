@@ -48,6 +48,10 @@ function isActivePath(pathname: string, href: string) {
     return pathname === "/dashboard";
   }
 
+  if (href === "/account") {
+    return pathname === "/account";
+  }
+
   return pathname.startsWith(href);
 }
 
