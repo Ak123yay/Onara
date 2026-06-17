@@ -295,7 +295,7 @@ class RevisionQueue:
             settings=settings,
         )
         job.cloudflare_deployment_url = deployment.deployment_url
-        job.result_public_url = public_job_url(settings.app_url, job.job_id)
+        job.result_public_url = deployment.deployment_url
 
         await consume_revision_credit(settings=settings, user_id=job.user_id)
         charged_at = datetime.now(timezone.utc).isoformat()
@@ -760,7 +760,3 @@ def has_supplied_credential(business_data: dict[str, Any]) -> bool:
         "bonded",
     )
     return any(bool(business_data.get(key)) for key in credential_keys)
-
-
-def public_job_url(app_url: str, job_id: str) -> str:
-    return f"{app_url.rstrip('/')}/{job_id}"

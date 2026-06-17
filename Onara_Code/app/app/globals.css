@@ -5602,8 +5602,8 @@ textarea.confirm-manual-control {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
-  padding: 14px 16px 12px;
+  gap: 12px;
+  padding: 10px 14px 9px;
   border-bottom: 1px solid var(--revision-border);
   background: var(--paper);
 }
@@ -5612,12 +5612,12 @@ textarea.confirm-manual-control {
   display: flex;
   min-width: 0;
   align-items: center;
-  gap: 13px;
+  gap: 11px;
 }
 
 .revision-app-mark {
-  width: 27px;
-  height: 27px;
+  width: 24px;
+  height: 24px;
   flex: 0 0 auto;
   border-width: 1.5px;
   border-radius: 50%;
@@ -5629,13 +5629,13 @@ textarea.confirm-manual-control {
 .revision-changes-header .mono {
   margin: 0;
   color: var(--revision-copper-ink);
-  font-size: 0.62rem;
-  letter-spacing: 0.18em;
+  font-size: 0.58rem;
+  letter-spacing: 0.16em;
 }
 
 .revision-workbench-titlebar h1 {
   margin: 2px 0 0;
-  font-size: 1.08rem;
+  font-size: 1rem;
   font-weight: 500;
   letter-spacing: -0.025em;
 }
@@ -5643,22 +5643,22 @@ textarea.confirm-manual-control {
 .revision-state {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   white-space: nowrap;
   border: 1px solid var(--revision-border);
   border-radius: 2px;
   background: var(--paper);
   color: var(--ink-2);
-  padding: 6px 9px;
+  padding: 4px 7px;
   font-family: var(--mono);
-  font-size: 0.62rem;
-  letter-spacing: 0.12em;
+  font-size: 0.54rem;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
 }
 
 .revision-state::before {
-  width: 7px;
-  height: 7px;
+  width: 6px;
+  height: 6px;
   border-radius: 50%;
   background: var(--ink-4);
   content: "";
@@ -5679,10 +5679,25 @@ textarea.confirm-manual-control {
   min-height: 0;
   flex: 1 1 auto;
   flex-direction: column;
-  gap: 9px;
+  gap: 7px;
   overflow-y: auto;
-  padding: 12px 14px 10px;
+  padding: 10px 12px 8px;
   scrollbar-width: thin;
+  scrollbar-color: rgba(168, 168, 163, 0.46) transparent;
+}
+
+.revision-console-scroll::-webkit-scrollbar {
+  width: 8px;
+}
+
+.revision-console-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.revision-console-scroll::-webkit-scrollbar-thumb {
+  border: 2px solid var(--paper);
+  border-radius: 999px;
+  background: rgba(168, 168, 163, 0.5);
 }
 
 .revision-changes-card,
@@ -5831,13 +5846,17 @@ textarea.confirm-manual-control {
 }
 
 .revision-worklog {
-  --revision-log-icon-column: 20px;
+  --revision-log-icon-column: 18px;
   display: grid;
-  gap: 18px;
-  min-height: 196px;
-  max-height: 310px;
+  gap: 8px;
+  flex: 0 0 auto;
+  width: min(100%, 820px);
+  min-height: 0;
+  max-height: 166px;
+  align-self: center;
+  margin-top: auto;
   overflow: hidden;
-  padding: 24px 24px 26px;
+  padding: 11px 14px;
 }
 
 .revision-worklog-header {
@@ -5865,21 +5884,33 @@ textarea.confirm-manual-control {
 .revision-worklog-header > span {
   max-width: 48%;
   overflow: hidden;
-  border: 1px solid var(--rule-2);
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  border: 1px solid rgba(207, 111, 50, 0.16);
   border-radius: 2px;
-  padding: 5px 8px;
-  background: rgba(247, 242, 233, 0.48);
+  padding: 5px 9px;
+  background: rgba(207, 111, 50, 0.07);
+  color: var(--revision-copper-ink);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
+.revision-worklog-header > span::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--revision-copper);
+}
+
 .revision-progress-lines {
   display: grid;
-  gap: 10px;
-  min-height: 38px;
-  max-height: 210px;
+  gap: 0;
+  min-height: 32px;
+  max-height: 104px;
   overflow-y: auto;
-  padding: 2px 8px 8px 0;
+  padding: 0;
   scrollbar-width: none;
 }
 
@@ -5891,16 +5922,48 @@ textarea.confirm-manual-control {
   display: grid;
   grid-template-columns: var(--revision-log-icon-column) minmax(0, 1fr);
   align-items: center;
-  gap: 12px;
+  gap: 10px;
   color: var(--ink-2);
-  font-size: 1rem;
-  line-height: 1.5;
-  min-height: 32px;
+  border: 0;
+  border-radius: 0;
+  padding: 6px 0;
+  font-size: 0.88rem;
+  line-height: 1.38;
+  min-height: 30px;
   overflow-wrap: anywhere;
 }
 
-.revision-progress-line > span:last-child {
+.revision-progress-line + .revision-progress-line {
+  border-top: 1px solid rgba(235, 234, 228, 0.82);
+}
+
+.revision-progress-copy {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
   min-width: 0;
+  gap: 14px;
+}
+
+.revision-progress-copy small {
+  flex: 0 0 auto;
+  border: 1px solid rgba(216, 214, 207, 0.72);
+  border-radius: 2px;
+  background: var(--paper-2);
+  color: var(--ink-4);
+  font-family: var(--mono);
+  font-size: 0.52rem;
+  letter-spacing: 0.1em;
+  padding: 2px 7px;
+  text-transform: uppercase;
+}
+
+.revision-progress-copy > span {
+  flex: 1 1 auto;
+  min-width: 0;
+  color: var(--ink-2);
+  font-size: 0.95rem;
+  line-height: 1.32;
 }
 
 .revision-progress-line svg,
@@ -5947,8 +6010,8 @@ textarea.confirm-manual-control {
 
 .revision-thread {
   display: grid;
-  gap: 8px;
-  padding: 12px;
+  gap: 11px;
+  padding: 4px 2px 0;
 }
 
 .revision-thread-header {
@@ -5963,47 +6026,80 @@ textarea.confirm-manual-control {
 }
 
 .revision-message {
-  max-width: 88%;
-  border-radius: 18px;
-  padding: 11px 13px;
-}
-
-.revision-message span {
-  display: block;
-  margin-bottom: 4px;
-  color: var(--ink-4);
-  font-family: var(--mono);
-  font-size: 0.62rem;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
+  max-width: min(78%, 620px);
+  border-radius: 4px;
+  padding: 0;
+  font-family: var(--ui);
 }
 
 .revision-message p {
   margin: 0;
-  font-size: 0.92rem;
+  color: var(--ink);
+  font-size: 0.9rem;
+  font-weight: 400;
+  letter-spacing: -0.006em;
   line-height: 1.44;
 }
 
 .revision-message-user {
   justify-self: end;
-  background: var(--accent-softer);
+  max-width: min(42%, 340px);
+  border: 1px solid var(--rule-2);
+  border-radius: 4px;
+  background: var(--paper-2);
+  padding: 8px 10px;
 }
 
 .revision-message-assistant,
 .revision-message-system {
+  position: relative;
   justify-self: start;
-  border: 1px solid var(--rule-2);
-  background: var(--paper);
+  border: 0;
+  border-left: 2px solid rgba(207, 111, 50, 0.24);
+  background: transparent;
+  padding: 0 0 0 10px;
+}
+
+.revision-message-copy {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 58px;
+  margin-top: 7px;
+  border: 1px solid transparent;
+  border-radius: 2px;
+  background: transparent;
+  color: var(--ink-3);
+  font-family: var(--ui);
+  padding: 4px 5px;
+  font-size: 0.74rem;
+  transition: border-color 0.12s ease, color 0.12s ease, background 0.12s ease;
+}
+
+.revision-message-copy:hover {
+  border-color: var(--rule-2);
+  background: var(--paper-2);
+  color: var(--ink);
+}
+
+.revision-message-copy.copied {
+  border-color: rgba(87, 132, 103, 0.28);
+  background: transparent;
+  color: var(--leaf);
+}
+
+.revision-message-copy span {
+  font-size: 0.72rem;
 }
 
 .revision-composer {
   display: grid;
   flex: 0 0 auto;
-  gap: 12px;
+  gap: 8px;
   margin: 0;
   border-top: 1px solid var(--revision-border);
-  background: rgba(255, 252, 246, 0.98);
-  padding: 14px 18px 16px;
+  background: var(--paper);
+  padding: 10px 14px 12px;
 }
 
 .revision-composer-top,
@@ -6017,8 +6113,8 @@ textarea.confirm-manual-control {
 .revision-composer-top {
   color: var(--ink-4);
   font-family: var(--mono);
-  font-size: 0.62rem;
-  letter-spacing: 0.13em;
+  font-size: 0.58rem;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
   line-height: 1.25;
 }
@@ -6026,12 +6122,12 @@ textarea.confirm-manual-control {
 .revision-component-strip {
   display: flex;
   flex-wrap: nowrap;
-  gap: 8px;
+  gap: 6px;
   min-width: 0;
-  max-height: 36px;
+  max-height: 30px;
   overflow-x: auto;
   overflow-y: hidden;
-  padding: 1px 0 3px;
+  padding: 0 0 2px;
   scrollbar-width: none;
 }
 
@@ -6044,15 +6140,15 @@ textarea.confirm-manual-control {
   align-items: center;
   flex: 0 0 auto;
   gap: 6px;
-  min-height: 30px;
+  min-height: 26px;
   border: 1px solid var(--rule-2);
-  border-radius: 999px;
-  background: rgba(247, 242, 233, 0.62);
+  border-radius: 2px;
+  background: var(--paper);
   color: var(--ink-3);
-  padding: 6px 11px;
+  padding: 5px 8px;
   font-family: var(--mono);
-  font-size: 0.58rem;
-  letter-spacing: 0.09em;
+  font-size: 0.54rem;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   transition: border-color 0.12s ease, background 0.12s ease, color 0.12s ease;
   white-space: nowrap;
@@ -6075,8 +6171,8 @@ textarea.confirm-manual-control {
 }
 
 .revision-component-chip.selected {
-  border-color: rgba(207, 111, 50, 0.34);
-  background: var(--accent-softer);
+  border-color: rgba(207, 111, 50, 0.32);
+  background: rgba(207, 111, 50, 0.07);
   color: var(--accent-ink);
 }
 
@@ -6089,17 +6185,17 @@ button.revision-component-chip:disabled {
 
 .revision-composer textarea {
   width: 100%;
-  min-height: 72px;
-  max-height: 132px;
+  min-height: 56px;
+  max-height: 104px;
   resize: none;
-  border: 1px solid var(--revision-border-strong);
-  border-radius: 16px;
-  background: white;
+  border: 1px solid var(--rule);
+  border-radius: 2px;
+  background: var(--paper);
   color: var(--ink);
   overflow-y: auto;
-  padding: 14px 16px;
-  font-size: 0.96rem;
-  line-height: 1.5;
+  padding: 10px 12px;
+  font-size: 0.9rem;
+  line-height: 1.42;
   outline: none;
 }
 
@@ -6115,17 +6211,21 @@ button.revision-component-chip:disabled {
 
 .revision-composer-actions > span {
   display: inline-flex;
+  flex: 1 1 auto;
+  min-width: 0;
   align-items: center;
-  gap: 9px;
+  gap: 8px;
   color: var(--revision-muted);
-  font-size: 0.78rem;
-  line-height: 1.45;
+  font-size: 0.72rem;
+  line-height: 1.35;
 }
 
 .revision-composer-actions .btn {
-  min-height: 44px;
-  min-width: 172px;
-  border-radius: 3px;
+  flex: 0 0 auto;
+  min-height: 38px;
+  min-width: 150px;
+  border-radius: 2px;
+  padding: 9px 14px;
 }
 
 .revision-preview-topbar {
@@ -6278,12 +6378,44 @@ button.revision-component-chip:disabled {
 }
 
 .revision-preview-empty {
-  display: grid;
+  display: flex;
   min-height: 320px;
-  place-items: center;
-  border: 1px dashed var(--revision-border);
-  border-radius: 6px;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  border: 1px solid var(--revision-border);
+  border-radius: 4px;
+  background: var(--paper);
   color: var(--revision-muted);
+  padding: 24px;
+  text-align: left;
+}
+
+.revision-preview-empty > svg {
+  flex: 0 0 auto;
+  color: var(--ink-4);
+}
+
+.revision-preview-empty div {
+  display: grid;
+  max-width: 420px;
+  gap: 5px;
+}
+
+.revision-preview-empty p {
+  margin: 0;
+}
+
+.revision-preview-empty strong {
+  color: var(--ink-2);
+  font-size: 0.94rem;
+  font-weight: 500;
+}
+
+.revision-preview-empty span {
+  color: var(--ink-3);
+  font-size: 0.82rem;
+  line-height: 1.45;
 }
 
 .revision-history-panel {
@@ -6308,12 +6440,13 @@ button.revision-component-chip:disabled {
 
 .revision-history-item {
   display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
   min-width: 0;
-  gap: 5px;
+  gap: 4px 10px;
   border: 1px solid var(--rule-2);
-  border-radius: 3px;
+  border-radius: 2px;
   background: var(--paper);
-  padding: 10px;
+  padding: 9px 10px;
   text-align: left;
 }
 
@@ -6321,14 +6454,32 @@ button.revision-component-chip:disabled {
   border-color: var(--ink);
 }
 
+.revision-history-item-pending {
+  border-color: var(--rule-2);
+  background: transparent;
+}
+
+.revision-history-item-done {
+  border-color: rgba(87, 132, 103, 0.28);
+}
+
+.revision-history-item .mono {
+  grid-row: 1 / span 2;
+  align-self: start;
+  margin-top: 2px;
+}
+
 .revision-history-item strong {
-  font-size: 0.9rem;
+  color: var(--ink-2);
+  font-size: 0.82rem;
+  font-weight: 600;
+  line-height: 1.2;
 }
 
 .revision-history-item small {
   overflow: hidden;
   color: var(--revision-muted);
-  font-size: 0.78rem;
+  font-size: 0.74rem;
   line-height: 1.35;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -6382,7 +6533,7 @@ button.revision-component-chip:disabled {
 .revision-thread {
   border-color: transparent;
   background: transparent;
-  padding: 2px 2px 0;
+  padding: 4px 2px 0;
 }
 
 .revision-thread-header {
@@ -6390,24 +6541,26 @@ button.revision-component-chip:disabled {
 }
 
 .revision-message {
-  border-radius: 18px;
+  border-radius: 4px;
 }
 
 .revision-message-user {
-  border: 1px solid rgba(207, 111, 50, 0.18);
-  background: var(--accent-softer);
+  border: 1px solid var(--rule-2);
+  background: var(--paper-2);
 }
 
 .revision-message-assistant,
 .revision-message-system {
-  border-color: var(--revision-border);
-  background: var(--paper);
+  border-left-color: rgba(207, 111, 50, 0.24);
+  background: transparent;
 }
 
 .revision-worklog {
   position: relative;
-  border-color: rgba(207, 111, 50, 0.2);
+  border-color: rgba(216, 214, 207, 0.82);
+  border-radius: 4px;
   background: var(--paper);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7), 0 1px 3px rgba(26, 26, 26, 0.035);
 }
 
 .revision-worklog::before {
@@ -6421,12 +6574,22 @@ button.revision-component-chip:disabled {
 }
 
 .revision-progress-line {
+  position: relative;
+  z-index: 1;
   padding-left: 0;
 }
 
 .revision-progress-line .revision-dot {
-  border: 2px solid var(--paper);
-  box-shadow: 0 0 0 1px rgba(207, 111, 50, 0.16);
+  width: 10px;
+  height: 10px;
+  margin-top: 0;
+  border: 1px solid rgba(207, 111, 50, 0.28);
+  background: var(--paper);
+  box-shadow: inset 0 0 0 3px rgba(207, 111, 50, 0.16);
+}
+
+.revision-progress-line svg {
+  margin-top: 0;
 }
 
 .revision-changes-card {

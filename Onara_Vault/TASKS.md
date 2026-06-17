@@ -29,7 +29,7 @@ _This file is the single source of truth for all work. Claude updates this after
 
 ## 🔥 Active
 
-Current actionable phase: **Phase 23 — Revision System**.
+Current actionable phase: **Phase 24 — Stripe Billing**.
 
 Note: Mini PC FastAPI runs under PM2. The named Cloudflare Tunnel serves `https://pipeline.onara.tech`.
 
@@ -191,10 +191,10 @@ Execution rule:
 
 ### Phase 24 — Stripe Billing
 
-- [ ] Checkout session creation
-- [ ] Starter annual checkout price support (`STRIPE_STARTER_ANNUAL_PRICE_ID`, $99/year)
-- [ ] Webhook handler: subscription created, updated, deleted, payment failed
-- [ ] Reverse trial: set trial_ends_at on signup, daily Supabase edge function to downgrade
+- [x] Checkout session creation
+- [x] Starter annual checkout price support (`STRIPE_STARTER_ANNUAL_PRICE_ID`, $99/year)
+- [x] Webhook handler: subscription created, updated, deleted, payment failed
+- [x] Reverse trial: set trial_ends_at on signup, daily Supabase edge function to downgrade
 
 ### Phase 25 — Account Page
 

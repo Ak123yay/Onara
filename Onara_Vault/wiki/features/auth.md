@@ -47,18 +47,38 @@ GOOGLE_OAUTH_CLIENT_SECRET=GOCSPX-...
 On signup, a Supabase trigger (`on_auth_user_created`) inserts into `public.users`:
 
 ```sql
-INSERT INTO public.users (id, email, full_name, avatar_url)
-VALUES (NEW.id, NEW.email, NEW.raw_user_meta_data->>'full_name', NEW.raw_user_meta_data->>'avatar_url');
+INSERT INTO public.users (
+  id,
+  email,
+  full_name,
+  avatar_url,
+  plan,
+  is_trial,
+  trial_ends_at,
+  revisions_limit,
+  show_url
+)
+VALUES (
+  NEW.id,
+  NEW.email,
+  NEW.raw_user_meta_data->>'full_name',
+  NEW.raw_user_meta_data->>'avatar_url',
+  'pro',
+  TRUE,
+  NOW() + INTERVAL '14 days',
+  -1,
+  TRUE
+);
 ```
 
-Defaults on insert: `plan = 'free'`, `is_trial = TRUE`, `trial_ends_at = NOW() + 14 days`
+Reverse-trial fields on insert: `plan = 'pro'`, `is_trial = TRUE`, `trial_ends_at = NOW() + 14 days`, `revisions_limit = -1`
 
 ---
 
 ## Trial Logic
 
 - All new accounts start with 14-day Pro access, no credit card required
-- `pg_cron` daily at 2am UTC: if `is_trial = TRUE AND trial_ends_at < NOW()` → set `plan = 'free'`, `show_url = FALSE`
+- `pg_cron` daily at 2am UTC invokes the protected `downgrade-trials` Edge Function: if `is_trial = TRUE AND trial_ends_at < NOW()` → set `plan = 'free'`, `show_url = FALSE`
 - Resend emails: Day 11 (3-day warning) and Day 13 (1-day warning)
 
 ---

@@ -42,25 +42,26 @@ SELECT cron.schedule(
 
 **Schedule**: `0 2 * * *` — daily at 2:00 AM UTC
 
-**Purpose**: Users get 14 days of full Pro access. On Day 14, this job downgrades them to the free tier.
+**Purpose**: Users get 14 days of full Pro access. On Day 14, this job invokes the protected `downgrade-trials` Supabase Edge Function, which downgrades expired trials to the free tier.
 
 ```sql
 SELECT cron.schedule(
   'downgrade-expired-trials',
   '0 2 * * *',
   $$
-    UPDATE public.users
-    SET plan = 'free',
-        is_trial = FALSE,
-        show_url = FALSE,
-        revisions_limit = 3
-    WHERE is_trial = TRUE
-      AND trial_ends_at < NOW();
+    SELECT public.invoke_downgrade_trials_edge_function();
   $$
 );
 ```
 
 **Affects**: All users where `is_trial = TRUE` and `trial_ends_at` is in the past.
+
+**Secrets required**: store `project_url` and `cron_secret` in Supabase Vault. `cron_secret` must match the `CRON_SECRET` configured for the Edge Function.
+
+```sql
+SELECT vault.create_secret('https://PROJECT_REF.supabase.co', 'project_url');
+SELECT vault.create_secret('same-value-as-edge-function-CRON_SECRET', 'cron_secret');
+```
 
 **Note**: `show_url = FALSE` means their site URL won't be shown on the free dashboard. The site stays live on Cloudflare Pages but is de-emphasized. The Day 11, Day 13, and Day 14 trial expiry emails are sent via Resend using a separate schedule or Supabase Edge Function (see `wiki/content/email-copy.md`).
 

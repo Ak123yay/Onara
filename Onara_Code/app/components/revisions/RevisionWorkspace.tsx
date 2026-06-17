@@ -4,6 +4,7 @@ import {
   ArrowUpRight,
   CheckCircle2,
   Code2,
+  Copy,
   Files,
   GitCompareArrows,
   Loader2,
@@ -103,6 +104,7 @@ export function RevisionWorkspace({
   const [used, setUsed] = useState(revisionsUsed);
   const [revisionHistory, setRevisionHistory] = useState(latestRevisions);
   const [conversation, setConversation] = useState(messages);
+  const [failedPreviewUrl, setFailedPreviewUrl] = useState<string | null>(null);
   const [selectedRevisionId, setSelectedRevisionId] = useState(() => latestRevisions.find((item) => item.status === "done")?.id ?? latestRevisions[0]?.id ?? null);
   const seenProgressKeysRef = useRef(new Set<string>());
   const activeStreamRef = useRef<EventSource | null>(null);
@@ -136,6 +138,8 @@ export function RevisionWorkspace({
   const canSubmit = project.status === "live" && !active && message.trim().length >= 3 && hasCredit;
   const diffBeforeUrl = selectedRevision?.before_public_url ?? null;
   const diffAfterUrl = selectedRevision?.result_public_url ?? previewUrl;
+  const hasPreviewUrl = Boolean(previewUrl);
+  const canShowLivePreview = Boolean(previewUrl && failedPreviewUrl !== previewUrl);
   const visibleChangedFiles = changedFiles.slice(0, 3);
   const hiddenChangedFileCount = Math.max(0, changedFiles.length - visibleChangedFiles.length);
   const workStatusLabel = active
@@ -145,10 +149,6 @@ export function RevisionWorkspace({
       : selectedRevision
         ? "Ready for next revision"
         : "Ready";
-  const targetLabel =
-    selectedComponents.length === 0
-      ? "Auto-pick components"
-      : `${selectedComponents.length} component${selectedComponents.length === 1 ? "" : "s"} selected`;
   const previewLabel = previewUrl ? previewUrl.replace(/^https?:\/\//, "") : "No public URL";
   const selectedStatusLabel = selectedRevision
     ? revisionStatusLabel(selectedRevision)
@@ -199,6 +199,12 @@ export function RevisionWorkspace({
       activeStreamRef.current = null;
     };
   }, []);
+
+  useEffect(() => {
+    if (failedPreviewUrl && failedPreviewUrl !== previewUrl) {
+      setFailedPreviewUrl(null);
+    }
+  }, [failedPreviewUrl, previewUrl]);
 
   async function submitRevision() {
     if (!canSubmit) {
@@ -454,44 +460,44 @@ export function RevisionWorkspace({
         </header>
 
         <div className="revision-console-scroll">
-          <section className={changedFiles.length > 0 ? "revision-changes-card" : "revision-changes-card revision-changes-empty"} aria-label="Changed files">
-            <div className="revision-changes-icon" aria-hidden="true">
-              <Files size={18} />
-            </div>
-            <div className="revision-changes-main">
-              <div className="revision-changes-header">
-                <div>
-                  <p className="mono">Review</p>
-                  <strong>{changedFiles.length > 0 ? `Edited ${changedFiles.length} file${changedFiles.length === 1 ? "" : "s"}` : "No file changes yet"}</strong>
-                </div>
-                <div className="revision-change-meter" aria-label="Revision change summary">
-                  <span>{changedFilesLabel}</span>
-                  <small>{selectedRevision?.status === "done" ? "deployed" : selectedRevision?.status ?? "waiting"}</small>
-                </div>
-                <div className="revision-change-actions">
-                  <button
-                    className="revision-review-button"
-                    disabled={changedFiles.length === 0}
-                    onClick={reviewSelectedRevision}
-                    type="button"
-                  >
-                    {reviewButtonLabel}
-                  </button>
-                  {selectedRevision?.status === "done" && selectedRevision.before_public_url ? (
+          {changedFiles.length > 0 ? (
+            <section className="revision-changes-card" aria-label="Changed files">
+              <div className="revision-changes-icon" aria-hidden="true">
+                <Files size={18} />
+              </div>
+              <div className="revision-changes-main">
+                <div className="revision-changes-header">
+                  <div>
+                    <p className="mono">Review</p>
+                    <strong>{`Edited ${changedFiles.length} file${changedFiles.length === 1 ? "" : "s"}`}</strong>
+                  </div>
+                  <div className="revision-change-meter" aria-label="Revision change summary">
+                    <span>{changedFilesLabel}</span>
+                    <small>{selectedRevision?.status === "done" ? "deployed" : selectedRevision?.status ?? "waiting"}</small>
+                  </div>
+                  <div className="revision-change-actions">
                     <button
                       className="revision-review-button"
-                      disabled={active || !hasCredit}
-                      onClick={() => {
-                        void rollbackRevision(selectedRevision.id);
-                      }}
+                      disabled={changedFiles.length === 0}
+                      onClick={reviewSelectedRevision}
                       type="button"
                     >
-                      Undo
+                      {reviewButtonLabel}
                     </button>
-                  ) : null}
+                    {selectedRevision?.status === "done" && selectedRevision.before_public_url ? (
+                      <button
+                        className="revision-review-button"
+                        disabled={active || !hasCredit}
+                        onClick={() => {
+                          void rollbackRevision(selectedRevision.id);
+                        }}
+                        type="button"
+                      >
+                        Undo
+                      </button>
+                    ) : null}
+                  </div>
                 </div>
-              </div>
-              {visibleChangedFiles.length > 0 ? (
                 <div className="revision-changes-list">
                   {visibleChangedFiles.map((file) => (
                     <div key={`${file.path}-${file.status}`}>
@@ -501,11 +507,9 @@ export function RevisionWorkspace({
                   ))}
                   {hiddenChangedFileCount > 0 ? <em>{hiddenChangedFileCount} more files in the detailed summary</em> : null}
                 </div>
-              ) : (
-                <p className="revision-empty-copy">Changed files, component notes, and rollback controls appear here after the agent deploys a revision.</p>
-              )}
-            </div>
-          </section>
+              </div>
+            </section>
+          ) : null}
 
           <section className="revision-thread" aria-label="Revision conversation" ref={conversationRef}>
             <div className="revision-thread-header">
@@ -514,14 +518,14 @@ export function RevisionWorkspace({
             </div>
             {conversation.length === 0 ? (
               <div className="revision-message revision-message-assistant">
-                <span>Onara</span>
                 <p>Ready. Tell me the change and I&apos;ll show the short work log while it runs.</p>
+                <MessageCopyButton content="Ready. Tell me the change and I'll show the short work log while it runs." />
               </div>
             ) : (
               conversation.map((item) => (
                 <div className={`revision-message revision-message-${item.role}`} key={item.id}>
-                  <span>{item.role === "user" ? "You" : "Onara"}</span>
                   <p>{item.content}</p>
+                  {item.role === "user" ? null : <MessageCopyButton content={item.content} />}
                 </div>
               ))
             )}
@@ -536,20 +540,27 @@ export function RevisionWorkspace({
               <span>{selectedStatusLabel}</span>
             </div>
             <div className="revision-progress-lines" aria-live="polite" ref={progressLinesRef}>
-              {lines.map((line) => (
-                <div className={`revision-progress-line revision-progress-line-${line.level}`} key={line.id}>
-                  {line.level === "success" ? (
-                    <CheckCircle2 aria-hidden="true" size={16} />
-                  ) : line.level === "error" ? (
-                    <TriangleAlert aria-hidden="true" size={16} />
-                  ) : active && line.id === lines[lines.length - 1]?.id ? (
-                    <Loader2 aria-hidden="true" className="spin" size={16} />
-                  ) : (
-                    <span aria-hidden="true" className="revision-dot" />
-                  )}
-                  <span>{line.message}</span>
-                </div>
-              ))}
+              {lines.map((line) => {
+                const lineCopy = progressLineCopy(line.message);
+
+                return (
+                  <div className={`revision-progress-line revision-progress-line-${line.level}`} key={line.id}>
+                    {line.level === "success" ? (
+                      <CheckCircle2 aria-hidden="true" size={16} />
+                    ) : line.level === "error" ? (
+                      <TriangleAlert aria-hidden="true" size={16} />
+                    ) : active && line.id === lines[lines.length - 1]?.id ? (
+                      <Loader2 aria-hidden="true" className="spin" size={16} />
+                    ) : (
+                      <span aria-hidden="true" className="revision-dot" />
+                    )}
+                    <span className="revision-progress-copy">
+                      <span>{lineCopy.text}</span>
+                      {lineCopy.label ? <small>{lineCopy.label}</small> : null}
+                    </span>
+                  </div>
+                );
+              })}
             </div>
           </section>
 
@@ -565,7 +576,7 @@ export function RevisionWorkspace({
         >
           <div className="revision-composer-top">
             <span>{remainingLabel}</span>
-            <span>{active ? "Streaming agent work" : targetLabel}</span>
+            {active ? <span>Streaming agent work</span> : null}
           </div>
           <div className="revision-component-strip" aria-label="Component selection">
             <button
@@ -656,10 +667,15 @@ export function RevisionWorkspace({
                 <iframe className="revision-preview-frame revision-diff-frame" src={diffAfterUrl} title="After revision" />
               </div>
             </div>
-          ) : previewUrl ? (
-            <iframe className="revision-preview-frame" src={previewUrl} title={`${project.business_name} preview`} />
+          ) : canShowLivePreview && previewUrl ? (
+            <iframe
+              className="revision-preview-frame"
+              onError={() => setFailedPreviewUrl(previewUrl)}
+              src={previewUrl}
+              title={`${project.business_name} preview`}
+            />
           ) : (
-            <div className="revision-preview-empty">This site does not have a public URL yet.</div>
+            <PreviewUnavailable hasPreviewUrl={hasPreviewUrl} />
           )}
         </div>
 
@@ -690,7 +706,11 @@ export function RevisionWorkspace({
             ) : (
               revisionHistory.map((revision) => (
                 <button
-                  className={revision.id === selectedRevision?.id ? "revision-history-item active" : "revision-history-item"}
+                  className={[
+                    "revision-history-item",
+                    `revision-history-item-${revision.status}`,
+                    revision.id === selectedRevision?.id ? "active" : null,
+                  ].filter(Boolean).join(" ")}
                   key={revision.id}
                   onClick={() => setSelectedRevisionId(revision.id)}
                   type="button"
@@ -720,6 +740,94 @@ export function RevisionWorkspace({
       </section>
     </div>
   );
+}
+
+function PreviewUnavailable({ hasPreviewUrl }: { hasPreviewUrl: boolean }) {
+  return (
+    <div className="revision-preview-empty" role="status">
+      <TriangleAlert aria-hidden="true" size={20} />
+      <div>
+        <p className="mono">Preview unavailable</p>
+        <strong>{hasPreviewUrl ? "Preview unavailable while revision is queued." : "This site does not have a public URL yet."}</strong>
+        <span>{hasPreviewUrl ? "Open the live site in a new tab if you need to inspect it directly." : "A live preview appears here after the site is published."}</span>
+      </div>
+    </div>
+  );
+}
+
+function MessageCopyButton({ content }: { content: string }) {
+  const [copied, setCopied] = useState(false);
+  const resetTimerRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (resetTimerRef.current) {
+        window.clearTimeout(resetTimerRef.current);
+      }
+    };
+  }, []);
+
+  async function copyMessage() {
+    setCopied(true);
+    if (resetTimerRef.current) {
+      window.clearTimeout(resetTimerRef.current);
+    }
+
+    const didCopy = await writeClipboardText(content);
+    if (!didCopy) {
+      setCopied(false);
+      return;
+    }
+
+    resetTimerRef.current = window.setTimeout(() => setCopied(false), 1400);
+  }
+
+  return (
+    <button
+      aria-label={copied ? "Message copied" : "Copy message"}
+      className={copied ? "revision-message-copy copied" : "revision-message-copy"}
+      onClick={() => void copyMessage()}
+      type="button"
+    >
+      <Copy aria-hidden="true" size={15} />
+      <span>Copy</span>
+    </button>
+  );
+}
+
+async function writeClipboardText(text: string) {
+  if (navigator.clipboard?.writeText) {
+    try {
+      await navigator.clipboard.writeText(text);
+      return true;
+    } catch {
+      // Fall through to the textarea fallback below.
+    }
+  }
+
+  return fallbackCopyText(text);
+}
+
+function fallbackCopyText(text: string) {
+  const textarea = document.createElement("textarea");
+  textarea.value = text;
+  textarea.setAttribute("readonly", "");
+  textarea.style.position = "fixed";
+  textarea.style.left = "-9999px";
+  textarea.style.top = "0";
+  textarea.style.opacity = "0";
+
+  document.body.appendChild(textarea);
+  textarea.focus();
+  textarea.select();
+
+  try {
+    return document.execCommand("copy");
+  } catch {
+    return false;
+  } finally {
+    textarea.remove();
+  }
 }
 
 function formatPlanLabel(planLabel: string | null | undefined) {
@@ -776,6 +884,38 @@ function revisionProgressMessage(revision: RevisionHistoryItem) {
   return `Queued revision: ${revision.instruction}`;
 }
 
+function progressLineCopy(message: string) {
+  const match = /^(Queued revision|Working on revision|Deployed revision|Revision needs attention):\s*(.+)$/i.exec(message);
+
+  if (!match) {
+    return {
+      label: "",
+      text: message,
+    };
+  }
+
+  return {
+    label: progressLineStatusLabel(match[1]),
+    text: match[2],
+  };
+}
+
+function progressLineStatusLabel(label: string) {
+  if (/^queued/i.test(label)) {
+    return "Queued";
+  }
+
+  if (/^working/i.test(label)) {
+    return "Working";
+  }
+
+  if (/^deployed/i.test(label)) {
+    return "Deployed";
+  }
+
+  return "Needs attention";
+}
+
 function revisionStatusLabel(revision: RevisionHistoryItem) {
   const kind = revision.revision_kind === "rollback" ? "Rollback" : "Edit";
   const status =
@@ -787,7 +927,7 @@ function revisionStatusLabel(revision: RevisionHistoryItem) {
           ? "Working"
           : "Queued";
 
-  return `${kind} / ${status}`;
+  return `${status} ${kind.toLowerCase()}`;
 }
 
 function normalizeChangedFiles(value: RevisionHistoryItem["changed_files"]): ChangedFile[] {

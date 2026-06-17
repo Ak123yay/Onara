@@ -10,10 +10,17 @@ type StripeEvent = {
 };
 
 type SubscriptionDetails = {
+  currentPeriodEnd?: string;
   id: string;
   customer: string;
+  metadata: Record<string, unknown>;
   status: string;
   priceId?: string;
+};
+
+type BillingEmailUser = {
+  email?: string | null;
+  full_name?: string | null;
 };
 
 const textEncoder = new TextEncoder();
@@ -34,7 +41,13 @@ Deno.serve(async (request) => {
     return jsonResponse({ error: "invalid_signature" }, 400);
   }
 
-  const event = JSON.parse(payload) as StripeEvent;
+  let event: StripeEvent;
+  try {
+    event = JSON.parse(payload) as StripeEvent;
+  } catch {
+    return jsonResponse({ error: "invalid_payload" }, 400);
+  }
+
   const supabase = createServiceClient();
 
   const { error: insertError } = await supabase
@@ -48,10 +61,22 @@ Deno.serve(async (request) => {
 
   if (insertError) {
     if (insertError.code === "23505") {
-      return jsonResponse({ ok: true, duplicate: true });
-    }
+      const { data: existingEvent, error: lookupError } = await supabase
+        .from("stripe_events")
+        .select("processed")
+        .eq("id", event.id)
+        .maybeSingle();
 
-    return jsonResponse({ error: "event_store_failed", detail: insertError.message }, 500);
+      if (lookupError) {
+        return jsonResponse({ error: "event_lookup_failed", detail: lookupError.message }, 500);
+      }
+
+      if (existingEvent?.processed) {
+        return jsonResponse({ ok: true, duplicate: true });
+      }
+    } else {
+      return jsonResponse({ error: "event_store_failed", detail: insertError.message }, 500);
+    }
   }
 
   let processResult: { ok: true } | { ok: false; error: string };
@@ -87,6 +112,7 @@ async function processStripeEvent(
   switch (event.type) {
     case "checkout.session.completed":
       return handleCheckoutCompleted(event, supabase);
+    case "customer.subscription.created":
     case "customer.subscription.updated":
       return handleSubscriptionChanged(event.data.object, supabase);
     case "customer.subscription.deleted":
@@ -114,22 +140,9 @@ async function handleCheckoutCompleted(
   }
 
   const subscription = await retrieveSubscription(subscriptionId);
-  const plan = planFromPriceId(subscription.priceId);
+  subscription.customer = customerId;
 
-  const { error } = await supabase
-    .from("users")
-    .update({
-      plan,
-      stripe_customer_id: customerId,
-      stripe_subscription_id: subscriptionId,
-      subscription_status: subscription.status,
-      is_trial: false,
-      revisions_limit: revisionsLimitForPlan(plan),
-      show_url: true,
-    })
-    .eq("id", userId);
-
-  return error ? { ok: false, error: error.message } : { ok: true };
+  return upsertUserSubscription(subscription, supabase, userId);
 }
 
 async function handleSubscriptionChanged(
@@ -141,20 +154,7 @@ async function handleSubscriptionChanged(
     return { ok: false, error: "subscription_missing_customer" };
   }
 
-  const plan = planFromPriceId(subscription.priceId);
-  const { error } = await supabase
-    .from("users")
-    .update({
-      plan,
-      stripe_subscription_id: subscription.id,
-      subscription_status: subscription.status,
-      is_trial: false,
-      revisions_limit: revisionsLimitForPlan(plan),
-      show_url: true,
-    })
-    .eq("stripe_customer_id", subscription.customer);
-
-  return error ? { ok: false, error: error.message } : { ok: true };
+  return upsertUserSubscription(subscription, supabase, asString(subscription.metadata.user_id));
 }
 
 async function handleSubscriptionDeleted(
@@ -171,8 +171,11 @@ async function handleSubscriptionDeleted(
     .update({
       plan: "free",
       subscription_status: "canceled",
+      stripe_subscription_id: null,
+      subscription_current_period_end: null,
       is_trial: false,
       revisions_limit: 3,
+      revisions_used: 0,
       show_url: false,
     })
     .eq("stripe_customer_id", customerId);
@@ -189,12 +192,19 @@ async function handleInvoicePaymentFailed(
     return { ok: false, error: "invoice_failed_missing_customer" };
   }
 
-  const { error } = await supabase
+  const { data: user, error } = await supabase
     .from("users")
     .update({ subscription_status: "past_due" })
-    .eq("stripe_customer_id", customerId);
+    .eq("stripe_customer_id", customerId)
+    .select("email, full_name")
+    .maybeSingle();
 
-  return error ? { ok: false, error: error.message } : { ok: true };
+  if (error) {
+    return { ok: false, error: error.message };
+  }
+
+  await sendPaymentFailedEmail(user as BillingEmailUser | null);
+  return { ok: true };
 }
 
 async function handleInvoicePaymentSucceeded(
@@ -272,11 +282,43 @@ function subscriptionFromObject(subscription: Record<string, unknown>): Subscrip
   const price = firstItem?.price as Record<string, unknown> | undefined;
 
   return {
+    currentPeriodEnd: stripeTimestampToIso(subscription.current_period_end),
     id: asString(subscription.id) ?? "",
     customer: asString(subscription.customer) ?? "",
+    metadata: readMetadata(subscription),
     status: asString(subscription.status) ?? "active",
     priceId: asString(price?.id),
   };
+}
+
+async function upsertUserSubscription(
+  subscription: SubscriptionDetails,
+  supabase: ReturnType<typeof createServiceClient>,
+  userId?: string,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const plan = planFromPriceId(subscription.priceId);
+  const updateValues: Record<string, unknown> = {
+    plan,
+    stripe_customer_id: subscription.customer,
+    stripe_subscription_id: subscription.id,
+    subscription_status: subscription.status,
+    is_trial: false,
+    revisions_limit: revisionsLimitForPlan(plan),
+    show_url: true,
+  };
+
+  if (subscription.currentPeriodEnd) {
+    updateValues.subscription_current_period_end = subscription.currentPeriodEnd;
+    if (plan === "starter") {
+      updateValues.revisions_reset_at = subscription.currentPeriodEnd;
+    }
+  }
+
+  let query = supabase.from("users").update(updateValues);
+  query = userId ? query.eq("id", userId) : query.eq("stripe_customer_id", subscription.customer);
+
+  const { error } = await query;
+  return error ? { ok: false, error: error.message } : { ok: true };
 }
 
 function readMetadata(object: Record<string, unknown>): Record<string, unknown> {
@@ -284,19 +326,102 @@ function readMetadata(object: Record<string, unknown>): Record<string, unknown> 
 }
 
 function planFromPriceId(priceId?: string): "starter" | "pro" {
-  if (priceId && priceId === Deno.env.get("STRIPE_PRO_PRICE_ID")) {
+  if (!priceId) {
+    throw new Error("Stripe subscription is missing a price id");
+  }
+
+  if (priceId === Deno.env.get("STRIPE_PRO_PRICE_ID")) {
     return "pro";
   }
 
-  return "starter";
+  const starterPriceIds = [
+    Deno.env.get("STRIPE_STARTER_PRICE_ID"),
+    Deno.env.get("STRIPE_STARTER_ANNUAL_PRICE_ID"),
+  ].filter(Boolean);
+
+  if (starterPriceIds.includes(priceId)) {
+    return "starter";
+  }
+
+  throw new Error("Stripe subscription price id is not configured for an Onara plan");
 }
 
 function revisionsLimitForPlan(plan: "starter" | "pro"): number {
   return plan === "pro" ? -1 : 10;
 }
 
+async function sendPaymentFailedEmail(user: BillingEmailUser | null): Promise<void> {
+  const resendApiKey = Deno.env.get("RESEND_API_KEY");
+  const to = asString(user?.email);
+
+  if (!resendApiKey || !to) {
+    return;
+  }
+
+  const from = Deno.env.get("RESEND_FROM_EMAIL") || "hello@onara.tech";
+  const replyTo = Deno.env.get("RESEND_REPLY_TO") || "support@onara.tech";
+  const name = displayName(user);
+
+  await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: {
+      authorization: `Bearer ${resendApiKey}`,
+      "content-type": "application/json",
+    },
+    body: JSON.stringify({
+      from,
+      to,
+      reply_to: replyTo,
+      subject: "Action required: payment failed for Onara",
+      text: [
+        `Hi ${name},`,
+        "",
+        "We could not process your Onara subscription payment.",
+        "Please update your billing details to keep your live site and plan features active.",
+        "",
+        "Manage billing: https://onara.tech/account/billing",
+        "",
+        "If you have questions, reply to this email and we will help.",
+      ].join("\n"),
+      html: paymentFailedHtml(name),
+    }),
+  }).catch(() => {
+    // Billing state is the source of truth; email delivery should not block Stripe event processing.
+  });
+}
+
+function paymentFailedHtml(name: string): string {
+  return `
+    <p>Hi ${escapeHtml(name)},</p>
+    <p>We could not process your Onara subscription payment.</p>
+    <p>Please update your billing details to keep your live site and plan features active.</p>
+    <p><a href="https://onara.tech/account/billing">Manage billing</a></p>
+    <p>If you have questions, reply to this email and we will help.</p>
+  `;
+}
+
+function displayName(user: BillingEmailUser | null): string {
+  return asString(user?.full_name)?.split(" ")[0] ?? "there";
+}
+
+function stripeTimestampToIso(value: unknown): string | undefined {
+  if (typeof value !== "number" || !Number.isFinite(value) || value <= 0) {
+    return undefined;
+  }
+
+  return new Date(value * 1000).toISOString();
+}
+
 function asString(value: unknown): string | undefined {
   return typeof value === "string" && value.length > 0 ? value : undefined;
+}
+
+function escapeHtml(value: string): string {
+  return value
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;");
 }
 
 async function verifyStripeSignature(
