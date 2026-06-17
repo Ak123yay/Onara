@@ -13,7 +13,7 @@ import {
   TriangleAlert,
 } from "lucide-react";
 import Link from "next/link";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 type RevisionStatus = "pending" | "running" | "done" | "failed";
 
@@ -44,6 +44,7 @@ type RevisionMessage = {
 type RevisionWorkspaceProps = {
   latestRevisions: RevisionHistoryItem[];
   messages: RevisionMessage[];
+  planLabel?: string | null;
   project: {
     business_name: string;
     id: string;
@@ -88,6 +89,7 @@ const COMPONENT_OPTIONS = [
 export function RevisionWorkspace({
   latestRevisions,
   messages,
+  planLabel,
   project,
   revisionsLimit,
   revisionsUsed,
@@ -103,6 +105,9 @@ export function RevisionWorkspace({
   const [conversation, setConversation] = useState(messages);
   const [selectedRevisionId, setSelectedRevisionId] = useState(() => latestRevisions.find((item) => item.status === "done")?.id ?? latestRevisions[0]?.id ?? null);
   const seenProgressKeysRef = useRef(new Set<string>());
+  const activeStreamRef = useRef<EventSource | null>(null);
+  const progressLinesRef = useRef<HTMLDivElement | null>(null);
+  const conversationRef = useRef<HTMLElement | null>(null);
   const revisionDetailsRef = useRef<HTMLElement | null>(null);
 
   const selectedRevision = useMemo(
@@ -110,13 +115,22 @@ export function RevisionWorkspace({
     [revisionHistory, selectedRevisionId],
   );
   const changedFiles = useMemo(() => normalizeChangedFiles(selectedRevision?.changed_files), [selectedRevision]);
+  const planName = useMemo(() => formatPlanLabel(planLabel), [planLabel]);
   const remainingLabel = useMemo(() => {
+    const prefix = planName ? `${planName} plan - ` : "";
+    const safeUsed = Math.max(0, used);
+
     if (revisionsLimit === -1) {
-      return "Unlimited revisions";
+      return `${prefix}unlimited revisions (${safeUsed} used)`;
     }
 
-    return `${Math.max(0, revisionsLimit - used)} revisions left`;
-  }, [revisionsLimit, used]);
+    const safeLimit = Math.max(0, revisionsLimit);
+    const cappedUsed = Math.min(safeUsed, safeLimit);
+    const remaining = Math.max(0, safeLimit - cappedUsed);
+    const revisionWord = remaining === 1 ? "revision" : "revisions";
+
+    return `${prefix}${remaining} ${revisionWord} left (${cappedUsed}/${safeLimit} used)`;
+  }, [planName, revisionsLimit, used]);
 
   const hasCredit = revisionsLimit === -1 || used < revisionsLimit;
   const canSubmit = project.status === "live" && !active && message.trim().length >= 3 && hasCredit;
@@ -137,12 +151,54 @@ export function RevisionWorkspace({
       : `${selectedComponents.length} component${selectedComponents.length === 1 ? "" : "s"} selected`;
   const previewLabel = previewUrl ? previewUrl.replace(/^https?:\/\//, "") : "No public URL";
   const selectedStatusLabel = selectedRevision
-    ? `${selectedRevision.revision_kind} / ${selectedRevision.status}`
+    ? revisionStatusLabel(selectedRevision)
     : "No revision selected";
   const reviewButtonLabel = changedFiles.length > 0 ? "Review changes" : "Review";
   const changedFilesLabel = changedFiles.length > 0
     ? `+${changedFiles.length} file${changedFiles.length === 1 ? "" : "s"}`
     : "No changes";
+  const composerHelpText = active
+    ? "Revision is running. Keep the preview open and watch the work log."
+    : project.status !== "live"
+      ? "Revisions unlock after the site is live."
+      : !hasCredit
+        ? "No revisions left on this plan."
+        : selectedComponents.length > 0
+          ? "Selected components are attached as context. Keep the request short and specific."
+          : "Auto-pick lets Onara choose the right components. Failed runs do not deduct.";
+  const submitButtonLabel = active
+    ? "Revising"
+    : project.status !== "live"
+      ? "Not live yet"
+      : !hasCredit
+        ? "No revisions left"
+        : "Send revision";
+
+  useEffect(() => {
+    const progressLines = progressLinesRef.current;
+    if (!progressLines) {
+      return;
+    }
+
+    progressLines.scrollTo({
+      top: progressLines.scrollHeight,
+      behavior: active ? "smooth" : "auto",
+    });
+  }, [active, lines]);
+
+  useEffect(() => {
+    conversationRef.current?.scrollIntoView({
+      block: "end",
+      behavior: active ? "smooth" : "auto",
+    });
+  }, [active, conversation]);
+
+  useEffect(() => {
+    return () => {
+      activeStreamRef.current?.close();
+      activeStreamRef.current = null;
+    };
+  }, []);
 
   async function submitRevision() {
     if (!canSubmit) {
@@ -156,17 +212,26 @@ export function RevisionWorkspace({
     appendConversation("user", instruction, { component_selection: selectedComponents });
     resetProgressLines(`Queued revision: ${instruction}`);
 
-    const response = await fetch("/api/revisions/start", {
-      body: JSON.stringify({
-        componentSelection: selectedComponents,
-        message: instruction,
-        projectId: project.id,
-      }),
-      headers: {
-        "Content-Type": "application/json",
-      },
-      method: "POST",
-    });
+    let response: Response;
+    try {
+      response = await fetch("/api/revisions/start", {
+        body: JSON.stringify({
+          componentSelection: selectedComponents,
+          message: instruction,
+          projectId: project.id,
+        }),
+        headers: {
+          "Content-Type": "application/json",
+        },
+        method: "POST",
+      });
+    } catch {
+      const nextError = "Revision could not start because the server is unreachable.";
+      setError(nextError);
+      appendLine(nextError, "error");
+      setActive(false);
+      return;
+    }
 
     const payload = (await response.json().catch(() => ({}))) as StartRevisionResponse;
     if (!response.ok) {
@@ -198,9 +263,18 @@ export function RevisionWorkspace({
     resetProgressLines("Queued rollback.");
     appendConversation("user", "Rollback to this previous version.", { rollback_revision_id: revisionId });
 
-    const response = await fetch(`/api/revisions/${encodeURIComponent(revisionId)}/rollback`, {
-      method: "POST",
-    });
+    let response: Response;
+    try {
+      response = await fetch(`/api/revisions/${encodeURIComponent(revisionId)}/rollback`, {
+        method: "POST",
+      });
+    } catch {
+      const nextError = "Rollback could not start because the server is unreachable.";
+      setError(nextError);
+      appendLine(nextError, "error");
+      setActive(false);
+      return;
+    }
     const payload = (await response.json().catch(() => ({}))) as StartRevisionResponse;
 
     if (!response.ok) {
@@ -224,7 +298,9 @@ export function RevisionWorkspace({
 
   function streamRevision(revisionId: string, kind: "edit" | "rollback", displayInstruction: string) {
     appendProgressLine({ event: "local_revision_stream_start" }, "Reading current site files");
+    activeStreamRef.current?.close();
     const events = new EventSource(`/api/revisions/${encodeURIComponent(revisionId)}/stream`);
+    activeStreamRef.current = events;
 
     events.addEventListener("progress", (event) => {
       const payload = parseEventPayload(event);
@@ -232,6 +308,13 @@ export function RevisionWorkspace({
       if (text) {
         appendProgressLine(payload, text);
       }
+    });
+
+    events.addEventListener("error", () => {
+      appendProgressLine(
+        { event: "revision_stream_warning", phase: "stream" },
+        "Connection interrupted. Reconnecting to the revision stream.",
+      );
     });
 
     events.addEventListener("complete", (event) => {
@@ -273,6 +356,9 @@ export function RevisionWorkspace({
       setActive(false);
       setSelectedComponents([]);
       events.close();
+      if (activeStreamRef.current === events) {
+        activeStreamRef.current = null;
+      }
     });
 
     events.addEventListener("revision-error", (event) => {
@@ -283,6 +369,9 @@ export function RevisionWorkspace({
       appendConversation("assistant", nextError, { status: "failed" });
       setActive(false);
       events.close();
+      if (activeStreamRef.current === events) {
+        activeStreamRef.current = null;
+      }
     });
   }
 
@@ -418,7 +507,7 @@ export function RevisionWorkspace({
             </div>
           </section>
 
-          <section className="revision-thread" aria-label="Revision conversation">
+          <section className="revision-thread" aria-label="Revision conversation" ref={conversationRef}>
             <div className="revision-thread-header">
               <MessageSquare size={15} />
               <span>Conversation</span>
@@ -438,7 +527,7 @@ export function RevisionWorkspace({
             )}
           </section>
 
-          <section className="revision-worklog" aria-label="Agent work log">
+          <section aria-busy={active} className="revision-worklog" aria-label="Agent work log">
             <div className="revision-worklog-header">
               <div>
                 <span>{active ? "Working now" : "Work log"}</span>
@@ -446,7 +535,7 @@ export function RevisionWorkspace({
               </div>
               <span>{selectedStatusLabel}</span>
             </div>
-            <div className="revision-progress-lines" aria-live="polite">
+            <div className="revision-progress-lines" aria-live="polite" ref={progressLinesRef}>
               {lines.map((line) => (
                 <div className={`revision-progress-line revision-progress-line-${line.level}`} key={line.id}>
                   {line.level === "success" ? (
@@ -489,7 +578,11 @@ export function RevisionWorkspace({
             </button>
             {COMPONENT_OPTIONS.map((component) => (
               <label
-                className={selectedComponents.includes(component.id) ? "revision-component-chip selected" : "revision-component-chip"}
+                aria-disabled={active}
+                className={componentChipClassName({
+                  active,
+                  selected: selectedComponents.includes(component.id),
+                })}
                 key={component.id}
               >
                 <input
@@ -513,11 +606,11 @@ export function RevisionWorkspace({
           <div className="revision-composer-actions">
             <span>
               <Code2 size={14} />
-              One message creates one deployable revision. Failed runs do not deduct.
+              {composerHelpText}
             </span>
             <button className="btn btn-accent" disabled={!canSubmit} type="submit">
               <Send aria-hidden="true" size={16} />
-              {active ? "Revising" : "Send revision"}
+              {submitButtonLabel}
             </button>
           </div>
         </form>
@@ -629,6 +722,26 @@ export function RevisionWorkspace({
   );
 }
 
+function formatPlanLabel(planLabel: string | null | undefined) {
+  if (!planLabel) {
+    return "";
+  }
+
+  return planLabel
+    .replace(/[_-]+/g, " ")
+    .trim()
+    .replace(/\s+/g, " ")
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
+function componentChipClassName({ active, selected }: { active: boolean; selected: boolean }) {
+  return [
+    "revision-component-chip",
+    selected ? "selected" : null,
+    active ? "disabled" : null,
+  ].filter(Boolean).join(" ");
+}
+
 function initialLines(revisions: RevisionHistoryItem[]): ProgressLine[] {
   if (revisions.length === 0) {
     return [
@@ -643,8 +756,38 @@ function initialLines(revisions: RevisionHistoryItem[]): ProgressLine[] {
   return revisions.slice(0, 4).map((revision) => ({
     id: revision.id,
     level: revision.status === "done" ? "success" : revision.status === "failed" ? "error" : "info",
-    message: `${revision.status === "done" ? "Deployed" : revision.status}: ${revision.instruction}`,
+    message: revisionProgressMessage(revision),
   }));
+}
+
+function revisionProgressMessage(revision: RevisionHistoryItem) {
+  if (revision.status === "done") {
+    return `Deployed revision: ${revision.instruction}`;
+  }
+
+  if (revision.status === "failed") {
+    return `Revision needs attention: ${revision.instruction}`;
+  }
+
+  if (revision.status === "running") {
+    return `Working on revision: ${revision.instruction}`;
+  }
+
+  return `Queued revision: ${revision.instruction}`;
+}
+
+function revisionStatusLabel(revision: RevisionHistoryItem) {
+  const kind = revision.revision_kind === "rollback" ? "Rollback" : "Edit";
+  const status =
+    revision.status === "done"
+      ? "Deployed"
+      : revision.status === "failed"
+        ? "Needs attention"
+        : revision.status === "running"
+          ? "Working"
+          : "Queued";
+
+  return `${kind} / ${status}`;
 }
 
 function normalizeChangedFiles(value: RevisionHistoryItem["changed_files"]): ChangedFile[] {
@@ -689,8 +832,23 @@ function eventLevel(payload: Record<string, unknown> | null): ProgressLine["leve
 
 function progressEventKey(payload: Record<string, unknown> | null, message: string) {
   const event = typeof payload?.event === "string" ? payload.event : "progress";
-  const timestamp = typeof payload?.timestamp === "string" ? payload.timestamp : "";
-  return `${event}:${timestamp}:${message}`;
+  const phase = typeof payload?.phase === "string" ? payload.phase : "";
+  const agentId = typeof payload?.agent_id === "string" ? payload.agent_id : "";
+  const normalizedMessage = normalizeProgressMessage(message);
+
+  if (isReplayedProgressMessage(normalizedMessage)) {
+    return `message:${normalizedMessage}`;
+  }
+
+  return [event, phase, agentId, normalizedMessage].filter(Boolean).join(":");
+}
+
+function normalizeProgressMessage(message: string) {
+  return message.trim().replace(/\s+/g, " ").toLowerCase();
+}
+
+function isReplayedProgressMessage(message: string) {
+  return message === "revision request received." || message === "reading current site files";
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

@@ -119,6 +119,35 @@ def ensure_hero_conversion_cta(
     return fixed, fixes
 
 
+def ensure_final_publishable_copy(
+    html: str,
+    *,
+    business_data: dict[str, Any],
+    style_preferences: dict[str, Any] | None = None,
+) -> tuple[str, list[str]]:
+    context = build_business_context(business_data, style_preferences or {})
+    fixed = html
+    fixes: list[str] = []
+
+    fixed, changed = _humanize_visible_keyword_tokens(fixed, context)
+    if changed:
+        fixes.append("Rewrote raw SEO keyword tokens into human-readable proof copy")
+
+    fixed, changed = _ensure_hero_heading_is_editorial(fixed, context)
+    if changed:
+        fixes.append("Shortened the hero headline into an editorial display heading")
+
+    fixed, changed = _ensure_mobile_sticky_call_bar(fixed, context, style_preferences)
+    if changed:
+        fixes.append("Added a mobile sticky tap-to-call bar")
+
+    fixed, changed = _ensure_resolved_photo_used(fixed, context)
+    if changed:
+        fixes.append("Inserted a supplied business photo into the generated page")
+
+    return fixed, _unique(fixes)
+
+
 def onara_typography_issues(html: str) -> list[str]:
     lower = html.lower()
     issues: list[str] = []
@@ -283,6 +312,11 @@ def ensure_review_and_license_integrity(
     if cleaned != fixed:
         fixed = cleaned
         fixes.append("Removed internal instruction leak text from generated copy")
+
+    if not credentials_supplied and _license_section_selected(style_preferences):
+        fixed, changed = _ensure_hidden_license_component_marker(fixed)
+        if changed:
+            fixes.append("Preserved a hidden license component marker without visible credential claims")
 
     return fixed, _unique(fixes)
 
@@ -583,7 +617,11 @@ def _ensure_services_section(html: str, context: BusinessContext) -> tuple[str, 
         return html, False
 
     section = _component_section(html, "services")
-    if section and _distinct_service_card_count(section) >= 4:
+    if (
+        section
+        and _distinct_service_card_count(section) >= 4
+        and not _services_section_has_generic_descriptions(section)
+    ):
         return html, False
 
     replacement = _services_section(context, services[:4])
@@ -753,16 +791,49 @@ def _distinct_service_card_count(section: str) -> int:
     return len({re.sub(r"\s+", " ", text).strip().lower() for text in texts if text.strip()})
 
 
+def _services_section_has_generic_descriptions(section: str) -> bool:
+    text = _visible_text(section).lower()
+    generic_phrases = (
+        "plain-language service details",
+        "clear service copy",
+        "customers looking for",
+        "homeowners comparing repair, replacement, or maintenance options",
+        "service details for customers",
+        "generic service",
+        "local contractor help",
+    )
+    return any(phrase in text for phrase in generic_phrases)
+
+
 def _service_description(context: BusinessContext, service: str) -> str:
     area = context.service_area
     service_lower = service.lower()
+    category = _plain_trade_label(context)
     if "emergency" in service_lower:
-        return f"Fast response language and tap-to-call action for urgent requests in {area}."
+        return f"Fast tap-to-call help for urgent {category} problems around {area}, with the next step easy to find."
     if "water heater" in service_lower or "heating" in service_lower:
-        return f"Clear service copy for homeowners comparing repair, replacement, or maintenance options in {area}."
+        return f"Repair, replacement, and maintenance support for heat and hot-water issues that need a practical plan."
     if "drain" in service_lower or "leak" in service_lower:
-        return f"Specific repair framing so customers can quickly identify the right next step in {area}."
-    return f"Plain-language service details for customers looking for {context.category.lower()} help in {area}."
+        return f"Focused diagnostics for leaks, clogs, and slow drains so customers can call with the right request."
+    if "air conditioning" in service_lower or "cooling" in service_lower or "ac " in f"{service_lower} ":
+        return f"Cooling service for comfort problems, seasonal maintenance, and system issues in {area}."
+    if "electric" in service_lower or "panel" in service_lower or "outlet" in service_lower:
+        return f"Electrical troubleshooting and repair framed around safe next steps and direct contact."
+    if "install" in service_lower or "replacement" in service_lower:
+        return f"Installation and replacement requests get organized around scope, timing, and estimate needs."
+    return f"{context.name} explains the next step for {service_lower} requests around {area} without making customers sort through filler."
+
+
+def _plain_trade_label(context: BusinessContext) -> str:
+    industry = infer_industry(context)
+    if industry in {"plumber", "hvac", "roofer", "electrician", "landscaper", "cleaner", "painter"}:
+        return industry.replace("hvac", "HVAC")
+
+    category = re.sub(r"\s+", " ", context.category).strip().lower()
+    if category and category not in {"local contractor", "contractor"}:
+        return category
+
+    return "service"
 
 
 def _first_existing_component_id(html: str, component_ids: tuple[str, ...]) -> str:
@@ -779,7 +850,13 @@ def _trust_section_is_weak(section: str) -> bool:
         phrase in text
         for phrase in ("google reviews", "24/7 availability")
     ) and len(text) < 160
-    return card_count < 3 or generic_only
+    vague_placeholders = (
+        "established local business",
+        "trusted local business",
+        "clear trust proof",
+        "proof-led local presence",
+    )
+    return card_count < 3 or generic_only or any(phrase in text for phrase in vague_placeholders)
 
 
 def _trust_facts(context: BusinessContext) -> list[tuple[str, str]]:
@@ -944,6 +1021,171 @@ def _conversion_cta_label(style_preferences: dict[str, Any] | None, context: Bus
     if "quote" in goal:
         return "Request a Quote"
     return "Get a Free Estimate"
+
+
+def _humanize_visible_keyword_tokens(html: str, context: BusinessContext) -> tuple[str, bool]:
+    keyword_re = re.compile(
+        r"(?<![A-Za-z0-9])(?P<token>[0-9a-z]+(?:\.[0-9]+)?(?:_[0-9a-z]+){1,})(?![A-Za-z0-9])",
+        flags=re.IGNORECASE,
+    )
+
+    def replace_text_node(match: re.Match[str]) -> str:
+        text = match.group(1)
+        humanized = keyword_re.sub(lambda token_match: _humanize_keyword_token(token_match.group("token"), context), text)
+        return f">{humanized}<"
+
+    parts = re.split(
+        r"(<(?:script|style)\b[^>]*>.*?</(?:script|style)>)",
+        html,
+        flags=re.IGNORECASE | re.DOTALL,
+    )
+    fixed_parts: list[str] = []
+    for part in parts:
+        if re.match(r"<(?:script|style)\b", part, flags=re.IGNORECASE):
+            fixed_parts.append(part)
+            continue
+        fixed_parts.append(
+            re.sub(
+                r">([^<>]*[A-Za-z0-9](?:_[A-Za-z0-9])[^<>]*)<",
+                replace_text_node,
+                part,
+                flags=re.IGNORECASE,
+            )
+        )
+
+    fixed = "".join(fixed_parts)
+    return fixed, fixed != html
+
+
+def _humanize_keyword_token(token: str, context: BusinessContext) -> str:
+    normalized = token.lower()
+    if "google_rating" in normalized or ("google" in normalized and "review" in normalized):
+        if context.rating is not None and context.review_count is not None:
+            return f"{context.rating:g} Google rating with {context.review_count:,} reviews"
+        if context.rating is not None:
+            return f"{context.rating:g} Google rating"
+        return "Public Google review profile"
+
+    if "24_hour" in normalized or "24_7" in normalized or "availability" in normalized:
+        return hours_summary(context).replace("Daily ", "") if context.hours else "Direct availability details"
+
+    if "local_address" in normalized or "established_local_address" in normalized:
+        return f"Established local address in {context.service_area}" if context.service_area != "your area" else "Established local address"
+
+    if "service_area" in normalized:
+        return f"Service area around {context.service_area}" if context.service_area != "your area" else "Local service area"
+
+    words = token.replace("_", " ")
+    return re.sub(r"\s+", " ", words).strip().capitalize()
+
+
+def _ensure_hero_heading_is_editorial(html: str, context: BusinessContext) -> tuple[str, bool]:
+    hero = _hero_section(html)
+    if not hero:
+        return html, False
+
+    heading = re.search(r"<h1\b(?P<attrs>[^>]*)>(?P<body>.*?)</h1>", hero, flags=re.IGNORECASE | re.DOTALL)
+    if not heading:
+        return html, False
+
+    text = _visible_text(heading.group("body"))
+    if not _hero_heading_too_long(text):
+        return html, False
+
+    new_heading = html_lib.escape(_concise_hero_heading(context))
+    repaired_hero = f"{hero[: heading.start('body')]}{new_heading}{hero[heading.end('body') :]}"
+    return html.replace(hero, repaired_hero, 1), True
+
+
+def _hero_heading_too_long(text: str) -> bool:
+    words = re.findall(r"[A-Za-z0-9]+", text)
+    if len(text) > 92 or len(words) > 12:
+        return True
+    if ":" in text and re.search(
+        r"\b(?:plumbers?|hvac|roofers?|electricians?|contractors?|repairs?|services?|emergenc(?:y|ies))\b",
+        text,
+        flags=re.IGNORECASE,
+    ):
+        return True
+    return bool(len(words) > 9 and re.search(r"\b(?:near me|available|pricing|service|repair|replacement)\b.*\b(?:available|pricing|service|repair|replacement)\b", text, flags=re.IGNORECASE))
+
+
+def _concise_hero_heading(context: BusinessContext) -> str:
+    area = context.city or context.service_area
+    industry = infer_industry(context)
+    if industry == "plumber":
+        return f"{area} plumbing help, fast."
+    if industry == "hvac":
+        return f"{area} heating and cooling help."
+    if industry == "electrician":
+        return f"{area} electrical help, clearly handled."
+    if industry == "roofer":
+        return f"{area} roof help without the runaround."
+    if industry == "grocery":
+        return f"{area} grocery pickup made simple."
+    if industry == "campground":
+        return f"{area} stays made easy."
+    return f"{area} {_plain_trade_label(context)} help, clearly handled."
+
+
+def _ensure_mobile_sticky_call_bar(
+    html: str,
+    context: BusinessContext,
+    style_preferences: dict[str, Any] | None,
+) -> tuple[str, bool]:
+    digits = _phone_digits(context.phone)
+    if not digits or "onara-mobile-sticky-call" in html.lower():
+        return html, False
+
+    label = _conversion_cta_label(style_preferences, context)
+    call_bar = (
+        f'\n  <a class="onara-mobile-sticky-call" href="tel:{html_lib.escape(digits, quote=True)}" '
+        f'aria-label="Call {html_lib.escape(context.name, quote=True)}">'
+        f'<span>{html_lib.escape(label)}</span><strong>{html_lib.escape(context.phone)}</strong></a>\n'
+    )
+    fixed = _insert_before_body_end(html, call_bar)
+    fixed, _ = _append_css_once(fixed, "onara-mobile-sticky-call-css", ONARA_MOBILE_STICKY_CALL_CSS)
+    return fixed, True
+
+
+def _ensure_resolved_photo_used(html: str, context: BusinessContext) -> tuple[str, bool]:
+    if not context.photos:
+        return html, False
+
+    if any(photo.src and photo.src in html for photo in context.photos):
+        return html, False
+
+    photo = context.photos[0]
+    if not photo.src:
+        return html, False
+
+    caption = photo.attribution_display or context.name
+    photo_markup = f"""
+        <figure class="hero-photo onara-photo-proof" data-onara-photo-proof="true">
+          <img src="{html_lib.escape(photo.src, quote=True)}" alt="{html_lib.escape(photo.alt or f'Business photo for {context.name}', quote=True)}" loading="eager" decoding="async" />
+          <figcaption>{html_lib.escape(caption)}</figcaption>
+        </figure>
+""".rstrip()
+
+    hero = _hero_section(html)
+    if hero:
+        repaired_hero = _insert_before_closing_component_tag(hero, f"\n{photo_markup}\n")
+        if repaired_hero != hero:
+            fixed, _ = _append_css_once(html.replace(hero, repaired_hero, 1), "onara-photo-proof-css", ONARA_PHOTO_PROOF_CSS)
+            return fixed, True
+
+    section = f"""
+    <section class="optional-section gallery onara-photo-proof-section" data-component="gallery" id="gallery">
+      <div class="section-head">
+        <span class="eyebrow">Photo proof</span>
+        <h2>Real business photo from the public profile.</h2>
+      </div>
+{photo_markup}
+    </section>
+""".rstrip()
+    fixed = _insert_before_first_component_or_body_end(html, ("services", "trust", "reviews", "service_area", "contact", "site_footer"), section)
+    fixed, _ = _append_css_once(fixed, "onara-photo-proof-css", ONARA_PHOTO_PROOF_CSS)
+    return fixed, True
 
 
 def _phone_digits(phone: str) -> str:
@@ -1149,6 +1391,20 @@ def _remove_unsupplied_credential_sections(html: str) -> tuple[str, bool]:
         flags=re.IGNORECASE | re.DOTALL,
     )
     return fixed, fixed != html
+
+
+def _license_section_selected(style_preferences: dict[str, Any] | None) -> bool:
+    sections = style_preferences.get("sections", []) if isinstance(style_preferences, dict) else []
+    return isinstance(sections, list) and "license" in {str(section).strip().lower() for section in sections}
+
+
+def _ensure_hidden_license_component_marker(html: str) -> tuple[str, bool]:
+    lower = html.lower()
+    if 'data-component="license_proof"' in lower or "data-component='license_proof'" in lower:
+        return html, False
+
+    marker = '\n    <section data-component="license_proof" hidden aria-hidden="true"></section>\n'
+    return _insert_before_main_or_body_end(html, marker), True
 
 
 def _remove_unsupplied_credential_blocks(html: str) -> str:
@@ -1448,6 +1704,12 @@ def _insert_before_main_or_body_end(html: str, section: str) -> str:
     if "</body>" in html.lower():
         return re.sub(r"</body>", f"{section}\n  </body>", html, count=1, flags=re.IGNORECASE)
     return f"{html}\n{section}"
+
+
+def _insert_before_body_end(html: str, markup: str) -> str:
+    if "</body>" in html.lower():
+        return re.sub(r"</body>", f"{markup}  </body>", html, count=1, flags=re.IGNORECASE)
+    return f"{html}\n{markup}"
 
 
 def _unique(values: list[str]) -> list[str]:
@@ -1982,6 +2244,87 @@ ONARA_HERO_CTA_LOCK_CSS = """
       .onara-injected-hero-cta:focus-visible {
         outline: 3px solid color-mix(in srgb, var(--accent, #c76f35) 35%, transparent);
         outline-offset: 3px;
+      }
+""".rstrip()
+
+
+ONARA_PHOTO_PROOF_CSS = """
+      /* onara-photo-proof-css */
+      .onara-photo-proof {
+        background: var(--ink, #181716);
+        border: 1px solid color-mix(in srgb, var(--ink, #181716) 72%, transparent);
+        display: grid;
+        margin: 0;
+        overflow: hidden;
+      }
+
+      .onara-photo-proof img {
+        aspect-ratio: 16 / 10;
+        display: block;
+        height: auto;
+        max-height: 340px;
+        object-fit: cover;
+        width: 100%;
+      }
+
+      .onara-photo-proof figcaption {
+        color: var(--paper, #fbfaf6);
+        font-family: var(--ui, Inter, sans-serif);
+        font-size: 0.95rem;
+        line-height: 1.35;
+        padding: 14px 16px;
+      }
+
+      .onara-photo-proof-section {
+        border-top: 1px solid var(--rule, #d8d6cf);
+        padding: clamp(42px, 6vw, 78px) clamp(18px, 4vw, 56px);
+      }
+""".rstrip()
+
+
+ONARA_MOBILE_STICKY_CALL_CSS = """
+      /* onara-mobile-sticky-call-css */
+      .onara-mobile-sticky-call {
+        display: none;
+      }
+
+      @media (max-width: 720px) {
+        body {
+          padding-bottom: 86px !important;
+        }
+
+        .onara-mobile-sticky-call {
+          align-items: center;
+          background: var(--accent, #c76f35);
+          border: 1px solid color-mix(in srgb, var(--accent, #c76f35) 72%, var(--ink, #181716));
+          bottom: 14px;
+          box-shadow: 0 18px 50px color-mix(in srgb, var(--ink, #181716) 22%, transparent);
+          color: var(--paper, #fbfaf6);
+          display: flex;
+          font-family: var(--ui, Inter, sans-serif);
+          gap: 12px;
+          justify-content: space-between;
+          left: 14px;
+          min-height: 58px;
+          padding: 0 18px;
+          position: fixed;
+          right: 14px;
+          text-decoration: none;
+          z-index: 80;
+        }
+
+        .onara-mobile-sticky-call span {
+          font-weight: 800;
+        }
+
+        .onara-mobile-sticky-call strong {
+          color: inherit;
+          font-family: var(--mono, monospace);
+          font-size: 0.82rem;
+          font-weight: 700;
+          letter-spacing: 0.04em;
+          white-space: nowrap;
+        }
       }
 """.rstrip()
 

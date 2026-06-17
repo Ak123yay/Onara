@@ -93,8 +93,9 @@ export default function DevRevisionWorkspacePage() {
           public_url: "https://example.com",
           status: "live",
         }}
-        revisionsLimit={-1}
-        revisionsUsed={0}
+        planLabel="Starter"
+        revisionsLimit={10}
+        revisionsUsed={2}
       />
     </main>
   );

@@ -12,6 +12,7 @@ type ProjectForRevisionPage = {
 };
 
 type ProfileForRevisionPage = {
+  plan: string | null;
   revisions_limit: number;
   revisions_used: number;
 };
@@ -70,7 +71,7 @@ export default async function ReviseSitePage(
       .maybeSingle<ProjectForRevisionPage>(),
     db
       .from("users")
-      .select("revisions_used, revisions_limit")
+      .select("plan, revisions_used, revisions_limit")
       .eq("id", user.id)
       .maybeSingle<ProfileForRevisionPage>(),
     db
@@ -131,6 +132,7 @@ export default async function ReviseSitePage(
         <RevisionWorkspace
           latestRevisions={revisions ?? []}
           messages={messages ?? []}
+          planLabel={profile?.plan ?? null}
           project={project}
           revisionsLimit={profile?.revisions_limit ?? 0}
           revisionsUsed={profile?.revisions_used ?? 0}

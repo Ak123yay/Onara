@@ -3246,14 +3246,15 @@ textarea.confirm-manual-control {
 
 .agent-progress-heading-meta {
   display: block;
-  margin-top: 10px;
+  margin-top: 12px;
   color: var(--ink-3);
-  font-family: var(--mono);
-  font-size: 9.5px;
-  letter-spacing: 0.06em;
-  line-height: 1.55;
+  font-family: var(--sans);
+  font-size: 12.5px;
+  font-weight: 500;
+  letter-spacing: 0.005em;
+  line-height: 1.45;
   max-width: 360px;
-  text-transform: uppercase;
+  text-transform: none;
 }
 
 .agent-progress-stats {
@@ -5832,16 +5833,16 @@ textarea.confirm-manual-control {
 .revision-worklog {
   --revision-log-icon-column: 20px;
   display: grid;
-  gap: 11px;
-  min-height: 96px;
-  max-height: 190px;
+  gap: 18px;
+  min-height: 196px;
+  max-height: 310px;
   overflow: hidden;
-  padding: 12px;
+  padding: 24px 24px 26px;
 }
 
 .revision-worklog-header {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
   gap: 12px;
   color: var(--revision-muted);
@@ -5867,33 +5868,46 @@ textarea.confirm-manual-control {
   border: 1px solid var(--rule-2);
   border-radius: 2px;
   padding: 5px 8px;
+  background: rgba(247, 242, 233, 0.48);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .revision-progress-lines {
   display: grid;
-  gap: 7px;
-  min-height: 28px;
-  max-height: 142px;
+  gap: 10px;
+  min-height: 38px;
+  max-height: 210px;
   overflow-y: auto;
-  padding-right: 3px;
+  padding: 2px 8px 8px 0;
+  scrollbar-width: none;
+}
+
+.revision-progress-lines::-webkit-scrollbar {
+  display: none;
 }
 
 .revision-progress-line {
   display: grid;
   grid-template-columns: var(--revision-log-icon-column) minmax(0, 1fr);
   align-items: center;
-  gap: 10px;
+  gap: 12px;
   color: var(--ink-2);
-  font-size: 0.94rem;
-  line-height: 1.35;
+  font-size: 1rem;
+  line-height: 1.5;
+  min-height: 32px;
+  overflow-wrap: anywhere;
+}
+
+.revision-progress-line > span:last-child {
+  min-width: 0;
 }
 
 .revision-progress-line svg,
 .revision-progress-line .revision-dot {
   display: block;
   justify-self: center;
+  margin: 0;
 }
 
 .revision-dot {
@@ -5950,8 +5964,8 @@ textarea.confirm-manual-control {
 
 .revision-message {
   max-width: 88%;
-  border-radius: 4px;
-  padding: 10px 12px;
+  border-radius: 18px;
+  padding: 11px 13px;
 }
 
 .revision-message span {
@@ -5985,11 +5999,11 @@ textarea.confirm-manual-control {
 .revision-composer {
   display: grid;
   flex: 0 0 auto;
-  gap: 7px;
+  gap: 12px;
   margin: 0;
   border-top: 1px solid var(--revision-border);
   background: rgba(255, 252, 246, 0.98);
-  padding: 9px 14px 11px;
+  padding: 14px 18px 16px;
 }
 
 .revision-composer-top,
@@ -6006,17 +6020,18 @@ textarea.confirm-manual-control {
   font-size: 0.62rem;
   letter-spacing: 0.13em;
   text-transform: uppercase;
+  line-height: 1.25;
 }
 
 .revision-component-strip {
   display: flex;
   flex-wrap: nowrap;
-  gap: 5px;
+  gap: 8px;
   min-width: 0;
-  max-height: 31px;
+  max-height: 36px;
   overflow-x: auto;
   overflow-y: hidden;
-  padding-bottom: 1px;
+  padding: 1px 0 3px;
   scrollbar-width: none;
 }
 
@@ -6027,18 +6042,25 @@ textarea.confirm-manual-control {
 .revision-component-chip {
   display: inline-flex;
   align-items: center;
+  flex: 0 0 auto;
   gap: 6px;
-  min-height: 27px;
+  min-height: 30px;
   border: 1px solid var(--rule-2);
   border-radius: 999px;
   background: rgba(247, 242, 233, 0.62);
   color: var(--ink-3);
-  padding: 5px 9px;
+  padding: 6px 11px;
   font-family: var(--mono);
   font-size: 0.58rem;
   letter-spacing: 0.09em;
   text-transform: uppercase;
   transition: border-color 0.12s ease, background 0.12s ease, color 0.12s ease;
+  white-space: nowrap;
+}
+
+.revision-component-chip span {
+  line-height: 1;
+  white-space: nowrap;
 }
 
 .revision-component-chip input {
@@ -6058,22 +6080,26 @@ textarea.confirm-manual-control {
   color: var(--accent-ink);
 }
 
+.revision-component-chip.disabled,
 button.revision-component-chip:disabled {
   cursor: default;
+  opacity: 0.62;
+  pointer-events: none;
 }
 
 .revision-composer textarea {
   width: 100%;
-  min-height: 44px;
-  max-height: 72px;
-  resize: vertical;
+  min-height: 72px;
+  max-height: 132px;
+  resize: none;
   border: 1px solid var(--revision-border-strong);
-  border-radius: 3px;
+  border-radius: 16px;
   background: white;
   color: var(--ink);
-  padding: 12px 13px;
+  overflow-y: auto;
+  padding: 14px 16px;
   font-size: 0.96rem;
-  line-height: 1.45;
+  line-height: 1.5;
   outline: none;
 }
 
@@ -6082,18 +6108,23 @@ button.revision-component-chip:disabled {
   box-shadow: 0 0 0 3px rgba(207, 111, 50, 0.12);
 }
 
+.revision-composer textarea:disabled {
+  cursor: not-allowed;
+  opacity: 0.72;
+}
+
 .revision-composer-actions > span {
   display: inline-flex;
   align-items: center;
-  gap: 7px;
+  gap: 9px;
   color: var(--revision-muted);
   font-size: 0.78rem;
-  line-height: 1.35;
+  line-height: 1.45;
 }
 
 .revision-composer-actions .btn {
-  min-height: 38px;
-  min-width: 154px;
+  min-height: 44px;
+  min-width: 172px;
   border-radius: 3px;
 }
 
@@ -6359,7 +6390,7 @@ button.revision-component-chip:disabled {
 }
 
 .revision-message {
-  border-radius: 4px;
+  border-radius: 18px;
 }
 
 .revision-message-user {
@@ -6380,13 +6411,7 @@ button.revision-component-chip:disabled {
 }
 
 .revision-worklog::before {
-  position: absolute;
-  top: 14px;
-  bottom: 14px;
-  left: calc(13px + (var(--revision-log-icon-column) / 2));
-  width: 1px;
-  background: rgba(207, 111, 50, 0.18);
-  content: "";
+  content: none;
 }
 
 .revision-worklog-header,

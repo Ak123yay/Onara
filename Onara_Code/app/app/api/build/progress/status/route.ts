@@ -236,9 +236,9 @@ function progressForPipeline(status: PipelineStatusResponse, currentStepIndex: n
     return 0;
   }
 
-  const total = Math.max(status.agents_total || AGENT_STEPS.length, AGENT_STEPS.length);
+  const visibleStep = Math.max(0, Math.min(currentStepIndex, AGENT_STEPS.length - 1));
   const activeOffset = status.current_agent ? 0.18 : 0;
-  return Math.max(1, Math.min(99, Math.round(((status.agents_completed + activeOffset) / total) * 100)));
+  return Math.max(1, Math.min(99, Math.round(((visibleStep + activeOffset) / AGENT_STEPS.length) * 100)));
 }
 
 function currentStepIndexForProject(project: ProjectResumeStatus) {

@@ -477,9 +477,16 @@ async function fetchPipelineStatus(jobId: string): Promise<PipelineStatusRespons
 }
 
 function progressForPipeline(status: PipelineStatusResponse, stepIndex: number) {
-  const total = Math.max(status.agents_total || AGENT_STEPS.length, AGENT_STEPS.length);
-  const base = Math.max(status.agents_completed, stepIndex);
-  return Math.max(1, Math.min(99, Math.round(((base + 0.18) / total) * 100)));
+  if (status.status === "completed") {
+    return 100;
+  }
+
+  if (status.status === "queued") {
+    return 0;
+  }
+
+  const visibleStep = Math.max(0, Math.min(stepIndex, AGENT_STEPS.length - 1));
+  return Math.max(1, Math.min(99, Math.round(((visibleStep + 0.18) / AGENT_STEPS.length) * 100)));
 }
 
 function progressAfterStep(stepIndex: number) {

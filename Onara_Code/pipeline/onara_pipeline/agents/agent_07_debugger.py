@@ -10,6 +10,7 @@ from onara_pipeline.agents.contracts import DebuggerOutput, PlannerOutput
 from onara_pipeline.agents.fact_repair import (
     ensure_core_page_structure,
     ensure_first_fold_balance,
+    ensure_final_publishable_copy,
     ensure_hours_rendered,
     ensure_hero_conversion_cta,
     ensure_onara_spacing,
@@ -359,6 +360,11 @@ def _apply_fact_repairs(
         business_data=business_data,
         style_preferences=style_preferences,
     )
+    fixed, publishable_fixes = ensure_final_publishable_copy(
+        fixed,
+        business_data=business_data,
+        style_preferences=style_preferences,
+    )
     return fixed, _unique(
         [
             *typography_fixes,
@@ -370,6 +376,7 @@ def _apply_fact_repairs(
             *integrity_fixes,
             *service_menu_fixes,
             *dedupe_fixes,
+            *publishable_fixes,
         ]
     )
 

@@ -7,6 +7,8 @@ from onara_pipeline.agents.agent_06_codegen import split_component_files
 from onara_pipeline.agents.context import build_business_context
 from onara_pipeline.agents.contracts import MobileOutput, PlannerOutput
 from onara_pipeline.agents.fact_repair import (
+    ensure_core_page_structure,
+    ensure_final_publishable_copy,
     ensure_hours_rendered,
     ensure_onara_spacing,
     ensure_onara_typography,
@@ -98,12 +100,22 @@ async def run_mobile_agent(
             business_data=job.business_data,
             style_preferences=job.style_preferences,
         )
+        html, structure_fixes = ensure_core_page_structure(
+            html,
+            business_data=job.business_data,
+            style_preferences=job.style_preferences,
+        )
         html, integrity_fixes = ensure_review_and_license_integrity(
             html,
             business_data=job.business_data,
             style_preferences=job.style_preferences,
         )
         html, service_menu_fixes = ensure_service_menu_integrity(
+            html,
+            business_data=job.business_data,
+            style_preferences=job.style_preferences,
+        )
+        html, publishable_fixes = ensure_final_publishable_copy(
             html,
             business_data=job.business_data,
             style_preferences=job.style_preferences,
@@ -122,8 +134,10 @@ async def run_mobile_agent(
                     *typography_fixes,
                     *spacing_fixes,
                     *fact_fixes,
+                    *structure_fixes,
                     *integrity_fixes,
                     *service_menu_fixes,
+                    *publishable_fixes,
                 ]
             ),
             html=html,
@@ -176,6 +190,12 @@ def deterministic_mobile(
             style_preferences=style_preferences,
         )
         fixes.extend(fact_fixes)
+        fixed, structure_fixes = ensure_core_page_structure(
+            fixed,
+            business_data=business_data,
+            style_preferences=style_preferences,
+        )
+        fixes.extend(structure_fixes)
         fixed, integrity_fixes = ensure_review_and_license_integrity(
             fixed,
             business_data=business_data,
@@ -188,6 +208,12 @@ def deterministic_mobile(
             style_preferences=style_preferences,
         )
         fixes.extend(service_menu_fixes)
+        fixed, publishable_fixes = ensure_final_publishable_copy(
+            fixed,
+            business_data=business_data,
+            style_preferences=style_preferences,
+        )
+        fixes.extend(publishable_fixes)
 
     status: MobileStatus = "fixed" if fixes else "pass"
     output = MobileOutput(
