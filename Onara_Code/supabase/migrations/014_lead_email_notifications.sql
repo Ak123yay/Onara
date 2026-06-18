@@ -10,10 +10,10 @@ create table if not exists public.leads (
   message text,
   source_url text,
   user_agent text,
-  sms_status text not null default 'pending'
-    check (sms_status in ('pending', 'sent', 'failed', 'skipped', 'disabled')),
-  sms_error text,
-  sms_sent_at timestamptz,
+  email_status text not null default 'pending'
+    check (email_status in ('pending', 'sent', 'failed', 'disabled')),
+  email_error text,
+  email_sent_at timestamptz,
   created_at timestamptz not null default now()
 );
 
@@ -38,4 +38,4 @@ end $$;
 
 create index if not exists idx_leads_project_id on public.leads(project_id);
 create index if not exists idx_leads_user_id_created_at on public.leads(user_id, created_at desc);
-create index if not exists idx_leads_sms_status on public.leads(sms_status);
+create index if not exists idx_leads_email_status on public.leads(email_status);

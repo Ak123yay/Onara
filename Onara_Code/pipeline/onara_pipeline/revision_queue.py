@@ -265,7 +265,7 @@ class RevisionQueue:
                 business_data=job.business_data,
                 job_id=job.job_id,
                 lead_capture_endpoint=lead_capture_endpoint(
-                    enabled=settings.feature_lead_sms,
+                    enabled=settings.feature_lead_email,
                     supabase_url=settings.supabase_url,
                 ),
                 planner=planner,

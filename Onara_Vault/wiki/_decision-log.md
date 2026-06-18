@@ -47,11 +47,11 @@ Use `users`, `projects`, `pipeline_jobs`, `revisions`, `pipeline_errors`, and `g
 
 ## 2026-05-15 — Retention
 
-**v1 retention mechanisms: Lead SMS + Reviews Badge Refresh**
+**v1 retention mechanisms: Lead email + Reviews Badge Refresh**
 
 Two mechanisms stay in v1 launch scope. Selection criteria: direct churn reduction + buildable in one sprint each. The earlier idea to pull GBP change-detection email into v1 is superseded; it remains post-v1 because it requires recurring Places polling, comparison storage, and user approval flow.
 
-1. **Lead SMS Notification** (`FEATURE_LEAD_SMS`) — Contact form submit → Twilio SMS to business owner. The highest-impact retention mechanism: every lead is proof the site is generating business. Build: Supabase Edge Function + Twilio. ~1 day.
+1. **Lead Email Notification** (`FEATURE_LEAD_EMAIL`) — Contact form submit → Resend email to the business/account email. Every lead is proof the site is generating business, and this reuses Onara's existing email stack instead of adding Twilio for v1.
 
 2. **Reviews Badge Weekly Refresh** (`FEATURE_REVIEWS_BADGE`) — pg_cron job pulls current Google rating + count weekly, updates the badge HTML on the live site. Makes the site feel alive and self-updating without a full regen. Build: one cron job + Places API call + targeted Cloudflare Pages HTML update. ~0.5 days.
 
@@ -68,7 +68,7 @@ Use `qwen3.5:9b` as the primary local Ollama model and `gemma4:e4b` as the local
 Use Washington DC / Northern Virginia contractors and home-service businesses as the first wedge. Restaurants, salons, and broad SMB markets remain expansion targets after launch data proves the contractor motion.
 
 **v1 scope guardrails**
-Keep launch retention to lead SMS and weekly review badge refresh. Keep GBP polling, seasonal SEO pages, and custom domains post-v1 unless explicitly unlocked.
+Keep launch retention to lead email and weekly review badge refresh. Keep GBP polling, seasonal SEO pages, and custom domains post-v1 unless explicitly unlocked.
 
 ---
 

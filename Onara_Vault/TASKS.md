@@ -10,7 +10,7 @@ _This file is the single source of truth for all work. Claude updates this after
 - [x] Identify 50+ GBP listings without websites in target metro area _(tracker: output/gbp-leads-tracker.csv | 73 leads seeded from Craigslist DC/NoVA)_
 - [x] Join 5–10 contractor Facebook groups; read for 30 min minimum _(10 groups documented: wiki/research/facebook-groups.md)_
 - [x] Write niche-specific features list (emergency banner, service area, license number, reviews badge)
-- [x] Decide which retention mechanisms go into v1 — Lead SMS + Reviews Badge Refresh; GBP change detection stays post-v1 unless explicitly unlocked
+- [x] Decide which retention mechanisms go into v1 — Lead email + Reviews Badge Refresh; GBP change detection stays post-v1 unless explicitly unlocked
 - [x] Commit to target metro area for launch — Washington DC / Northern Virginia
 - [x] Create GitHub account (username: ak123yay) + submit GitHub Education verification
 - [x] Generate fine-grained PAT for Copilot SDK (name: Onara Copilot, Copilot read-only)
@@ -209,7 +209,7 @@ Execution rule:
 
 ### Phase 26 — Retention Features
 
-- [ ] Lead SMS notification on contact form submit
+- [x] Lead email notification on contact form submit
 - [ ] Code download as a folderincluded for pro users
 - [ ] create the help page
 - [ ] Google Reviews badge refresh (weekly pull)

@@ -5504,25 +5504,30 @@ textarea.confirm-manual-control {
 .revision-page-brand {
   display: grid;
   min-width: 0;
-  gap: 18px;
+  gap: 14px;
 }
 
 .revision-page-logo {
   width: fit-content;
   flex: 0 0 auto;
-  gap: 7px;
-  border: 1px solid var(--rule);
-  border-radius: 2px;
-  background: var(--paper);
-  padding: 8px 10px;
+  gap: 8px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  padding: 0;
   color: var(--ink);
-  font-size: 0.76rem;
+  font-size: 0.86rem;
 }
 
 .revision-page-logo .onara-logo-mark {
   position: relative;
-  width: 20px;
-  height: 20px;
+  width: 24px;
+  height: 24px;
+}
+
+.revision-page-logo .onara-logo-word {
+  font-size: 0.9rem;
+  letter-spacing: -0.03em;
 }
 
 .revision-page-logo .onara-logo-mark:empty::after {

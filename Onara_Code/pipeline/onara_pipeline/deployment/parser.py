@@ -75,7 +75,7 @@ def build_deployment_artifact(
 def lead_capture_endpoint(*, enabled: bool, supabase_url: str | None) -> str | None:
     if not enabled or not supabase_url:
         return None
-    return f"{supabase_url.rstrip('/')}/functions/v1/lead-sms"
+    return f"{supabase_url.rstrip('/')}/functions/v1/lead-email"
 
 
 def extract_final_html(raw_output: str) -> str:

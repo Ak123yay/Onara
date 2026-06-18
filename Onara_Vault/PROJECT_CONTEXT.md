@@ -104,4 +104,4 @@ Agents 2 and 3 run in **parallel** — this is non-negotiable for hitting 60s. C
 1. Launch to local service contractors in one metro area
 2. Hit first 50 paying users via cold outbound (Google Maps no-website leads)
 3. Prove 60-second generation and live URL flow end-to-end
-4. Build launch retention hooks: lead SMS and review badge refresh; keep Google sync and seasonal SEO for post-v1
+4. Build launch retention hooks: lead email and review badge refresh; keep Google sync and seasonal SEO for post-v1

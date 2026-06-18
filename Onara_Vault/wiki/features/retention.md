@@ -1,6 +1,6 @@
 # Retention Features
 
-Mechanisms that keep users engaged and their sites valuable over time. For v1, keep this small: lead SMS notifications and weekly review badge refresh. GBP polling, seasonal pages, and custom domains remain post-v1 scope.
+Mechanisms that keep users engaged and their sites valuable over time. For v1, keep this small: lead email notifications and weekly review badge refresh. GBP polling, seasonal pages, and custom domains remain post-v1 scope.
 
 ---
 
@@ -40,21 +40,21 @@ Mechanisms that keep users engaged and their sites valuable over time. For v1, k
 
 ---
 
-## Feature 3 — Lead SMS Notification
+## Feature 3 — Lead Email Notification
 
 **Target version**: v1 (pulled forward 2026-05-15 — highest churn-reduction impact)  
-**Feature flag**: `FEATURE_LEAD_SMS`
+**Feature flag**: `FEATURE_LEAD_EMAIL`
 
-**What it does**: When a visitor submits the contact form on the generated site, the business owner receives an SMS notification immediately.
+**What it does**: When a visitor submits the contact form on the generated site, the business owner receives an email notification immediately.
 
-**Why**: Local contractors check their phones constantly but don't check email. An instant SMS for every lead is a direct retention hook — the site is visibly generating business.
+**Why**: Every lead notification is direct proof that the generated site is creating business value. Email avoids the Twilio dependency for v1 and reuses the existing Resend setup.
 
 **Implementation**: 
 - Contact form on generated site → POST to a Supabase Edge Function endpoint
-- Edge Function → Twilio API → SMS to `business_phone`
+- Edge Function → Resend API → email to `business_email`, falling back to the account email
 - Supabase logs the lead for the user's dashboard
 
-**Pricing consideration**: Twilio charges per SMS. At low volume (v1 scale), this is negligible. Price into the Pro tier if it becomes material cost.
+**Pricing consideration**: Resend's free tier is enough for early v1 volume. Upgrade Resend if contact-form volume approaches the daily/monthly send limit.
 
 ---
 
@@ -105,5 +105,5 @@ Cloudflare returns the DNS records the user needs to point at their domain regis
 | Month 3 churn rate | < 10% | Site still working = stay subscribed |
 | Revision usage (paid users) | > 1/month | Usage = retention |
 | "Site live" open rate (email) | > 60% | First value moment email |
-| Lead SMS delivery time | < 30 seconds | Immediate proof that the site is generating leads |
+| Lead email delivery time | < 30 seconds | Immediate proof that the site is generating leads |
 | Reviews badge refresh success | > 95% | Fresh proof without requiring user effort |

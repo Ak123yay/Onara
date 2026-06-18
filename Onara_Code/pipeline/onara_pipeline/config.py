@@ -53,7 +53,7 @@ class Settings(BaseSettings):
     pipeline_api_secret: str | None = Field(default=None, alias="PIPELINE_API_SECRET")
     pipeline_max_concurrency: int = Field(default=1, ge=1, le=10, alias="PIPELINE_MAX_CONCURRENCY")
     pipeline_job_timeout: int = Field(default=300, ge=30, le=3600, alias="PIPELINE_JOB_TIMEOUT")
-    feature_lead_sms: bool = Field(default=False, alias="FEATURE_LEAD_SMS")
+    feature_lead_email: bool = Field(default=False, alias="FEATURE_LEAD_EMAIL")
     supabase_url: str | None = Field(default=None, alias="SUPABASE_URL")
     supabase_service_role_key: str | None = Field(default=None, alias="SUPABASE_SERVICE_ROLE_KEY")
     supabase_secret_key: str | None = Field(default=None, alias="SUPABASE_SECRET_KEY")

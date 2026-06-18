@@ -44,7 +44,7 @@ _Claude keeps this file updated after every compile. You review it; you do not e
 | `wiki/features/google-places.md` | ✅ initialized | Places API (New) endpoints, Blackboard mapping, GBP Sync flag |
 | `wiki/features/revision-system.md` | ✅ initialized | Revision schema, monthly limits, status lifecycle, v2 design |
 | `wiki/features/dashboard.md` | ✅ initialized | Dashboard layout, My Sites, preview, revision UI, plan enforcement table |
-| `wiki/features/retention.md` | ✅ initialized | GBP sync, reviews badge, lead SMS, seasonal pages, custom domain |
+| `wiki/features/retention.md` | ✅ initialized | GBP sync, reviews badge, lead email, seasonal pages, custom domain |
 
 ---
 

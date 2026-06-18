@@ -20,7 +20,7 @@ _Version milestones, feature scope, and release criteria._
 - Stripe billing (Starter $12/month or $99/year, Pro $29/month, 14-day reverse trial)
 - Dashboard: site list, preview, revision request form
 - Manual revision handling
-- Lead SMS notification on contact form submit
+- Lead email notification on contact form submit
 - Weekly Google reviews badge refresh
 - UptimeRobot + PostHog monitoring
 

@@ -207,7 +207,7 @@ Some homeowners are not ready to call — they want to message first. A free est
 ### Implementation
 
 - Contact form POSTs to a Supabase Edge Function
-- Edge Function sends a lead notification (email + SMS if `FEATURE_LEAD_SMS` is on)
+- Edge Function sends a lead notification email when `FEATURE_LEAD_EMAIL` is on
 - No third-party form service — Onara owns the lead flow
 
 ---
