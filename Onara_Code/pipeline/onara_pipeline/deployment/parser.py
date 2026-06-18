@@ -57,6 +57,7 @@ def build_deployment_artifact(
         endpoint=lead_capture_endpoint,
         project_id=project_id,
     )
+    index_html = apply_reviews_badge(index_html, business_data=business_data)
     files = split_atomic_files(index_html, planner)
     manifest = _build_manifest(
         business_data=business_data,
@@ -76,6 +77,27 @@ def lead_capture_endpoint(*, enabled: bool, supabase_url: str | None) -> str | N
     if not enabled or not supabase_url:
         return None
     return f"{supabase_url.rstrip('/')}/functions/v1/lead-email"
+
+
+def apply_reviews_badge(html: str, *, business_data: dict[str, Any]) -> str:
+    rating = _reviews_rating_value(business_data.get("rating"))
+    review_count = _reviews_count_value(business_data.get("review_count"))
+    place_id = _reviews_text_value(business_data.get("place_id"))
+
+    if rating is None or review_count is None or review_count < 3:
+        return _remove_reviews_badge(html)
+
+    badge = _reviews_badge_markup(
+        business_name=str(business_data.get("name") or "this business"),
+        place_id=place_id,
+        rating=rating,
+        review_count=review_count,
+    )
+    updated, replaced = _replace_reviews_badge(html, badge)
+    if not replaced:
+        updated = _insert_reviews_badge(updated, badge)
+
+    return _inject_reviews_badge_style(updated)
 
 
 def extract_final_html(raw_output: str) -> str:
@@ -359,6 +381,130 @@ def _inject_lead_capture_script(html: str, *, endpoint: str, project_id: str) ->
 </script>
 """.strip()
     return re.sub(r"</body>", f"{script}\n</body>", html, count=1, flags=re.IGNORECASE)
+
+
+def _reviews_badge_markup(
+    *,
+    business_name: str,
+    place_id: str | None,
+    rating: float,
+    review_count: int,
+) -> str:
+    rating_text = f"{rating:.1f}".rstrip("0").rstrip(".")
+    count_text = f"{review_count:,}"
+    maps_href = (
+        f"https://www.google.com/maps/search/?api=1&query={_url_quote(business_name)}&query_place_id={_url_quote(place_id)}"
+        if place_id
+        else f"https://www.google.com/maps/search/?api=1&query={_url_quote(business_name)}"
+    )
+
+    return (
+        f'<a class="onara-review-badge" data-onara-review-badge '
+        f'data-onara-rating="{html_lib.escape(rating_text)}" '
+        f'data-onara-review-count="{review_count}" '
+        f'href="{html_lib.escape(maps_href)}" target="_blank" rel="noopener">'
+        f'<span class="onara-review-badge-star" aria-hidden="true">&#9733;</span>'
+        f'<strong>{html_lib.escape(rating_text)}</strong>'
+        f'<span>{html_lib.escape(count_text)} Google reviews</span>'
+        f'</a>'
+    )
+
+
+def _replace_reviews_badge(html: str, badge: str) -> tuple[str, bool]:
+    pattern = re.compile(
+        r"<a\b[^>]*data-onara-review-badge[^>]*>.*?</a>|<div\b[^>]*data-onara-review-badge[^>]*>.*?</div>",
+        flags=re.IGNORECASE | re.DOTALL,
+    )
+    updated, count = pattern.subn(badge, html, count=1)
+    return updated, count > 0
+
+
+def _remove_reviews_badge(html: str) -> str:
+    pattern = re.compile(
+        r"\s*(?:<a\b[^>]*data-onara-review-badge[^>]*>.*?</a>|<div\b[^>]*data-onara-review-badge[^>]*>.*?</div>)",
+        flags=re.IGNORECASE | re.DOTALL,
+    )
+    return pattern.sub("", html)
+
+
+def _insert_reviews_badge(html: str, badge: str) -> str:
+    h1_match = re.search(r"<h1\b", html, flags=re.IGNORECASE)
+    if h1_match:
+        return html[: h1_match.start()] + badge + "\n" + html[h1_match.start() :]
+
+    body_match = re.search(r"<body\b[^>]*>", html, flags=re.IGNORECASE)
+    if body_match:
+        return html[: body_match.end()] + "\n" + badge + html[body_match.end() :]
+
+    return html
+
+
+def _inject_reviews_badge_style(html: str) -> str:
+    if "onara-review-badge-style" in html:
+        return html
+
+    style = """
+<style id="onara-review-badge-style">
+  .onara-review-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.42rem;
+    width: fit-content;
+    margin: 0 0 0.85rem;
+    border: 1px solid rgba(194, 84, 31, 0.24);
+    border-radius: 2px;
+    background: rgba(255, 248, 239, 0.88);
+    color: #1a1a1a;
+    font: 600 0.9rem/1 Inter, ui-sans-serif, system-ui, sans-serif;
+    padding: 0.48rem 0.65rem;
+    text-decoration: none;
+  }
+  .onara-review-badge-star {
+    color: #c2541f;
+    font-size: 0.95rem;
+    line-height: 1;
+  }
+  .onara-review-badge strong {
+    font-weight: 800;
+  }
+  .onara-review-badge span:last-child {
+    color: #5f5a52;
+    font-weight: 600;
+  }
+</style>
+""".strip()
+    return re.sub(r"</head>", f"{style}\n</head>", html, count=1, flags=re.IGNORECASE)
+
+
+def _reviews_rating_value(value: Any) -> float | None:
+    try:
+        rating = float(value)
+    except (TypeError, ValueError):
+        return None
+    if rating < 0 or rating > 5:
+        return None
+    return round(rating, 1)
+
+
+def _reviews_count_value(value: Any) -> int | None:
+    try:
+        count = int(value)
+    except (TypeError, ValueError):
+        return None
+    return count if count >= 0 else None
+
+
+def _reviews_text_value(value: Any) -> str | None:
+    if value in (None, ""):
+        return None
+    text = str(value).strip()
+    return text or None
+
+
+def _url_quote(value: str | None) -> str:
+    from urllib.parse import quote
+
+    return quote(str(value or "").strip(), safe="")
 
 
 def _extract_component_html(html: str, component_id: str) -> str | None:

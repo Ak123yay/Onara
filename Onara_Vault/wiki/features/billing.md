@@ -166,6 +166,8 @@ if (user.revisions_limit !== -1 && user.revisions_used >= user.revisions_limit) 
 if (!isTrial && plan !== 'pro') return 403
 ```
 
+Eligible users download a `.zip` folder of the generated site files from the GitHub-backed project artifact path.
+
 ---
 
 ## Annual Plan

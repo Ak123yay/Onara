@@ -210,9 +210,9 @@ Execution rule:
 ### Phase 26 — Retention Features
 
 - [x] Lead email notification on contact form submit
-- [ ] Code download as a folderincluded for pro users
-- [ ] create the help page
-- [ ] Google Reviews badge refresh (weekly pull)
+- [x] Code download as a folder included for Pro users
+- [x] Create the help page
+- [x] Google Reviews badge refresh (weekly pull)
 - [ ] Keep GBP polling/change detection disabled for v1 (`FEATURE_GBP_SYNC=false`)
 
 ### Phase 27 — Architecture Hardening

@@ -107,7 +107,7 @@ The build flow is the core product experience. A user enters a business name or 
 | Visit Site | All | Opens `site_url` in new tab |
 | Regenerate | All | Triggers new build job (counts against limit) |
 | Request Revision | All | Opens revision form (3/month Free, 10/month Starter, unlimited Trial/Pro) |
-| Download Code | Pro | Downloads `index.html` |
+| Download Code | Pro / Trial | Downloads a `.zip` folder of the generated site files |
 | Copy Site URL | All | Copies URL to clipboard |
 
 ---

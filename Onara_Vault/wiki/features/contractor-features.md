@@ -146,7 +146,7 @@ Social proof is the fastest trust-builder for service contractors. A visible rev
 
 ### Implementation notes
 
-- Agent 6 renders a `<a href="[gbp_url]">` block with star icons + rating + count text
+- The deployment parser renders a stable `<a data-onara-review-badge>` block with rating + count text
 - Star icons are pure CSS/SVG — no external icon dependency
 - Falls back gracefully: if `google_review_count < 3`, badge is omitted entirely (avoid showing low counts)
 - JSON-LD `AggregateRating` schema injected separately by Agent 8 (SEO)
@@ -246,7 +246,7 @@ A small trust chip displayed near the business name or in the hero:
 | Years in business chip | Yes | If data available |
 | Seasonal SEO pages | No — v2.5 | `FEATURE_SEASONAL_PAGES` |
 | GBP sync | No — v2.5 | `FEATURE_GBP_SYNC` |
-| Reviews auto-refresh | No — v1.5 | `FEATURE_REVIEWS_BADGE` |
+| Reviews auto-refresh | Yes | `FEATURE_REVIEWS_BADGE` |
 
 ---
 

@@ -1,18 +1,20 @@
 # Environment Variables — Onara
 
-_Environment variable reference. `[NEXT]` = Next.js `.env.local` | `[FAST]` = FastAPI `.env` | `[BOTH]` = both._
+_Environment variable reference. `[NEXT]` = Next.js `.env.local` | `[FAST]` = FastAPI `.env` | `[EDGE]` = Supabase Edge Function secrets | `[BOTH]` = Next.js + FastAPI._
 
 ---
 
-## GitHub (6 vars)
+## GitHub
 
 | Variable | Target | Description |
 |----------|--------|-------------|
-| `GITHUB_APP_ID` | FAST | GitHub App numeric ID |
-| `GITHUB_APP_PRIVATE_KEY` | FAST | Full `.pem` contents including BEGIN/END lines |
-| `GITHUB_APP_INSTALLATION_ID` | FAST | From `/settings/installations/{number}` |
-| `GITHUB_REPO_OWNER` | FAST | Username owning `onara-sites` repo |
-| `GITHUB_REPO_NAME` | FAST | Always `onara-sites` |
+| `GITHUB_API_URL` | BOTH | GitHub API base URL; default `https://api.github.com` |
+| `GITHUB_APP_ID` | BOTH | GitHub App numeric ID |
+| `GITHUB_APP_PRIVATE_KEY` | BOTH | Full `.pem` contents including BEGIN/END lines |
+| `GITHUB_APP_INSTALLATION_ID` | BOTH | From `/settings/installations/{number}` |
+| `GITHUB_REPO_BRANCH` | BOTH | Backup repo branch; default `main` |
+| `GITHUB_REPO_OWNER` | BOTH | Username owning `onara-sites` repo |
+| `GITHUB_REPO_NAME` | BOTH | Always `onara-sites` |
 | `COPILOT_GITHUB_TOKEN` | FAST | Fine-grained PAT for Copilot SDK — Copilot read-only scope only |
 | `COPILOT_BASE_DIRECTORY` | FAST | Local Copilot SDK runtime/session state path; default `./.copilot_runtime` |
 
@@ -22,7 +24,7 @@ _Environment variable reference. `[NEXT]` = Next.js `.env.local` | `[FAST]` = Fa
 
 | Variable | Target | Description |
 |----------|--------|-------------|
-| `GOOGLE_PLACES_API_KEY` | NEXT + PIPELINE | Places API (New) key — server-side only; used by Next.js search/photo preview and FastAPI photo resolution; never `NEXT_PUBLIC_*` |
+| `GOOGLE_PLACES_API_KEY` | NEXT + FAST + EDGE | Places API (New) key - server-side only; used by Next.js search/photo preview, FastAPI photo resolution, and weekly reviews refresh; never `NEXT_PUBLIC_*` |
 | `GOOGLE_OAUTH_CLIENT_ID` | NEXT | OAuth Client ID from Google Cloud Console |
 | `GOOGLE_OAUTH_CLIENT_SECRET` | NEXT | OAuth Client Secret |
 
@@ -39,12 +41,15 @@ _Environment variable reference. `[NEXT]` = Next.js `.env.local` | `[FAST]` = Fa
 
 ---
 
-## Cloudflare (2 vars)
+## Cloudflare
 
 | Variable | Target | Description |
 |----------|--------|-------------|
-| `CLOUDFLARE_ACCOUNT_ID` | FAST | 32-char hex string from Workers & Pages |
-| `CLOUDFLARE_API_TOKEN` | FAST | API token with `Cloudflare Pages:Edit` permission |
+| `CLOUDFLARE_API_URL` | FAST + EDGE | Cloudflare API base URL; default `https://api.cloudflare.com/client/v4` |
+| `CLOUDFLARE_ACCOUNT_ID` | FAST + EDGE | 32-char hex string from Workers & Pages |
+| `CLOUDFLARE_API_TOKEN` | FAST + EDGE | API token with `Cloudflare Pages:Edit` permission |
+| `CLOUDFLARE_PAGES_BRANCH` | FAST + EDGE | Pages deployment branch; default `main` |
+| `CLOUDFLARE_PAGES_PROJECT_PREFIX` | FAST + EDGE | Prefix for generated Pages project names; default `onara-site` |
 
 ---
 
@@ -136,6 +141,7 @@ _Environment variable reference. `[NEXT]` = Next.js `.env.local` | `[FAST]` = Fa
 |----------|--------|---------|-------------|
 | `FEATURE_CODE_DOWNLOAD` | NEXT | `true` | Enable Pro code download |
 | `FEATURE_ANNUAL_PLAN` | NEXT | `true` | Show Starter annual billing option |
+| `FEATURE_REVIEWS_BADGE` | EDGE | `true` | Enable weekly Google reviews badge refresh |
 | `FEATURE_GBP_SYNC` | FAST | `false` | Enable GBP polling (v2.5) |
 
 ---

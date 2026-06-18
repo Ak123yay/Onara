@@ -32,9 +32,9 @@ Mechanisms that keep users engaged and their sites valuable over time. For v1, k
 **Target version**: v1 (pulled forward 2026-05-15 — low complexity, high signal)  
 **Feature flag**: `FEATURE_REVIEWS_BADGE`
 
-**What it does**: Weekly job pulls the business's current Google review count and average rating via the Places API. Injects an updated reviews badge into the live site.
+**What it does**: Weekly job pulls the business's current Google review count and average rating via the Places API. It injects or updates a stable `data-onara-review-badge` block on the live site.
 
-**Implementation**: Agent 8 (SEO) already injects the initial rating into the JSON-LD schema. The retention version updates this weekly without requiring a full regeneration — just a targeted HTML update to the badge section.
+**Implementation**: Generated sites get the initial badge during deploy when `google_review_count >= 3`. The `refresh-reviews` Supabase Edge Function runs weekly through pg_cron, fetches Places details, updates the badge and existing JSON-LD `AggregateRating`, then redeploys `index.html` to the existing Cloudflare Pages project. This does not enable broader GBP polling/change detection.
 
 **User value**: The site gets fresher over time. A business that accumulates 50 more reviews sees that reflected automatically — making the site more credible and reducing churn.
 

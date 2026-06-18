@@ -164,7 +164,7 @@ Current actionable phase.
 
 ## Phase 26 — Retention Features
 - [ ] GBP polling: cron job to check Google for hours/phone changes every 24h
-- [ ] Google Reviews badge: weekly pull + embed on generated sites
+- [x] Google Reviews badge: weekly pull + embed on generated sites
 - [x] Lead email notification on contact form submit (Resend)
 
 ## Phase 27 — Architecture Hardening

@@ -2,6 +2,7 @@ import {
   AlertTriangle,
   ArrowRight,
   Brain,
+  Download,
   ExternalLink,
   Eye,
   Globe2,
@@ -192,6 +193,19 @@ function revisionMetric(profile: Profile | null) {
     caption: "this month",
     value: `${profile.revisions_used}/${profile.revisions_limit}`,
   };
+}
+
+function hasCodeDownloadAccess(profile: Profile | null) {
+  return profile?.is_trial === true || profile?.plan === "pro";
+}
+
+function featureEnabled(name: string, defaultValue: boolean) {
+  const value = process.env[name];
+  if (value === undefined) {
+    return defaultValue;
+  }
+
+  return value.trim().toLowerCase() === "true";
 }
 
 function displayNameFor(profile: Profile | null, user: DashboardAuthUser) {
@@ -551,7 +565,15 @@ function SiteThumb({ project }: { project: Project }) {
   );
 }
 
-function SiteCard({ project, showUrl }: { project: Project; showUrl: boolean }) {
+function SiteCard({
+  canDownloadCode,
+  project,
+  showUrl,
+}: {
+  canDownloadCode: boolean;
+  project: Project;
+  showUrl: boolean;
+}) {
   const activeBuild = ["queued", "generating", "deploying"].includes(project.status);
   const resumeHref = activeBuild && project.pipeline_job_id
     ? `/dashboard/build/progress?jobId=${encodeURIComponent(project.pipeline_job_id)}&projectId=${encodeURIComponent(project.id)}`
@@ -625,6 +647,12 @@ function SiteCard({ project, showUrl }: { project: Project; showUrl: boolean }) 
           <Link className="btn btn-soft btn-sm" href={siteHref} target="_blank">
             <ExternalLink aria-hidden="true" size={14} />
             Visit
+          </Link>
+        ) : null}
+        {canDownloadCode && project.status === "live" ? (
+          <Link className="btn btn-soft btn-sm" href={`/api/sites/${project.id}/download`} prefetch={false}>
+            <Download aria-hidden="true" size={14} />
+            Download code
           </Link>
         ) : null}
         {project.status === "failed" ? (
@@ -730,6 +758,7 @@ export default async function DashboardPage() {
     .filter((value): value is string => Boolean(value))
     .sort((a, b) => new Date(b).getTime() - new Date(a).getTime())[0];
   const showUrl = profile?.show_url ?? true;
+  const canDownloadCode = featureEnabled("FEATURE_CODE_DOWNLOAD", true) && hasCodeDownloadAccess(profile);
   const displayName = displayNameFor(profile, user);
   const firstName = displayName.split(" ")[0] || "there";
   const hasSites = projectList.length > 0;
@@ -838,7 +867,12 @@ export default async function DashboardPage() {
           </div>
           <div className="sites-list-stack">
             {projectList.map((project) => (
-              <SiteCard key={project.id} project={project} showUrl={showUrl} />
+              <SiteCard
+                canDownloadCode={canDownloadCode}
+                key={project.id}
+                project={project}
+                showUrl={showUrl}
+              />
             ))}
           </div>
         </section>

@@ -222,7 +222,7 @@ export default async function AccountPage() {
           />
           <AccountActionCard
             description="Get help with billing, login, or a generated site."
-            href="mailto:support@onara.tech"
+            href="/help"
             icon={<Mail size={17} />}
             label="Support"
             title="Support"
