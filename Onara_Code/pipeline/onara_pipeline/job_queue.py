@@ -205,13 +205,17 @@ class JobQueue:
 
     async def _prepare_deployment_artifact(self, job: PipelineJob, progress: Any) -> None:
         from onara_pipeline.agents.contracts import PlannerOutput
-        from onara_pipeline.deployment import build_deployment_artifact
+        from onara_pipeline.deployment import build_deployment_artifact, lead_capture_endpoint
 
         planner = PlannerOutput.model_validate(job.blackboard.get("planner_output"))
         artifact = build_deployment_artifact(
             str(job.blackboard.get("generated_html") or ""),
             business_data=job.business_data,
             job_id=job.job_id,
+            lead_capture_endpoint=lead_capture_endpoint(
+                enabled=settings.feature_lead_sms,
+                supabase_url=settings.supabase_url,
+            ),
             planner=planner,
             project_id=job.project_id,
             user_id=job.user_id,

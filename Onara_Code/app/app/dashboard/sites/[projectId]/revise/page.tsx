@@ -110,8 +110,9 @@ export default async function ReviseSitePage(
           </Link>
           <span className="revision-page-divider" aria-hidden="true" />
           <div className="revision-page-title">
+            <p className="eyebrow">Site revision</p>
             <h1 className="serif">Revision studio</h1>
-            <p>{project.business_name}</p>
+            <p>Request focused changes for {project.business_name}. The live preview and work log stay in one place while Onara runs.</p>
           </div>
         </div>
         <Link className="btn btn-soft btn-sm" href="/dashboard">

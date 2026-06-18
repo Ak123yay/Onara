@@ -1,7 +1,7 @@
 import { ArrowRight, Check, CreditCard, Sparkles } from "lucide-react";
 import type { Metadata } from "next";
+import Link from "next/link";
 import { redirect } from "next/navigation";
-import { CheckoutButton } from "@/components/billing/CheckoutButton";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
@@ -306,6 +306,9 @@ export default async function BillingPage({ searchParams }: BillingPageProps) {
           {planCards.map((plan) => {
             const isCurrent = !profile.is_trial && profile.plan === plan.plan;
             const isDowngrade = !profile.is_trial && currentPlanRank > planRank[plan.plan];
+            const isDisabled = isCurrent || isDowngrade;
+            const primaryHref = `/account/checkout?plan=${plan.plan}&interval=${plan.interval}`;
+            const secondaryHref = `/account/checkout?plan=${plan.plan}&interval=year`;
 
             return (
               <article className="account-plan-card card" key={plan.plan}>
@@ -329,20 +332,27 @@ export default async function BillingPage({ searchParams }: BillingPageProps) {
                   ))}
                 </ul>
                 <div className="account-plan-actions">
-                  <CheckoutButton disabled={isCurrent || isDowngrade} plan={plan.plan}>
-                    {isCurrent ? "Current plan" : isDowngrade ? "Already included" : plan.cta}
-                    {!isCurrent && !isDowngrade ? <ArrowRight aria-hidden="true" size={14} /> : null}
-                  </CheckoutButton>
                   {plan.secondaryCta ? (
-                    <CheckoutButton
-                      className="btn btn-soft"
-                      disabled={isCurrent || isDowngrade}
-                      interval="year"
-                      plan={plan.plan}
-                    >
-                      {plan.secondaryCta}
-                    </CheckoutButton>
+                    isDisabled ? (
+                      <button className="btn btn-soft" disabled type="button">
+                        {plan.secondaryCta}
+                      </button>
+                    ) : (
+                      <Link className="btn btn-soft" href={secondaryHref}>
+                        {plan.secondaryCta}
+                      </Link>
+                    )
                   ) : null}
+                  {isDisabled ? (
+                    <button className="btn btn-accent" disabled type="button">
+                      {isCurrent ? "Current plan" : "Already included"}
+                    </button>
+                  ) : (
+                    <Link className="btn btn-accent" href={primaryHref}>
+                      {plan.cta}
+                      <ArrowRight aria-hidden="true" size={14} />
+                    </Link>
+                  )}
                 </div>
               </article>
             );

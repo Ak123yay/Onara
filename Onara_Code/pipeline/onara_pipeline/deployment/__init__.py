@@ -21,6 +21,7 @@ from onara_pipeline.deployment.github import (
 from onara_pipeline.deployment.parser import (
     DeploymentArtifact,
     DeploymentParserError,
+    lead_capture_endpoint,
     build_deployment_artifact,
     extract_final_html,
     split_atomic_files,
@@ -57,6 +58,7 @@ __all__ = [
     "deploy_to_cloudflare_pages",
     "extract_final_html",
     "fetch_site_files",
+    "lead_capture_endpoint",
     "missing_cloudflare_settings",
     "missing_github_settings",
     "missing_supabase_project_settings",

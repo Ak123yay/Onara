@@ -1,5 +1,10 @@
 import { randomUUID } from "crypto";
 import { NextResponse } from "next/server";
+import {
+  effectiveUserPlan,
+  resolveAgent6ModelForPlan,
+  type UserPlan,
+} from "@/lib/build/agent6-models";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
@@ -33,8 +38,6 @@ type UserProfile = {
   is_trial: boolean | null;
   plan: string | null;
 };
-
-type UserPlan = "free" | "starter" | "pro";
 
 const ACTIVE_SITE_STATUSES = ["queued", "generating", "deploying", "live"] as const;
 
@@ -93,7 +96,10 @@ export async function POST(request: Request) {
   }
 
   const userPlan = planForPipeline(profile);
-  const agent6Model = agent6ModelFromBody(body);
+  const agent6Selection = resolveAgent6ModelForPlan({
+    requestedModel: agent6ModelFromBody(body),
+    userPlan,
+  });
   const projectId = typeof body.project_id === "string" && body.project_id.trim()
     ? body.project_id.trim()
     : undefined;
@@ -168,7 +174,7 @@ export async function POST(request: Request) {
         "X-Pipeline-Secret": pipelineSecret,
       },
       body: JSON.stringify({
-        agent_6_model: agent6Model,
+        agent_6_model: agent6Selection.selectedModel,
         business_data: businessData,
         is_trial: Boolean(profile?.is_trial),
         place_id: placeId,
@@ -229,11 +235,11 @@ export async function POST(request: Request) {
   return NextResponse.json(
     {
       agent6Model: payload.agent_6_model,
-      agent6ModelReason: payload.agent_6_model_reason ?? null,
-      agent6ModelRequested: payload.agent_6_model_requested ?? null,
+      agent6ModelReason: agent6Selection.reason ?? payload.agent_6_model_reason ?? null,
+      agent6ModelRequested: agent6Selection.requestedModel ?? payload.agent_6_model_requested ?? null,
       agent_6_model: payload.agent_6_model,
-      agent_6_model_reason: payload.agent_6_model_reason ?? null,
-      agent_6_model_requested: payload.agent_6_model_requested ?? null,
+      agent_6_model_reason: agent6Selection.reason ?? payload.agent_6_model_reason ?? null,
+      agent_6_model_requested: agent6Selection.requestedModel ?? payload.agent_6_model_requested ?? null,
       deduped: Boolean(payload.deduped),
       jobId: payload.job_id,
       job_id: payload.job_id,
@@ -494,15 +500,10 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
 }
 
 function planForPipeline(profile: UserProfile | null): UserPlan {
-  if (profile?.is_trial) {
-    return "pro";
-  }
-
-  if (profile?.plan === "starter" || profile?.plan === "pro") {
-    return profile.plan;
-  }
-
-  return "free";
+  return effectiveUserPlan({
+    isTrial: profile?.is_trial,
+    plan: profile?.plan,
+  });
 }
 
 function planLabel(profile: UserProfile | null, userPlan: UserPlan) {

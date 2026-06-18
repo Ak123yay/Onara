@@ -23,6 +23,14 @@ import {
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FormEvent, type CSSProperties, type ReactNode, useEffect, useRef, useState } from "react";
+import {
+  AGENT6_DEFAULT_MODEL,
+  agent6OptionReason,
+  planAllows,
+  visibleAgent6ModelOptions,
+  type Agent6ModelChoice,
+  type UserPlan,
+} from "@/lib/build/agent6-models";
 
 type PlacePhoto = {
   name: string;
@@ -85,18 +93,11 @@ type BusinessSearchFlowProps = {
   userPlan: UserPlan;
 };
 
-type UserPlan = "free" | "starter" | "pro";
 type PaletteChoice = "emergency" | "trust" | "clean" | "custom";
 type LayoutChoice = "phone-first" | "trust-led" | "service-grid" | "split-hero";
 type ToneChoice = "direct" | "professional" | "friendly" | "premium";
 type CtaChoice = "call-now" | "free-estimate" | "emergency" | "book-online";
 type SectionChoice = "reviews" | "license" | "service-area" | "gallery" | "faq" | "financing";
-type Agent6ModelChoice =
-  | "onara-default"
-  | "copilot-gemini-3.1-pro"
-  | "copilot-gpt-5.4-mini"
-  | "openai-gpt-5.5-high"
-  | "claude-opus-4.8-high";
 
 type CustomPalette = {
   accent: string;
@@ -120,17 +121,6 @@ type GenerationPackage = {
   business: PlaceSearchResult;
   created_at: string;
   style: StylePreferences;
-};
-
-type Agent6ModelOption = {
-  description: string;
-  executable: boolean;
-  id: Agent6ModelChoice;
-  label: string;
-  minimumPlan: UserPlan;
-  model: string;
-  provider: string;
-  unavailableReason?: string;
 };
 
 const defaultStylePreferences: StylePreferences = {
@@ -286,62 +276,6 @@ const sectionOptions: Array<{
   { description: "Feature the best business photos in a clean strip.", id: "gallery", label: "Photo gallery" },
   { description: "Answer common homeowner objections.", id: "faq", label: "FAQ block" },
   { description: "Mention financing or payment options if relevant.", id: "financing", label: "Financing" },
-];
-
-const planRank: Record<UserPlan, number> = {
-  free: 0,
-  starter: 1,
-  pro: 2,
-};
-
-const agent6ModelOptions: Agent6ModelOption[] = [
-  {
-    description: "Current production-safe route: GLM 5.1, then Llama 4 Maverick, then local Gemma 4.",
-    executable: true,
-    id: "onara-default",
-    label: "Onara default",
-    minimumPlan: "free",
-    model: "GLM 5.1 -> Maverick -> Gemma 4",
-    provider: "NVIDIA NIM + local fallback",
-  },
-  {
-    description: "Highest-quality Copilot route through the backend SDK, with Onara fallback if Copilot is unavailable.",
-    executable: true,
-    id: "copilot-gemini-3.1-pro",
-    label: "Copilot Gemini 3.1 Pro",
-    minimumPlan: "starter",
-    model: "gemini-3.1-pro-preview",
-    provider: "GitHub Copilot SDK",
-  },
-  {
-    description: "Faster Copilot route through the backend SDK, with Onara fallback if Copilot is unavailable.",
-    executable: true,
-    id: "copilot-gpt-5.4-mini",
-    label: "Copilot GPT 5.4 Mini",
-    minimumPlan: "starter",
-    model: "gpt-5.4-mini",
-    provider: "GitHub Copilot SDK",
-  },
-  {
-    description: "Reserved for Pro users after user key storage and provider clients exist.",
-    executable: false,
-    id: "openai-gpt-5.5-high",
-    label: "OpenAI GPT-5.5 High",
-    minimumPlan: "pro",
-    model: "gpt-5.5-high",
-    provider: "User OpenAI key",
-    unavailableReason: "OpenAI user-key storage and client are not wired yet.",
-  },
-  {
-    description: "Reserved for Pro users after user key storage and provider clients exist.",
-    executable: false,
-    id: "claude-opus-4.8-high",
-    label: "Claude Opus 4.8 High",
-    minimumPlan: "pro",
-    model: "claude-opus-4.8-high",
-    provider: "User Anthropic key",
-    unavailableReason: "Anthropic user-key storage and client are not wired yet.",
-  },
 ];
 
 export function BusinessSearchFlow({ initialQuery, isTrial, userEmail, userName, userPlan }: BusinessSearchFlowProps) {
@@ -562,7 +496,7 @@ export function BusinessSearchFlow({ initialQuery, isTrial, userEmail, userName,
                 }}
                 onContinue={() => {
                   setGenerationPackage({
-                    agent_6_model: defaultAgent6ModelForPlan(effectivePlan),
+                    agent_6_model: defaultAgent6ModelForPlan(),
                     business: confirmedBusiness,
                     created_at: new Date().toISOString(),
                     style: stylePreferences,
@@ -1267,7 +1201,7 @@ function Agent6ModelSelector({
       </div>
 
       <div className="agent6-option-list">
-        {agent6ModelOptions.map((option) => {
+        {visibleAgent6ModelOptions(effectivePlan).map((option) => {
           const allowed = planAllows(effectivePlan, option.minimumPlan);
           const enabled = allowed && option.executable;
           const active = selected === option.id;
@@ -1697,20 +1631,8 @@ function textColorForPalette(palette: PaletteChoice) {
   return palette === "trust" ? "#10263a" : "#ffffff";
 }
 
-function defaultAgent6ModelForPlan(_plan: UserPlan): Agent6ModelChoice {
-  return "onara-default";
-}
-
-function planAllows(userPlan: UserPlan, minimumPlan: UserPlan) {
-  return planRank[userPlan] >= planRank[minimumPlan];
-}
-
-function agent6OptionReason(option: Agent6ModelOption, allowed: boolean) {
-  if (!allowed) {
-    return `Requires ${option.minimumPlan}`;
-  }
-
-  return option.unavailableReason ?? "Not available yet";
+function defaultAgent6ModelForPlan(): Agent6ModelChoice {
+  return AGENT6_DEFAULT_MODEL;
 }
 
 function normalizeHexInput(rawValue: string, fallback: string) {

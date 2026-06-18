@@ -199,15 +199,19 @@ Execution rule:
 ### Phase 25 — Account Page
 
 - [x] Plan display + upgrade CTA
+- [x] Custom embedded Stripe Elements checkout
+- [x] Express Checkout wallet buttons (Apple Pay / Google Pay / Link)
 - [x] Daily dashboard AI brief: summarize deployed sites and recommendations once per day when the user opens the dashboard
 - [x] Enforce active site limits before generation starts and in Supabase (Free/Starter 1, Pro/Trial 3)
 - [x] Allow users to delete finished/failed sites from the dashboard and free the site slot
-- [ ] Plan gating for Agent 6 model picker
-- [ ] Cancellation flow (deploy placeholder page to Cloudflare)
+- [x] Plan gating for Agent 6 model picker
+- [x] Cancellation flow (deploy placeholder page to Cloudflare)
 
 ### Phase 26 — Retention Features
 
 - [ ] Lead SMS notification on contact form submit
+- [ ] Code download as a folderincluded for pro users
+- [ ] create the help page
 - [ ] Google Reviews badge refresh (weekly pull)
 - [ ] Keep GBP polling/change detection disabled for v1 (`FEATURE_GBP_SYNC=false`)
 

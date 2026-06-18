@@ -11,6 +11,8 @@ type CheckoutSessionBody = {
   plan?: unknown;
   priceId?: unknown;
   price_id?: unknown;
+  returnUrl?: unknown;
+  return_url?: unknown;
   successUrl?: unknown;
   success_url?: unknown;
 };
@@ -25,6 +27,7 @@ type BillingProfile = {
 
 type BillingPlan = "starter" | "pro";
 type BillingInterval = "month" | "year";
+type CheckoutMode = "elements" | "hosted";
 
 type CheckoutPrice = {
   envName: string;
@@ -56,6 +59,14 @@ const PLAN_PRICE_CONFIG: Array<Omit<CheckoutPrice, "priceId">> = [
 let stripeClient: Stripe | null = null;
 
 export async function createCheckoutSession(request: Request) {
+  return createBillingCheckoutSession(request, "hosted");
+}
+
+export async function createElementsCheckoutSession(request: Request) {
+  return createBillingCheckoutSession(request, "elements");
+}
+
+async function createBillingCheckoutSession(request: Request, mode: CheckoutMode) {
   const supabase = await createClient();
   const {
     data: { user },
@@ -107,6 +118,7 @@ export async function createCheckoutSession(request: Request) {
   const baseUrl = appBaseUrl(request);
   let successUrl: string;
   let cancelUrl: string;
+  let returnUrl: string;
   try {
     successUrl = safeRedirectUrl(
       body.successUrl ?? body.success_url,
@@ -118,6 +130,12 @@ export async function createCheckoutSession(request: Request) {
       body.cancelUrl ?? body.cancel_url,
       baseUrl,
       "/dashboard?checkout=cancelled",
+    );
+    returnUrl = safeRedirectUrl(
+      body.returnUrl ?? body.return_url ?? body.successUrl ?? body.success_url,
+      baseUrl,
+      "/account/billing?checkout=success",
+      { includeCheckoutSession: true },
     );
   } catch (error) {
     return NextResponse.json(
@@ -140,7 +158,7 @@ export async function createCheckoutSession(request: Request) {
   }
 
   try {
-    const session = await stripe.checkout.sessions.create({
+    const sessionParams = {
       allow_promotion_codes: true,
       client_reference_id: user.id,
       customer: profile.stripe_customer_id ?? undefined,
@@ -156,6 +174,34 @@ export async function createCheckoutSession(request: Request) {
       subscription_data: {
         metadata: checkoutMetadata(user.id, checkoutPrice),
       },
+    } satisfies Stripe.Checkout.SessionCreateParams;
+
+    if (mode === "elements") {
+      const session = await stripe.checkout.sessions.create({
+        ...sessionParams,
+        return_url: returnUrl,
+        ui_mode: "elements",
+      });
+
+      if (!session.client_secret) {
+        return NextResponse.json(
+          { error: "checkout_session_missing_client_secret", message: "Stripe did not return a checkout client secret." },
+          { status: 502 },
+        );
+      }
+
+      return NextResponse.json({
+        client_secret: session.client_secret,
+        clientSecret: session.client_secret,
+        interval: checkoutPrice.interval,
+        plan: checkoutPrice.plan,
+        priceId: checkoutPrice.priceId,
+        sessionId: session.id,
+      });
+    }
+
+    const session = await stripe.checkout.sessions.create({
+      ...sessionParams,
       success_url: successUrl,
       cancel_url: cancelUrl,
     });
@@ -269,9 +315,19 @@ function intervalFromBody(value: unknown, plan: BillingPlan): BillingInterval {
 }
 
 function appBaseUrl(request: Request) {
+  const requestOrigin = new URL(request.url).origin;
+  if (isLocalOrigin(requestOrigin)) {
+    return requestOrigin;
+  }
+
   const configuredUrl = process.env.NEXT_PUBLIC_APP_URL ?? process.env.APP_URL;
-  const rawUrl = configuredUrl?.trim() || new URL(request.url).origin;
+  const rawUrl = configuredUrl?.trim() || requestOrigin;
   return new URL(rawUrl).origin;
+}
+
+function isLocalOrigin(origin: string) {
+  const hostname = new URL(origin).hostname;
+  return hostname === "localhost" || hostname === "127.0.0.1" || hostname === "::1" || hostname === "[::1]";
 }
 
 function safeRedirectUrl(

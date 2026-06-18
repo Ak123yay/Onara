@@ -22,8 +22,9 @@ export default function DevRevisionWorkspacePage() {
           </Link>
           <span className="revision-page-divider" aria-hidden="true" />
           <div className="revision-page-title">
+            <p className="eyebrow">Site revision</p>
             <h1 className="serif">Revision studio</h1>
-            <p>Cardinal Plumbing Heating &amp; Air Inc</p>
+            <p>Request focused changes for Cardinal Plumbing Heating &amp; Air Inc. The live preview and work log stay in one place while Onara runs.</p>
           </div>
         </div>
         <Link className="btn btn-soft btn-sm" href="/dashboard">

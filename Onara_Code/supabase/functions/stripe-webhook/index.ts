@@ -23,6 +23,15 @@ type BillingEmailUser = {
   full_name?: string | null;
 };
 
+type ProjectForSuspension = {
+  business_name?: string | null;
+  cloudflare_project_name?: string | null;
+  id: string;
+  public_url?: string | null;
+};
+
+type SuspensionReason = "canceled" | "payment_failed";
+
 const textEncoder = new TextEncoder();
 
 Deno.serve(async (request) => {
@@ -166,7 +175,7 @@ async function handleSubscriptionDeleted(
     return { ok: false, error: "subscription_deleted_missing_customer" };
   }
 
-  const { error } = await supabase
+  const { data: user, error } = await supabase
     .from("users")
     .update({
       plan: "free",
@@ -178,9 +187,16 @@ async function handleSubscriptionDeleted(
       revisions_used: 0,
       show_url: false,
     })
-    .eq("stripe_customer_id", customerId);
+    .eq("stripe_customer_id", customerId)
+    .select("id")
+    .maybeSingle();
 
-  return error ? { ok: false, error: error.message } : { ok: true };
+  if (error) {
+    return { ok: false, error: error.message };
+  }
+
+  const userId = asString((user as Record<string, unknown> | null)?.id);
+  return userId ? suspendUserSites(userId, "canceled", supabase) : { ok: true };
 }
 
 async function handleInvoicePaymentFailed(
@@ -194,17 +210,139 @@ async function handleInvoicePaymentFailed(
 
   const { data: user, error } = await supabase
     .from("users")
-    .update({ subscription_status: "past_due" })
+    .update({ show_url: false, subscription_status: "past_due" })
     .eq("stripe_customer_id", customerId)
-    .select("email, full_name")
+    .select("id, email, full_name")
     .maybeSingle();
 
   if (error) {
     return { ok: false, error: error.message };
   }
 
+  const userId = asString((user as Record<string, unknown> | null)?.id);
+  if (userId) {
+    const suspendResult = await suspendUserSites(userId, "payment_failed", supabase);
+    if (!suspendResult.ok) {
+      return suspendResult;
+    }
+  }
+
   await sendPaymentFailedEmail(user as BillingEmailUser | null);
   return { ok: true };
+}
+
+async function suspendUserSites(
+  userId: string,
+  reason: SuspensionReason,
+  supabase: ReturnType<typeof createServiceClient>,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const { data: projects, error } = await supabase
+    .from("projects")
+    .select("id, business_name, cloudflare_project_name, public_url")
+    .eq("user_id", userId)
+    .eq("status", "live");
+
+  if (error) {
+    return { ok: false, error: error.message };
+  }
+
+  const liveProjects = (projects ?? []) as ProjectForSuspension[];
+  for (const project of liveProjects) {
+    const projectName = cloudflareProjectName(project);
+    if (projectName) {
+      await deploySuspensionPlaceholder(projectName, project, reason);
+    }
+  }
+
+  const projectIds = liveProjects.map((project) => project.id);
+  if (projectIds.length === 0) {
+    return { ok: true };
+  }
+
+  const { error: updateError } = await supabase
+    .from("projects")
+    .update({
+      current_agent: "done",
+      error_message: suspensionMessage(reason),
+      status: "suspended",
+      updated_at: new Date().toISOString(),
+    })
+    .in("id", projectIds);
+
+  return updateError ? { ok: false, error: updateError.message } : { ok: true };
+}
+
+async function deploySuspensionPlaceholder(
+  projectName: string,
+  project: ProjectForSuspension,
+  reason: SuspensionReason,
+): Promise<void> {
+  await ensureCloudflareProject(projectName);
+
+  const body = new FormData();
+  body.append(
+    "file",
+    new Blob([suspensionHtml(project, reason)], { type: "text/html;charset=utf-8" }),
+    "index.html",
+  );
+
+  await cloudflareRequest(`/pages/projects/${encodeURIComponent(projectName)}/deployments`, {
+    body,
+    method: "POST",
+  });
+}
+
+async function ensureCloudflareProject(projectName: string): Promise<void> {
+  const existing = await cloudflareRequest(
+    `/pages/projects/${encodeURIComponent(projectName)}`,
+    { method: "GET" },
+    { allowNotFound: true },
+  );
+
+  if (existing !== null) {
+    return;
+  }
+
+  await cloudflareRequest("/pages/projects", {
+    body: JSON.stringify({
+      name: projectName,
+      production_branch: Deno.env.get("CLOUDFLARE_PAGES_BRANCH") || "main",
+    }),
+    headers: { "content-type": "application/json" },
+    method: "POST",
+  });
+}
+
+async function cloudflareRequest(
+  path: string,
+  init: RequestInit,
+  options: { allowNotFound?: boolean } = {},
+): Promise<Record<string, unknown> | null> {
+  const accountId = Deno.env.get("CLOUDFLARE_ACCOUNT_ID")?.trim();
+  const apiToken = Deno.env.get("CLOUDFLARE_API_TOKEN")?.trim();
+  if (!accountId || !apiToken) {
+    throw new Error("Missing Cloudflare suspension deployment environment variables");
+  }
+
+  const apiUrl = (Deno.env.get("CLOUDFLARE_API_URL") || "https://api.cloudflare.com/client/v4").replace(/\/+$/, "");
+  const headers = new Headers(init.headers);
+  headers.set("authorization", `Bearer ${apiToken}`);
+
+  const response = await fetch(`${apiUrl}/accounts/${encodeURIComponent(accountId)}${path}`, {
+    ...init,
+    headers,
+  });
+
+  if (options.allowNotFound && response.status === 404) {
+    return null;
+  }
+
+  const payload = await response.json().catch(() => null);
+  if (!response.ok || !cloudflareSucceeded(payload)) {
+    throw new Error(cloudflareErrorMessage(payload) ?? `Cloudflare request failed with ${response.status}`);
+  }
+
+  return isPlainObject(payload) && isPlainObject(payload.result) ? payload.result : {};
 }
 
 async function handleInvoicePaymentSucceeded(
@@ -400,6 +538,135 @@ function paymentFailedHtml(name: string): string {
   `;
 }
 
+function suspensionHtml(project: ProjectForSuspension, reason: SuspensionReason): string {
+  const businessName = asString(project.business_name) ?? "This website";
+  const title = reason === "canceled" ? "Website unavailable" : "Website temporarily unavailable";
+  const detail = reason === "canceled"
+    ? "This Onara-hosted site is no longer active because the subscription ended."
+    : "This Onara-hosted site is temporarily unavailable while billing is updated.";
+
+  return `<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="robots" content="noindex, nofollow">
+    <title>${escapeHtml(title)} | Onara</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --paper: #f8f4ee;
+        --ink: #1f1c19;
+        --muted: #72675d;
+        --rule: #ded4c8;
+        --accent: #c96a32;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        background: var(--paper);
+        color: var(--ink);
+        font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+      main {
+        width: min(620px, calc(100vw - 32px));
+        border: 1px solid var(--rule);
+        background: #fffaf4;
+        padding: 38px;
+      }
+      .eyebrow {
+        margin: 0 0 14px;
+        color: var(--accent);
+        font: 700 11px/1.2 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        letter-spacing: 0.22em;
+        text-transform: uppercase;
+      }
+      h1 {
+        margin: 0;
+        font-family: Georgia, "Times New Roman", serif;
+        font-size: clamp(36px, 8vw, 68px);
+        font-weight: 500;
+        letter-spacing: -0.06em;
+        line-height: 0.92;
+      }
+      p {
+        margin: 22px 0 0;
+        max-width: 460px;
+        color: var(--muted);
+        font-size: 17px;
+        line-height: 1.55;
+      }
+      strong { color: var(--ink); }
+    </style>
+  </head>
+  <body>
+    <main>
+      <p class="eyebrow">Onara site status</p>
+      <h1>${escapeHtml(title)}</h1>
+      <p><strong>${escapeHtml(businessName)}</strong> is not available right now. ${escapeHtml(detail)}</p>
+    </main>
+  </body>
+</html>`;
+}
+
+function suspensionMessage(reason: SuspensionReason): string {
+  return reason === "canceled"
+    ? "Subscription canceled. Placeholder page deployed to Cloudflare."
+    : "Payment failed. Placeholder page deployed to Cloudflare.";
+}
+
+function cloudflareProjectName(project: ProjectForSuspension): string | null {
+  return normalizedProjectName(project.cloudflare_project_name)
+    ?? projectNameFromPagesUrl(project.public_url)
+    ?? cloudflareProjectNameFromId(project.id);
+}
+
+function cloudflareProjectNameFromId(projectId: string): string | null {
+  const prefix = safeSlug(Deno.env.get("CLOUDFLARE_PAGES_PROJECT_PREFIX") || "onara-site", "onara-site");
+  const cleanId = safeSlug(projectId, "site");
+  const maxLength = 28;
+  const suffixLength = Math.max(1, maxLength - prefix.length - 1);
+  return normalizedProjectName(`${prefix}-${cleanId.slice(0, suffixLength)}`);
+}
+
+function normalizedProjectName(value: string | null | undefined): string | null {
+  const text = value?.trim();
+  if (!text || !/^[a-z0-9][a-z0-9-]{0,62}$/i.test(text)) {
+    return null;
+  }
+
+  return text.toLowerCase();
+}
+
+function projectNameFromPagesUrl(value: string | null | undefined): string | null {
+  if (!value) {
+    return null;
+  }
+
+  let hostname: string;
+  try {
+    hostname = new URL(value).hostname;
+  } catch {
+    return null;
+  }
+
+  if (!hostname.endsWith(".pages.dev")) {
+    return null;
+  }
+
+  const parts = hostname.split(".");
+  const projectName = parts.length >= 4 ? parts[parts.length - 3] : parts[0];
+  return normalizedProjectName(projectName);
+}
+
+function safeSlug(value: string, fallback: string): string {
+  const slug = value.toLowerCase().replace(/[^a-z0-9-]+/g, "-").replace(/-{2,}/g, "-").replace(/^-|-$/g, "");
+  return slug || fallback;
+}
+
 function displayName(user: BillingEmailUser | null): string {
   return asString(user?.full_name)?.split(" ")[0] ?? "there";
 }
@@ -414,6 +681,24 @@ function stripeTimestampToIso(value: unknown): string | undefined {
 
 function asString(value: unknown): string | undefined {
   return typeof value === "string" && value.length > 0 ? value : undefined;
+}
+
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function cloudflareSucceeded(payload: unknown): boolean {
+  return isPlainObject(payload) && payload.success !== false;
+}
+
+function cloudflareErrorMessage(payload: unknown): string | null {
+  if (!isPlainObject(payload) || !Array.isArray(payload.errors) || payload.errors.length === 0) {
+    return null;
+  }
+
+  return payload.errors
+    .map((error) => isPlainObject(error) ? asString(error.message) ?? JSON.stringify(error) : String(error))
+    .join("; ");
 }
 
 function escapeHtml(value: string): string {

@@ -20,6 +20,7 @@ from onara_pipeline.deployment import (
     deploy_to_cloudflare_pages,
     extract_final_html,
     fetch_site_files,
+    lead_capture_endpoint,
     site_path_prefix,
     update_revision_record,
     upsert_project_record,
@@ -263,6 +264,10 @@ class RevisionQueue:
                 updated_html,
                 business_data=job.business_data,
                 job_id=job.job_id,
+                lead_capture_endpoint=lead_capture_endpoint(
+                    enabled=settings.feature_lead_sms,
+                    supabase_url=settings.supabase_url,
+                ),
                 planner=planner,
                 project_id=job.project_id,
                 user_id=job.user_id,

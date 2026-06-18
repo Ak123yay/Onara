@@ -183,6 +183,7 @@
   },
   "active": "de4a1b08c70ed4a5",
   "lastOpenFiles": [
+    "logs/devlog-002-real-pipeline-billing.md",
     "raw/Onara_30_Step_Roadmap.md",
     "TASKS.md",
     "PROJECT_CONTEXT.md",
@@ -212,7 +213,6 @@
     "wiki/integrations/stripe.md",
     "wiki/_master-index.md.tmp.122081.432a98d15d1a",
     "wiki/_master-index.md.tmp.122081.09e860bcaa50",
-    "wiki/architecture/rate-limiting.md",
     "wiki/architecture/rate-limiting.md.tmp.122081.823a6fca9762",
     "raw/Onara_Entity_and_Cap_Table.docx",
     "raw/Onara_Distribution_Playbook.docx",

@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { BusinessSearchFlow } from "@/components/places/BusinessSearchFlow";
+import { effectiveUserPlan, type UserPlan } from "@/lib/build/agent6-models";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
@@ -8,8 +9,6 @@ type BuildProfile = {
   is_trial: boolean | null;
   plan: string | null;
 };
-
-type BuildPlan = "free" | "starter" | "pro";
 
 type DashboardBuildPageProps = {
   searchParams?: Promise<{
@@ -49,14 +48,9 @@ export default async function DashboardBuildPage({ searchParams }: DashboardBuil
   );
 }
 
-function planForBuild(profile: BuildProfile | null): BuildPlan {
-  if (profile?.is_trial) {
-    return "pro";
-  }
-
-  if (profile?.plan === "starter" || profile?.plan === "pro") {
-    return profile.plan;
-  }
-
-  return "free";
+function planForBuild(profile: BuildProfile | null): UserPlan {
+  return effectiveUserPlan({
+    isTrial: profile?.is_trial,
+    plan: profile?.plan,
+  });
 }

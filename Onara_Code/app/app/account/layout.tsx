@@ -6,7 +6,7 @@ type AccountLayoutProps = {
 };
 
 export default async function AccountLayout({ children }: AccountLayoutProps) {
-  const dashboardUser = await getDashboardUserOrRedirect("/account/billing");
+  const dashboardUser = await getDashboardUserOrRedirect("/account");
 
   return <DashboardShell user={dashboardUser}>{children}</DashboardShell>;
 }
