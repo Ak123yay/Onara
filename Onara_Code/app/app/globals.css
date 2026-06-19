@@ -1980,18 +1980,23 @@ button {
   height: 58px;
   flex-shrink: 0;
   place-items: center;
-  border-radius: 3px;
+  border: 1px solid rgb(255 255 255 / 7%);
+  border-radius: 4px;
   background:
     repeating-linear-gradient(
       -45deg,
       transparent 0 10px,
       rgb(255 255 255 / 6%) 10px 11px
     ),
-    var(--ink);
-  color: var(--accent-soft);
+    linear-gradient(135deg, #23211e, #12110f);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 8%),
+    0 12px 24px rgb(27 26 23 / 10%);
+  color: #f0d7c5;
   font-family: var(--mono);
-  font-size: 15px;
-  letter-spacing: 0.08em;
+  font-size: 16px;
+  font-weight: 500;
+  letter-spacing: 0.1em;
 }
 
 .place-result-main {
@@ -3006,17 +3011,6 @@ textarea.confirm-manual-control {
 .generate-summary .business-monogram {
   width: 54px;
   height: 54px;
-  border: 1px solid var(--rule);
-  border-radius: 4px;
-  background:
-    radial-gradient(circle at 50% 50%, var(--accent) 0 6px, transparent 6.5px),
-    var(--paper-2);
-  color: var(--ink);
-  font-family: var(--serif);
-  font-size: 20px;
-  font-weight: 600;
-  letter-spacing: -0.04em;
-  box-shadow: 0 10px 24px rgb(27 26 23 / 5%);
 }
 
 .generate-summary h2 {
