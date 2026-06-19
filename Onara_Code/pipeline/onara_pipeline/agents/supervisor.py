@@ -1,3 +1,5 @@
+import re
+
 from onara_pipeline.agents.contracts import (
     AnalystOutput,
     CodegenOutput,
@@ -121,6 +123,63 @@ def validate_prompt_output(output: PromptOutput) -> None:
         raise SupervisorValidationError(f"Prompt output missing Onara theme instruction: {missing_theme[0]}")
 
 
+def _validate_html_document_order(html: str) -> None:
+    lower = html.lower()
+    positions = {
+        "<!doctype html": lower.find("<!doctype html"),
+        "<html": lower.find("<html"),
+        "<head": lower.find("<head"),
+        "</head>": lower.find("</head>"),
+        "<body": lower.find("<body"),
+        "</body>": lower.rfind("</body>"),
+        "</html>": lower.rfind("</html>"),
+    }
+    previous_position = -1
+    for marker, position in positions.items():
+        if position < 0:
+            raise SupervisorValidationError(f"Codegen output missing required markup: {marker}")
+        if position <= previous_position:
+            raise SupervisorValidationError(f"Codegen output has invalid document order near: {marker}")
+        previous_position = position
+
+
+def _validate_core_component_integrity(output: CodegenOutput) -> None:
+    html = output.html
+    lower = html.lower()
+    component_files = output.component_files or {}
+
+    for component_id in ("site_header", "header", "hero"):
+        if f"components/{component_id}.spec.txt" in component_files:
+            raise SupervisorValidationError(f"Codegen output missing core component markup: {component_id}")
+
+    header_position = _first_component_position(lower, ("site_header", "header"))
+    hero_position = _first_component_position(lower, ("hero",))
+    if header_position < 0:
+        raise SupervisorValidationError("Codegen output missing site header component")
+    if hero_position < 0:
+        raise SupervisorValidationError("Codegen output missing hero component")
+    if header_position > hero_position:
+        raise SupervisorValidationError("Codegen output must render the site header before the hero")
+
+    body_match = re.search(r"<body\b[^>]*>", lower)
+    first_component = re.search(r"data-component=[\"']([^\"']+)[\"']", lower[body_match.end() :] if body_match else lower)
+    if first_component and first_component.group(1).replace("-", "_") not in {"site_header", "header"}:
+        raise SupervisorValidationError("Codegen output must start visible components with the site header")
+
+
+def _first_component_position(lower_html: str, component_ids: tuple[str, ...]) -> int:
+    positions: list[int] = []
+    for component_id in component_ids:
+        variants = {component_id, component_id.replace("_", "-")}
+        for variant in variants:
+            for quote in ("\"", "'"):
+                marker = f"data-component={quote}{variant}{quote}"
+                position = lower_html.find(marker)
+                if position >= 0:
+                    positions.append(position)
+    return min(positions) if positions else -1
+
+
 def validate_codegen_output(
     output: CodegenOutput,
     *,
@@ -129,10 +188,12 @@ def validate_codegen_output(
     html = output.html.strip()
     lower = html.lower()
 
-    required = ("<html", "<head", "<style", "<body", "</body>", "</html>")
+    required = ("<!doctype html", "<html", "<head", "</head>", "<style", "<body", "</body>", "</html>")
     missing = [item for item in required if item not in lower]
     if missing:
         raise SupervisorValidationError(f"Codegen output missing required markup: {missing[0]}")
+    _validate_html_document_order(html)
+    _validate_core_component_integrity(output)
     if "{file_marker_start}" in lower or "{file_marker_end}" in lower:
         raise SupervisorValidationError("Codegen HTML still contains file markers")
     if "```" in html:

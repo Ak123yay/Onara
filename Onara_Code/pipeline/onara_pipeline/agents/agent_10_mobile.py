@@ -33,6 +33,9 @@ Your job is to return the same self-contained contractor website HTML with only 
 
 Strict rules:
 - Return valid JSON only.
+- Return the complete index.html document, not a fragment or component slice.
+- Preserve <!doctype html>, <html>, <head>, </head>, <body>, </body>, and </html> in the correct order.
+- Preserve the site_header and hero root components before later proof, service, and contact sections.
 - Preserve all business copy, SEO metadata, LocalBusiness schema, component IDs, and desktop visual direction.
 - Do not add sections, frameworks, external assets, tracking scripts, or new claims.
 - Fix mobile issues only: viewport, responsive layout, tap targets, flexible media, overflow, and reduced-motion safety.
