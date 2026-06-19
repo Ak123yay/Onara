@@ -1334,6 +1334,8 @@ export function LandingPage() {
           <div className="flex flex-wrap gap-5 text-sm text-ink-3">
             <a href="#pricing">Pricing</a>
             <Link href="/auth/login">Sign in</Link>
+            <Link href="/privacy">Privacy</Link>
+            <Link href="/terms">Terms</Link>
             <a href="mailto:support@onara.tech">support@onara.tech</a>
           </div>
         </div>

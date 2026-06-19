@@ -181,7 +181,8 @@ Current actionable phase.
 - [x] Structured error logging to `pipeline_errors` table
 
 ## Phase 28 — Pre-Launch
-- [ ] Deploy privacy policy + terms of service pages
+- [x] Deploy privacy policy + terms of service pages
+- [x] Update env example templates
 - [ ] Publish Google OAuth app (remove testing mode)
 - [ ] Security audit: RLS policy test, API key rotation, CORS headers
 - [ ] Lighthouse audit all key pages (target 90+ performance, 100 accessibility)
