@@ -287,6 +287,9 @@ export function AuthForm({
               {isSignup ? "Sign in" : "Create account"}
             </Link>
           </p>
+          <p className="auth-support">
+            Need help? <a href="mailto:support@onara.tech">support@onara.tech</a>
+          </p>
         </div>
       </section>
     </main>

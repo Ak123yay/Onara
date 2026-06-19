@@ -116,6 +116,7 @@ async function createBillingCheckoutSession(request: Request, mode: CheckoutMode
   }
 
   const baseUrl = appBaseUrl(request);
+  const allowedRedirectOrigins = checkoutRedirectOrigins(baseUrl, request);
   let successUrl: string;
   let cancelUrl: string;
   let returnUrl: string;
@@ -123,17 +124,20 @@ async function createBillingCheckoutSession(request: Request, mode: CheckoutMode
     successUrl = safeRedirectUrl(
       body.successUrl ?? body.success_url,
       baseUrl,
+      allowedRedirectOrigins,
       "/dashboard?upgraded=true",
       { includeCheckoutSession: true },
     );
     cancelUrl = safeRedirectUrl(
       body.cancelUrl ?? body.cancel_url,
       baseUrl,
+      allowedRedirectOrigins,
       "/dashboard?checkout=cancelled",
     );
     returnUrl = safeRedirectUrl(
       body.returnUrl ?? body.return_url ?? body.successUrl ?? body.success_url,
       baseUrl,
+      allowedRedirectOrigins,
       "/account/billing?checkout=success",
       { includeCheckoutSession: true },
     );
@@ -330,16 +334,38 @@ function isLocalOrigin(origin: string) {
   return hostname === "localhost" || hostname === "127.0.0.1" || hostname === "::1" || hostname === "[::1]";
 }
 
+function checkoutRedirectOrigins(baseUrl: string, request: Request) {
+  const origins = new Set<string>([baseUrl]);
+  const base = new URL(baseUrl);
+  const requestOrigin = new URL(request.url).origin;
+
+  if (isLocalOrigin(baseUrl)) {
+    origins.add(requestOrigin);
+  }
+
+  if (isOnaraAppHost(base.hostname)) {
+    origins.add(`${base.protocol}//onara.tech`);
+    origins.add(`${base.protocol}//www.onara.tech`);
+  }
+
+  return origins;
+}
+
+function isOnaraAppHost(hostname: string) {
+  return hostname === "onara.tech" || hostname === "www.onara.tech";
+}
+
 function safeRedirectUrl(
   value: unknown,
   baseUrl: string,
+  allowedOrigins: Set<string>,
   fallbackPath: string,
   options: { includeCheckoutSession?: boolean } = {},
 ) {
   const rawValue = stringValue(value);
   const url = new URL(rawValue || fallbackPath, baseUrl);
 
-  if (url.origin !== baseUrl) {
+  if (!allowedOrigins.has(url.origin)) {
     throw new Error("Checkout redirect URL must stay on Onara.");
   }
 

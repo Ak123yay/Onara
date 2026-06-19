@@ -65,6 +65,18 @@ Runtime files:
 
 The `training_examples.content_hash` column is unique, so duplicate redacted examples are skipped.
 
-## Remaining Product Work
+## User Controls
 
-The storage layer is done. The public-facing privacy copy, opt-out/delete UX, and policy disclosure remain in Phase 28.
+The Account page exposes the production controls for this pipeline:
+
+- opt in to optional use of QA-approved, redacted generation examples
+- stop future optional training-data use
+- delete saved approved examples connected to the account
+
+Deleting saved examples also turns off future optional training-data use. It does not delete live projects, generated
+sites, billing records, or operational logs.
+
+## Privacy Disclosure
+
+The public Privacy Policy states that optional training-data use is opt-in, redacted, and limited to QA-approved
+examples. It also tells users they can withdraw consent or delete saved approved examples from the Account page.

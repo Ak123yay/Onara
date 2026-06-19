@@ -17,6 +17,10 @@ All 8 transactional emails: welcome, trial warnings (×2), trial end, payment fa
 | `RESEND_API_KEY` | Next.js `.env.local` | `re_...` |
 | `RESEND_FROM_EMAIL` | Next.js `.env.local` | `hello@onara.tech` |
 | `RESEND_REPLY_TO` | Next.js `.env.local` | `support@onara.tech` |
+| `RESEND_WEBHOOK_SECRET` | Supabase Edge secrets | Resend webhook signing secret (`whsec_...`) |
+| `SUPPORT_FROM_EMAIL` | Supabase Edge secrets | `Onara Support <support@onara.tech>` |
+| `SUPPORT_FORWARD_TO` | Supabase Edge secrets | Aarush's support inbox |
+| `FEATURE_SUPPORT_AI_RESPONDER` | Supabase Edge secrets | `true` to send first replies |
 
 ---
 
@@ -62,7 +66,29 @@ Resend dashboard → API Keys → Create API Key:
 | Agent 10 completion | "Your Site Is Live" |
 | Revision marked complete (manual) | "Revision Complete" |
 
-All Resend calls go through Next.js API routes — FastAPI does not call Resend directly (except Agent 10 triggers a Next.js endpoint which calls Resend).
+Resend calls go through Next.js API routes or Supabase Edge Functions. FastAPI does not call Resend directly.
+
+---
+
+## Inbound Support Email
+
+`support@onara.tech` is handled by the `support-email` Supabase Edge Function.
+
+Production setup:
+
+1. In Resend, create a Receiving webhook for the `email.received` event.
+2. Point it to `https://<project-ref>.supabase.co/functions/v1/support-email`.
+3. Copy the Resend webhook signing secret into `RESEND_WEBHOOK_SECRET`.
+4. Set `SUPPORT_FORWARD_TO` to Aarush's real inbox so every support email is still forwarded for human visibility.
+5. Set `FEATURE_SUPPORT_AI_RESPONDER=true` and provide `NVIDIA_NIM_API_KEY` so the function can send the first reply.
+
+The function:
+
+- verifies the raw Resend webhook body using the `svix-*` headers
+- stores each inbound message in `public.support_threads`
+- uses NVIDIA NIM for a safe first support reply
+- flags billing, payment, login, password, security, privacy, legal, and account-deletion topics for human review
+- forwards the original message, classification, escalation reason, and first reply to `SUPPORT_FORWARD_TO`
 
 ---
 

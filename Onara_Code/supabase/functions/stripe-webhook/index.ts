@@ -519,7 +519,7 @@ async function sendPaymentFailedEmail(user: BillingEmailUser | null): Promise<vo
         "",
         "Manage billing: https://onara.tech/account/billing",
         "",
-        "If you have questions, reply to this email and we will help.",
+        "Questions? Reply to this email or contact support@onara.tech.",
       ].join("\n"),
       html: paymentFailedHtml(name),
     }),
@@ -534,7 +534,7 @@ function paymentFailedHtml(name: string): string {
     <p>We could not process your Onara subscription payment.</p>
     <p>Please update your billing details to keep your live site and plan features active.</p>
     <p><a href="https://onara.tech/account/billing">Manage billing</a></p>
-    <p>If you have questions, reply to this email and we will help.</p>
+    <p>Questions? Reply to this email or contact <a href="mailto:support@onara.tech">support@onara.tech</a>.</p>
   `;
 }
 

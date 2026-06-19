@@ -184,6 +184,9 @@ Current actionable phase.
 - [x] Deploy privacy policy + terms of service pages
 - [x] Update env example templates
 - [x] Add launch SEO metadata, robots, sitemap, manifest, and social cards
+- [x] Add `support@onara.tech` across website, app, auth, billing, and email surfaces
+- [x] Support email AI responder: inbound Resend webhook, NIM first reply, thread log, and human-review escalation
+- [x] Training-data consent copy, opt-out/delete account controls, and privacy-policy disclosure
 - [ ] Publish Google OAuth app (remove testing mode)
 - [ ] Security audit: RLS policy test, API key rotation, CORS headers
 - [ ] Lighthouse audit all key pages (target 90+ performance, 100 accessibility)

@@ -104,7 +104,10 @@ export default async function CheckoutPage({ searchParams }: CheckoutPageProps) 
           </ul>
           <div className="account-checkout-note">
             <p className="eyebrow">Billing sync</p>
-            <span>Stripe confirms the subscription, then the webhook updates your account plan.</span>
+            <span>
+              Stripe confirms the subscription, then the webhook updates your account plan. If checkout looks wrong,
+              email <a href="mailto:support@onara.tech">support@onara.tech</a>.
+            </span>
           </div>
         </aside>
 
@@ -118,7 +121,10 @@ export default async function CheckoutPage({ searchParams }: CheckoutPageProps) 
           <div className="embedded-checkout-state embedded-checkout-state-error card">
             <p className="eyebrow">Stripe not configured</p>
             <h2 className="serif">Missing publishable key</h2>
-            <p>Set NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY before using embedded checkout.</p>
+            <p>
+              Set NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY before using embedded checkout. If this is production, email{" "}
+              <a href="mailto:support@onara.tech">support@onara.tech</a>.
+            </p>
             <Link className="btn btn-soft" href="/account/billing">
               <ArrowLeft aria-hidden="true" size={14} />
               Back to billing

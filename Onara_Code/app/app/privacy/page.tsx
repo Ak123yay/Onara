@@ -52,12 +52,18 @@ const sections: LegalSection[] = [
     title: "Training data and product improvement",
     body: (
       <p>
-        Onara does not treat every generated site as training data. We only save QA-approved, redacted examples for
-        retrieval, evaluation, or future model improvement when the related account has consented or the data has been
-        otherwise approved for that purpose. You can ask us to remove approved training examples connected to your
-        account by contacting privacy@onara.tech.
+        Onara does not treat every generated site as training data. Optional training-data use is opt-in from your
+        Account page. When enabled, we may save only QA-approved, redacted generation examples for retrieval,
+        evaluation, or future model improvement. We do not store failed builds, private owner notes, support emails,
+        payment data, or unredacted business contact details as training examples.
       </p>
     ),
+    bullets: [
+      "You can leave optional training-data use off and still use Onara normally.",
+      "You can withdraw consent from the Account page to stop future approved examples from being saved.",
+      "You can delete saved approved examples connected to your account from the Account page or by emailing privacy@onara.tech.",
+      "Deleting saved examples does not delete your active projects, deployed sites, billing records, or required operational logs.",
+    ],
   },
   {
     title: "Service providers",
@@ -106,7 +112,7 @@ const sections: LegalSection[] = [
       "You can ask us to correct inaccurate account or business data.",
       "You can request deletion of your account data, subject to legal and operational retention requirements.",
       "You can request an export of your business data and generated site data where technically available and plan-eligible.",
-      "You can withdraw consent for optional training-data use or ask us to delete approved training examples connected to your account.",
+      "You can withdraw consent for optional training-data use or delete approved training examples connected to your account from the Account page.",
       "California residents can request access, deletion, correction, and non-discrimination rights under applicable California privacy law.",
     ],
   },

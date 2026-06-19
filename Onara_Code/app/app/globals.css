@@ -1014,6 +1014,24 @@ button {
   text-decoration: underline;
 }
 
+.auth-support {
+  margin: 12px 0 0;
+  color: var(--ink-3);
+  font-size: 12.5px;
+  line-height: 1.5;
+  text-align: center;
+}
+
+.auth-support a {
+  color: var(--accent-ink);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.auth-support-form {
+  text-align: left;
+}
+
 .auth-benefits {
   display: flex;
   flex-wrap: wrap;
@@ -3253,7 +3271,7 @@ textarea.confirm-manual-control {
   align-items: start;
 }
 
-.agent-command-card-copy .eyebrow {
+.agent-command-card-top .eyebrow {
   margin: 0;
   color: var(--accent-ink);
   font-family: var(--mono);
@@ -6863,6 +6881,28 @@ button.revision-component-chip:disabled {
   color: var(--leaf);
 }
 
+.account-billing-support {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin-top: 16px;
+  padding: 13px 16px;
+  color: var(--ink-3);
+  font-size: 13px;
+}
+
+.account-billing-support a {
+  color: var(--accent-ink);
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  white-space: nowrap;
+}
+
 .account-current-card {
   display: flex;
   align-items: flex-start;
@@ -7274,6 +7314,118 @@ button.revision-component-chip:disabled {
   font-weight: 600;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.account-training-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(250px, 0.44fr);
+  gap: 18px;
+  margin-top: 10px;
+  padding: 22px;
+}
+
+.account-training-main {
+  display: flex;
+  gap: 16px;
+}
+
+.account-training-icon {
+  display: grid;
+  width: 42px;
+  height: 42px;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 1px solid color-mix(in oklab, var(--accent) 32%, var(--rule));
+  border-radius: 2px;
+  background: var(--accent-softer);
+  color: var(--accent-ink);
+}
+
+.account-training-card h2 {
+  margin: 0;
+  font-size: 30px;
+  font-weight: 500;
+  letter-spacing: -0.04em;
+  line-height: 1;
+}
+
+.account-training-card p:not(.eyebrow) {
+  max-width: 640px;
+  margin: 12px 0 0;
+  color: var(--ink-3);
+  font-size: 13.5px;
+  line-height: 1.55;
+}
+
+.account-training-status {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.account-training-status div {
+  min-width: 0;
+  border: 1px solid var(--rule-2);
+  border-radius: 2px;
+  background: var(--paper-2);
+  padding: 13px;
+}
+
+.account-training-status span,
+.account-training-status small {
+  display: block;
+  color: var(--ink-3);
+  font-size: 11.5px;
+  line-height: 1.35;
+}
+
+.account-training-status span {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.account-training-status strong {
+  display: block;
+  margin: 8px 0 4px;
+  color: var(--ink);
+  font-size: 16px;
+  font-weight: 650;
+}
+
+.account-training-actions {
+  display: flex;
+  flex-wrap: wrap;
+  grid-column: 1 / -1;
+  gap: 9px;
+  margin-top: 4px;
+}
+
+.account-training-actions form {
+  margin: 0;
+}
+
+.account-training-actions .btn {
+  min-height: 42px;
+}
+
+.account-training-delete:disabled {
+  cursor: not-allowed;
+  opacity: 0.52;
+}
+
+.account-training-note {
+  grid-column: 1 / -1;
+  margin-top: 0 !important;
+  border-top: 1px solid var(--rule-2);
+  padding-top: 14px;
+}
+
+.account-training-note a {
+  color: var(--accent-ink);
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 
 .account-settings-controls {
@@ -8085,6 +8237,13 @@ button.revision-component-chip:disabled {
   line-height: 1.5;
 }
 
+.account-checkout-note a,
+.embedded-checkout-state a:not(.btn) {
+  color: var(--accent-ink);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
 .embedded-checkout-form {
   display: grid;
   gap: 22px;
@@ -8243,6 +8402,7 @@ button.revision-component-chip:disabled {
   .account-billing-grid,
   .account-settings-hero,
   .account-settings-action-grid,
+  .account-training-card,
   .account-plan-grid,
   .account-checkout-grid,
   .help-hero,
@@ -8291,10 +8451,12 @@ button.revision-component-chip:disabled {
 @media (max-width: 720px) {
   .account-current-card,
   .account-current-main,
+  .account-billing-support,
   .account-billing-header,
   .account-settings-header,
   .account-settings-profile,
   .account-settings-footnote,
+  .account-training-main,
   .help-header,
   .help-section-heading,
   .embedded-checkout-form-header {
@@ -8312,6 +8474,10 @@ button.revision-component-chip:disabled {
   }
 
   .account-settings-facts {
+    grid-template-columns: 1fr;
+  }
+
+  .account-training-status {
     grid-template-columns: 1fr;
   }
 

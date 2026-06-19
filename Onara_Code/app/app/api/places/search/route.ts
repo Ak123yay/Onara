@@ -44,6 +44,18 @@ type GooglePlace = {
 };
 
 const GOOGLE_TEXT_SEARCH_URL = "https://places.googleapis.com/v1/places:searchText";
+const DEFAULT_DC_NOVA_LOCATION_BIAS = {
+  rectangle: {
+    low: {
+      latitude: 38.55,
+      longitude: -77.75,
+    },
+    high: {
+      latitude: 39.1,
+      longitude: -76.85,
+    },
+  },
+};
 const FIELD_MASK = [
   "places.id",
   "places.displayName.text",
@@ -95,6 +107,8 @@ export async function POST(request: Request) {
     textQuery: query,
     languageCode: "en",
     regionCode: "US",
+    // Soft launch-market bias. Explicit locations in the query can still win.
+    locationBias: DEFAULT_DC_NOVA_LOCATION_BIAS,
     pageSize: 5,
   };
 

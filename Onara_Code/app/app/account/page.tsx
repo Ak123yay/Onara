@@ -1,5 +1,6 @@
-import { ArrowRight, CreditCard, Globe2, KeyRound, LayoutDashboard, Mail, ShieldCheck } from "lucide-react";
+import { ArrowRight, Brain, CreditCard, Database, Globe2, KeyRound, LayoutDashboard, Mail, ShieldCheck, Trash2 } from "lucide-react";
 import type { Metadata } from "next";
+import { revalidatePath } from "next/cache";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import type { ReactNode } from "react";
@@ -10,12 +11,20 @@ type AccountProfile = {
   created_at: string;
   email: string | null;
   full_name: string | null;
+  id: string;
   is_trial: boolean;
   plan: "free" | "starter" | "pro";
   show_url: boolean;
   subscription_status: string | null;
+  training_data_consent: boolean;
+  training_data_consent_at: string | null;
+  training_data_consent_version: string | null;
+  training_data_opted_out_at: string | null;
+  training_examples_count: number;
   trial_ends_at: string | null;
 };
+
+const TRAINING_DATA_CONSENT_VERSION = "2026-06-19-v1";
 
 export const metadata: Metadata = {
   robots: {
@@ -106,6 +115,65 @@ function accessSummary(profile: AccountProfile) {
   return "Free access is active. Upgrade when you are ready to keep a public site online.";
 }
 
+async function setTrainingDataConsent(formData: FormData) {
+  "use server";
+
+  const enabled = formData.get("enabled") === "true";
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    redirect("/auth/login?next=/account");
+  }
+
+  const { error } = await supabase.rpc("set_training_data_consent", {
+    p_consent_version: TRAINING_DATA_CONSENT_VERSION,
+    p_enabled: enabled,
+  });
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  revalidatePath("/account");
+}
+
+async function deleteTrainingExamples() {
+  "use server";
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    redirect("/auth/login?next=/account");
+  }
+
+  const { error: consentError } = await supabase.rpc("set_training_data_consent", {
+    p_consent_version: TRAINING_DATA_CONSENT_VERSION,
+    p_enabled: false,
+  });
+
+  if (consentError) {
+    throw new Error(consentError.message);
+  }
+
+  const db = createAdminClient();
+  const { error: deleteError } = await db
+    .from("training_examples")
+    .delete()
+    .eq("user_id", user.id);
+
+  if (deleteError) {
+    throw new Error(deleteError.message);
+  }
+
+  revalidatePath("/account");
+}
+
 async function loadAccountProfile(): Promise<AccountProfile> {
   const supabase = await createClient();
   const {
@@ -119,7 +187,7 @@ async function loadAccountProfile(): Promise<AccountProfile> {
   const db = createAdminClient();
   const { data: profile, error } = await db
     .from("users")
-    .select("created_at, email, full_name, is_trial, plan, show_url, subscription_status, trial_ends_at")
+    .select("id, created_at, email, full_name, is_trial, plan, show_url, subscription_status, training_data_consent, training_data_consent_at, training_data_consent_version, training_data_opted_out_at, trial_ends_at")
     .eq("id", user.id)
     .maybeSingle<AccountProfile>();
 
@@ -131,9 +199,19 @@ async function loadAccountProfile(): Promise<AccountProfile> {
     redirect("/dashboard");
   }
 
+  const { count: trainingExamplesCount, error: countError } = await db
+    .from("training_examples")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", user.id);
+
+  if (countError) {
+    throw new Error(countError.message);
+  }
+
   return {
     ...profile,
     email: profile.email ?? user.email ?? null,
+    training_examples_count: trainingExamplesCount ?? 0,
   };
 }
 
@@ -195,6 +273,66 @@ export default async function AccountPage() {
         <AccountFact label="Public URL" value={profile.show_url ? "Visible" : "Hidden"} />
       </section>
 
+      <section className="account-training-card card" aria-labelledby="training-data-title">
+        <div className="account-training-main">
+          <span className="account-training-icon" aria-hidden="true">
+            <Brain size={19} />
+          </span>
+          <div>
+            <p className="eyebrow">Model improvement</p>
+            <h2 className="serif" id="training-data-title">Training data controls</h2>
+            <p>
+              Onara only stores QA-approved, redacted generation examples when you opt in. We do not save failed builds,
+              raw private notes, payment data, support emails, or unredacted business contact details for training.
+            </p>
+          </div>
+        </div>
+
+        <div className="account-training-status">
+          <div>
+            <span>Consent</span>
+            <strong>{profile.training_data_consent ? "Enabled" : "Off"}</strong>
+            <small>
+              {profile.training_data_consent
+                ? `Enabled ${formatDate(profile.training_data_consent_at)}`
+                : profile.training_data_opted_out_at
+                  ? `Opted out ${formatDate(profile.training_data_opted_out_at)}`
+                  : "No optional training use"}
+            </small>
+          </div>
+          <div>
+            <span>Saved examples</span>
+            <strong>{profile.training_examples_count}</strong>
+            <small>Approved and redacted only</small>
+          </div>
+        </div>
+
+        <div className="account-training-actions">
+          <form action={setTrainingDataConsent}>
+            <input name="enabled" type="hidden" value={profile.training_data_consent ? "false" : "true"} />
+            <button className={profile.training_data_consent ? "btn btn-soft" : "btn btn-accent"} type="submit">
+              <Database aria-hidden="true" size={14} />
+              {profile.training_data_consent ? "Stop future use" : "Allow approved examples"}
+            </button>
+          </form>
+          <form action={deleteTrainingExamples}>
+            <button
+              className="btn btn-soft account-training-delete"
+              disabled={profile.training_examples_count === 0}
+              type="submit"
+            >
+              <Trash2 aria-hidden="true" size={14} />
+              Delete saved examples
+            </button>
+          </form>
+        </div>
+
+        <p className="account-training-note">
+          Deleting saved examples also turns off future optional training use. You can still use Onara normally either
+          way. See the <Link href="/privacy">Privacy Policy</Link> for the full disclosure.
+        </p>
+      </section>
+
       <section className="account-settings-controls">
         <div className="account-settings-section-title">
           <p className="eyebrow">Controls</p>
@@ -225,7 +363,7 @@ export default async function AccountPage() {
             title="Workspace"
           />
           <AccountActionCard
-            description="Get help with billing, login, or a generated site."
+            description="Get help with billing, login, or a generated site at support@onara.tech."
             href="/help"
             icon={<Mail size={17} />}
             label="Support"

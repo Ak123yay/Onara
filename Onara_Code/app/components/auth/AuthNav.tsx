@@ -69,6 +69,9 @@ export function AuthNav() {
           <Link className="profile-menu-item" href="/auth/update-password">
             Reset password
           </Link>
+          <Link className="profile-menu-item" href="mailto:support@onara.tech">
+            support@onara.tech
+          </Link>
           <button
             className="profile-menu-item profile-menu-button"
             disabled={isPending}

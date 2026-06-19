@@ -134,7 +134,7 @@ WHERE id = '{projectId}';
 | Cloudflare API error | Job marked `failed`; retry queued for 5 minutes |
 | GitHub commit fails | Logged; job still marked `completed` (non-critical path) |
 | Resend email fails | Logged; job still `completed` (non-critical path) |
-| Job exceeds `PIPELINE_JOB_TIMEOUT` (300s) | Hard-killed; marked `timeout`; user sees error |
+| Job exceeds `PIPELINE_JOB_TIMEOUT` (600s) | Hard-killed; marked `timeout`; user sees error |
 
 ---
 

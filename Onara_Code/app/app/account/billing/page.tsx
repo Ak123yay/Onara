@@ -234,6 +234,11 @@ export default async function BillingPage({ searchParams }: BillingPageProps) {
         </div>
       ) : null}
 
+      <div className="account-billing-support card">
+        <span>Questions about billing, checkout, or public URL visibility?</span>
+        <a href="mailto:support@onara.tech">support@onara.tech</a>
+      </div>
+
       <section className="account-current-card card">
         <div className="account-current-main">
           <span className="account-current-icon" aria-hidden="true">

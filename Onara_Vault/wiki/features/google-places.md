@@ -35,6 +35,10 @@ POST https://places.googleapis.com/v1/places:searchText
 }
 ```
 
+The production route applies a default soft `locationBias` around Washington DC and Northern Virginia to match the v1
+launch market. This is not a hard restriction: if the query names another city or state, Google can still return that
+explicit location.
+
 **Response fields extracted**:
 - `places[].id` — the Place ID used for detail fetch
 - `places[].displayName.text` — business name

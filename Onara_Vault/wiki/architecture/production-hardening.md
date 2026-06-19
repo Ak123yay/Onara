@@ -19,7 +19,7 @@ Current launch posture:
 | 1 | Redis job queue crash recovery | Deferred | PM2 restarts FastAPI for v1. Redis/RQ is still needed before multi-worker or paid-volume launch because the current queue is in memory. |
 | 2 | Copilot SDK timeout | Done | `CopilotSDKClient.generate()` wraps `session.send_and_wait()` in `asyncio.wait_for(...)`. |
 | 3 | Blackboard memory pruning | Partially covered | Large raw/code fields are omitted from error snapshots and AI review snapshots. Full in-job pruning is deferred because downstream status/preview still reads generated HTML. |
-| 4 | Global 5-minute job timeout | Done | `JobQueue._worker_loop()` wraps each full job in `asyncio.wait_for(..., timeout=settings.pipeline_job_timeout)`. |
+| 4 | Global 10-minute job timeout | Done | `JobQueue._worker_loop()` wraps each full job in `asyncio.wait_for(..., timeout=settings.pipeline_job_timeout)`. |
 | 5 | Smarter cloud exceptions | Done | NIM returns separate `AIRateLimitError`, `AIServiceUnavailableError`, and `AIProviderError`; the shared AI client retries 429s after 15 seconds and falls back immediately on 5xx/timeouts. |
 | 6 | ChromaDB persistent file path | Done | RAG uses `chromadb.PersistentClient(path=settings.chroma_persist_path)`. |
 | 7 | Request deduplication | Done | `JobQueue.enqueue()` returns an existing queued/running job for matching project/request signatures. |

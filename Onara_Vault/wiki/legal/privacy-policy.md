@@ -42,6 +42,25 @@ _Key provisions affecting data handling decisions. Full legal text: `raw/06_priv
 
 ---
 
+## Training Data Consent
+
+Optional training-data use is opt-in from the Account page.
+
+When enabled, Onara may save only QA-approved, redacted generation examples for retrieval, evaluation, or future model
+improvement. Onara does not store failed builds, private owner notes, support emails, payment data, or unredacted
+business contact details as training examples.
+
+Users can:
+
+- leave optional training-data use off and still use Onara normally
+- withdraw consent from the Account page to stop future approved examples from being saved
+- delete saved approved examples connected to their account from the Account page
+
+Deleting saved training examples does not delete active projects, deployed sites, billing records, or required
+operational logs.
+
+---
+
 ## GDPR / CCPA Rights
 
 Users have the right to:

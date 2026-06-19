@@ -434,14 +434,14 @@ export function AgentProgressExperience() {
 
           <section className="agent-command-card card">
             <div className="agent-command-card-top">
-              <div className="agent-command-card-copy">
-                <p className="eyebrow">Build command center</p>
-                <h1 className="serif">{businessName}</h1>
-                <span className="agent-progress-heading-meta">{businessMeta}</span>
-              </div>
+              <p className="eyebrow">Build command center</p>
               <div className={`agent-progress-kicker agent-progress-kicker-${connectionMode}`}>
                 <span>{connectionLabel(connectionMode)}</span>
               </div>
+            </div>
+            <div className="agent-command-card-copy">
+              <h1 className="serif">{businessName}</h1>
+              <span className="agent-progress-heading-meta">{businessMeta}</span>
             </div>
 
             <div className="agent-command-meter">

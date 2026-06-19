@@ -67,22 +67,27 @@ _Environment variable reference. `[NEXT]` = Next.js `.env.local` | `[FAST]` = Fa
 
 ---
 
-## Resend (3 vars)
+## Resend + Support Email
 
 | Variable | Target | Description |
 |----------|--------|-------------|
-| `RESEND_API_KEY` | NEXT | API key (`re_...`) |
-| `RESEND_FROM_EMAIL` | NEXT | `hello@onara.tech` — must match verified domain |
-| `RESEND_REPLY_TO` | NEXT | `support@onara.tech` |
+| `RESEND_API_KEY` | NEXT + EDGE | API key (`re_...`); Edge needs full access for inbound support content lookup |
+| `RESEND_FROM_EMAIL` | NEXT + EDGE | `hello@onara.tech` — must match verified domain |
+| `RESEND_REPLY_TO` | NEXT + EDGE | `support@onara.tech` |
+| `RESEND_WEBHOOK_SECRET` | EDGE | Resend inbound webhook signing secret (`whsec_...`) |
+| `SUPPORT_EMAIL_WEBHOOK_SECRET` | EDGE | Optional local fallback bearer secret if Resend signature verification is unavailable |
+| `SUPPORT_FROM_EMAIL` | EDGE | `Onara Support <support@onara.tech>` |
+| `SUPPORT_FORWARD_TO` | EDGE | Aarush's real inbox for human review/forwarding |
+| `SUPPORT_AI_MODEL` | EDGE | Default `z-ai/glm-5.1` |
 
 ---
 
-## NVIDIA NIM (2 vars)
+## NVIDIA NIM
 
 | Variable | Target | Description |
 |----------|--------|-------------|
-| `NVIDIA_NIM_API_KEY` | FAST | Free NIM key from build.nvidia.com (`nvapi-...`) |
-| `NVIDIA_NIM_BASE_URL` | FAST | `https://integrate.api.nvidia.com/v1` — do not change |
+| `NVIDIA_NIM_API_KEY` | FAST + EDGE | Free NIM key from build.nvidia.com (`nvapi-...`) |
+| `NVIDIA_NIM_BASE_URL` | FAST + EDGE | `https://integrate.api.nvidia.com/v1` — do not change |
 
 ---
 
@@ -104,7 +109,7 @@ _Environment variable reference. `[NEXT]` = Next.js `.env.local` | `[FAST]` = Fa
 | `PIPELINE_PORT` | FAST | `8000` |
 | `PIPELINE_API_SECRET` | BOTH | 32-char shared secret: `openssl rand -hex 32` |
 | `PIPELINE_MAX_CONCURRENCY` | FAST | `1` for local Ollama dev; raise after load testing on server |
-| `PIPELINE_JOB_TIMEOUT` | FAST | `300` — hard timeout per job in seconds |
+| `PIPELINE_JOB_TIMEOUT` | FAST | `600` — hard timeout per job in seconds |
 
 ---
 
@@ -142,6 +147,7 @@ _Environment variable reference. `[NEXT]` = Next.js `.env.local` | `[FAST]` = Fa
 | `FEATURE_CODE_DOWNLOAD` | NEXT | `true` | Enable Pro code download |
 | `FEATURE_ANNUAL_PLAN` | NEXT | `true` | Show Starter annual billing option |
 | `FEATURE_REVIEWS_BADGE` | EDGE | `true` | Enable weekly Google reviews badge refresh |
+| `FEATURE_SUPPORT_AI_RESPONDER` | EDGE | `true` | Enable NIM first replies for inbound support email |
 | `FEATURE_GBP_SYNC` | FAST | `false` | Enable GBP polling (v2.5) |
 
 ---

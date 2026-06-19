@@ -75,6 +75,9 @@ export function UpdatePasswordForm() {
         {isBusy ? "Saving password..." : "Save new password"}
         <ArrowRight size={14} aria-hidden="true" />
       </button>
+      <p className="auth-support auth-support-form">
+        Password link not working? <a href="mailto:support@onara.tech">support@onara.tech</a>
+      </p>
     </form>
   );
 }
