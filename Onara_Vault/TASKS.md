@@ -105,6 +105,7 @@ Execution rule:
 
 - [x] Build sign-up page
 - [x] Build login page
+- [x] Show Google-login guidance when Google-created accounts try password login
 - [x] Implement Next.js middleware for route protection
 
 ### Phase 12 — Dashboard Shell

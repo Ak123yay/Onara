@@ -15,6 +15,11 @@ type AuthFormProps = {
 
 type AuthAction = "email" | "google" | "reset";
 
+type LoginMethodResponse = {
+  loginMethod?: "email" | "google" | "unknown";
+  message?: string;
+};
+
 function safeInternalPath(path: string): string {
   if (!path.startsWith("/") || path.startsWith("//")) {
     return "/dashboard";
@@ -115,7 +120,8 @@ export function AuthForm({
 
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) {
-      setMessage(error.message);
+      const loginMethodMessage = await googleAccountLoginMessage(email);
+      setMessage(loginMethodMessage ?? error.message);
       setPendingAuthAction(null);
       return;
     }
@@ -294,6 +300,27 @@ export function AuthForm({
       </section>
     </main>
   );
+}
+
+async function googleAccountLoginMessage(email: string) {
+  try {
+    const response = await fetch("/api/auth/login-method", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({ email }),
+    });
+    const payload = (await response.json().catch(() => ({}))) as LoginMethodResponse;
+
+    if (response.ok && payload.loginMethod === "google") {
+      return payload.message ?? "This account was created with Google. Use Continue with Google to sign in.";
+    }
+  } catch {
+    // Keep the original Supabase auth error if the hint lookup fails.
+  }
+
+  return null;
 }
 
 function GoogleIcon() {

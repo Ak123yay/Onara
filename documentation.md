@@ -215,6 +215,7 @@ Authentication includes:
 - Email/password login.
 - Signup.
 - Password reset/update flow.
+- Google-created account guidance when a user tries password login.
 - Protected dashboard and account routes.
 - Middleware route protection for `/dashboard` and `/account`.
 
