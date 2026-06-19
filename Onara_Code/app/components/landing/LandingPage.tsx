@@ -626,6 +626,7 @@ export function LandingPage() {
       ).matches;
 
       if (reduceMotion) {
+        root.classList.remove("gsap-landing-preload");
         gsap.set(
           root.querySelectorAll(
             "[data-gsap-reveal], [data-gsap-stagger-item], [data-gsap-hero-item], [data-gsap-hero-showcase], [data-gsap-showcase-piece]",
@@ -642,6 +643,38 @@ export function LandingPage() {
 
       gsap.globalTimeline.paused(false);
       gsap.ticker.wake();
+
+      gsap.set(root.querySelectorAll("[data-gsap-nav]"), {
+        opacity: 0,
+        y: -18,
+      });
+      gsap.set(root.querySelectorAll("[data-gsap-hero-item]"), {
+        filter: "blur(8px)",
+        opacity: 0,
+        y: 24,
+      });
+      gsap.set(root.querySelectorAll("[data-gsap-hero-showcase]"), {
+        filter: "blur(8px)",
+        opacity: 0,
+        y: 32,
+      });
+      gsap.set(root.querySelectorAll("[data-gsap-showcase-piece]"), {
+        filter: "blur(8px)",
+        opacity: 0,
+        y: 18,
+      });
+      gsap.utils.toArray<HTMLElement>("[data-gsap-reveal]").forEach((el) => {
+        gsap.set(el, {
+          filter: "blur(8px)",
+          opacity: 0,
+          y: Number(el.dataset.gsapY ?? 24),
+        });
+      });
+      gsap.set(root.querySelectorAll("[data-gsap-stagger-item]"), {
+        opacity: 0,
+        y: 18,
+      });
+      root.classList.remove("gsap-landing-preload");
 
       const introTimeline = gsap.timeline({ defaults: { ease: "power3.out" } });
 
@@ -840,7 +873,7 @@ export function LandingPage() {
   );
 
   return (
-    <main className="paper min-h-screen overflow-hidden gsap-landing-page" ref={pageRef}>
+    <main className="paper min-h-screen overflow-hidden gsap-landing-page gsap-landing-preload" ref={pageRef}>
       <noscript>
         <style>{`
           .gsap-landing-page [data-gsap-nav],

@@ -516,47 +516,47 @@ button {
   backdrop-filter: blur(10px);
 }
 
-.gsap-landing-page [data-gsap-nav] {
+.gsap-landing-page.gsap-landing-preload [data-gsap-nav] {
   opacity: 0;
   transform: translateY(-18px);
 }
 
-.gsap-landing-page [data-gsap-hero-item] {
+.gsap-landing-page.gsap-landing-preload [data-gsap-hero-item] {
   opacity: 0;
   filter: blur(8px);
   transform: translateY(24px);
 }
 
-.gsap-landing-page [data-gsap-hero-showcase] {
+.gsap-landing-page.gsap-landing-preload [data-gsap-hero-showcase] {
   opacity: 0;
   filter: blur(8px);
   transform: translateY(32px);
 }
 
-.gsap-landing-page [data-gsap-showcase-piece] {
+.gsap-landing-page.gsap-landing-preload [data-gsap-showcase-piece] {
   opacity: 0;
   filter: blur(8px);
   transform: translateY(18px);
 }
 
-.gsap-landing-page [data-gsap-reveal] {
+.gsap-landing-page.gsap-landing-preload [data-gsap-reveal] {
   opacity: 0;
   filter: blur(8px);
   transform: translateY(24px);
 }
 
-.gsap-landing-page [data-gsap-stagger-item] {
+.gsap-landing-page.gsap-landing-preload [data-gsap-stagger-item] {
   opacity: 0;
   transform: translateY(18px);
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .gsap-landing-page [data-gsap-nav],
-  .gsap-landing-page [data-gsap-hero-item],
-  .gsap-landing-page [data-gsap-hero-showcase],
-  .gsap-landing-page [data-gsap-showcase-piece],
-  .gsap-landing-page [data-gsap-reveal],
-  .gsap-landing-page [data-gsap-stagger-item] {
+  .gsap-landing-page.gsap-landing-preload [data-gsap-nav],
+  .gsap-landing-page.gsap-landing-preload [data-gsap-hero-item],
+  .gsap-landing-page.gsap-landing-preload [data-gsap-hero-showcase],
+  .gsap-landing-page.gsap-landing-preload [data-gsap-showcase-piece],
+  .gsap-landing-page.gsap-landing-preload [data-gsap-reveal],
+  .gsap-landing-page.gsap-landing-preload [data-gsap-stagger-item] {
     opacity: 1;
     filter: none;
     transform: none;
