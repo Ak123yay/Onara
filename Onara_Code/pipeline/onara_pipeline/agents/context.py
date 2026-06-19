@@ -35,7 +35,7 @@ class BusinessContext:
 
 
 def build_business_context(business_data: dict[str, Any], style_preferences: dict[str, Any]) -> BusinessContext:
-    address = _string_value(business_data, "address")
+    address = _string_value(business_data, "address") or _string_value(business_data, "service_area")
     city, state = _city_state_from_address(address)
 
     return BusinessContext(

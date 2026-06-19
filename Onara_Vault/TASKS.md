@@ -221,14 +221,14 @@ Execution rule:
 - [x] Generated-site photo resolver: convert Google Places photo references into deploy-safe image URLs and require photo usage when photos are available
 - [x] Generated-site Onara theme enforcement: require paper/ink/terracotta variables, Fraunces/Inter/mono typography, low-radius panels, and Onara QA gate before deploy
 - [x] Build progress page redesign: structured live build summary, status cards, agent queue, and cleaner preview workspace
-- [ ]  **if not listed on google maps,you can create your own and put your own information in**
-- [ ] **Add onara favicon**
-- [ ] 11 production fixes (document each in wiki as identified)
+- [x]  **if not listed on google maps,you can create your own and put your own information in**
+- [x] **Add onara favicon**
+- [x] 11 production fixes (document each in wiki as identified)
 - [x] PM2 setup on pipeline server
 - [x] UptimeRobot monitoring on /health endpoint
 - [x] AI blackboard reviewer: optional advisory model pass over blackboard outputs that suggests warnings/reruns, while deterministic supervisor remains the final pass/fail authority
-- [ ] Curated RAG learning loop: save only QA-approved generated components/patterns back into ChromaDB so future builds improve without storing bad or duplicate sites
-- [ ] Training data pipeline: add user consent fields and `training_examples` storage for QA-approved, redacted generation examples that can feed RAG now and future model fine-tuning later
+- [x] Curated RAG learning loop: save only QA-approved generated components/patterns back into ChromaDB so future builds improve without storing bad or duplicate sites
+- [x] Training data pipeline: add user consent fields and `training_examples` storage for QA-approved, redacted generation examples that can feed RAG now and future model fine-tuning later
 
 ### Phase 28 — Pre-Launch
 

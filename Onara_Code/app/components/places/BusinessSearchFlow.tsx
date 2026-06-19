@@ -55,11 +55,15 @@ type PlaceSearchResult = {
   rating: number | null;
   review_count: number | null;
   category: string | null;
+  email?: string | null;
   website: string | null;
   hours: string[] | null;
   photos: PlacePhoto[];
   confidence: number;
+  manual_entry?: boolean;
   manual_photo?: ManualPhotoUpload | null;
+  service_area?: string | null;
+  services?: string[];
 };
 
 type PlacesSearchResponse = {
@@ -290,6 +294,8 @@ export function BusinessSearchFlow({ initialQuery, isTrial, userEmail, userName,
   const [generationPackage, setGenerationPackage] = useState<GenerationPackage | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isSearching, setIsSearching] = useState(false);
+  const [manualEntryError, setManualEntryError] = useState<string | null>(null);
+  const [showManualEntry, setShowManualEntry] = useState(false);
   const effectivePlan: UserPlan = isTrial ? "pro" : userPlan;
 
   useEffect(() => {
@@ -318,6 +324,7 @@ export function BusinessSearchFlow({ initialQuery, isTrial, userEmail, userName,
     setQuery(trimmedQuery);
     setIsSearching(true);
     setError(null);
+    setManualEntryError(null);
     setResults(null);
     setSelectedBusiness(null);
     setConfirmedBusiness(null);
@@ -343,6 +350,51 @@ export function BusinessSearchFlow({ initialQuery, isTrial, userEmail, userName,
     } finally {
       setIsSearching(false);
     }
+  }
+
+  function handleManualBusiness(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    const formData = new FormData(event.currentTarget);
+    const name = formString(formData, "manual-name");
+    const category = formString(formData, "manual-category");
+    const address = formString(formData, "manual-address");
+    const serviceArea = formString(formData, "manual-service-area");
+    const phone = formString(formData, "manual-phone");
+    const website = formString(formData, "manual-website");
+    const email = formString(formData, "manual-email");
+    const hours = splitManualLines(formString(formData, "manual-hours"));
+    const services = splitManualList(formString(formData, "manual-services"));
+
+    if (!name || !category || (!address && !serviceArea)) {
+      setManualEntryError("Add a business name, category, and either an address or service area.");
+      return;
+    }
+
+    const manualBusiness: PlaceSearchResult = {
+      place_id: "",
+      name,
+      address: address || serviceArea,
+      phone: phone || null,
+      rating: null,
+      review_count: null,
+      category,
+      email: email || null,
+      website: website || null,
+      hours: hours.length > 0 ? hours : null,
+      photos: [],
+      confidence: 1,
+      manual_entry: true,
+      service_area: serviceArea || null,
+      services,
+    };
+
+    setError(null);
+    setManualEntryError(null);
+    setResults(null);
+    setSelectedBusiness(manualBusiness);
+    setConfirmedBusiness(null);
+    setGenerationPackage(null);
   }
 
   const displayName = userName?.trim() || userEmail.split("@")[0] || "Account";
@@ -376,7 +428,8 @@ export function BusinessSearchFlow({ initialQuery, isTrial, userEmail, userName,
             </h1>
             <p className="build-subcopy">
               Search the Google Business Profile we should use for your address, phone, hours,
-              category, reviews, and photos.
+              category, reviews, and photos. If you are not listed yet, enter the business details
+              manually instead.
             </p>
 
             <form className="places-search-form" onSubmit={handleSearch}>
@@ -402,6 +455,16 @@ export function BusinessSearchFlow({ initialQuery, isTrial, userEmail, userName,
                 )}
               </button>
             </form>
+
+            <ManualBusinessEntry
+              error={manualEntryError}
+              open={showManualEntry}
+              onSubmit={handleManualBusiness}
+              onToggle={() => {
+                setShowManualEntry((current) => !current);
+                setManualEntryError(null);
+              }}
+            />
 
             {error ? <p className="places-error">{error}</p> : null}
 
@@ -454,7 +517,7 @@ export function BusinessSearchFlow({ initialQuery, isTrial, userEmail, userName,
                     <p className="serif">No matches came back.</p>
                     <span>
                       Try the exact Google business name with city and state, or include the phone
-                      number shown on Google Maps.
+                      number shown on Google Maps. If this is a new business, enter it manually above.
                     </span>
                   </div>
                 )}
@@ -538,6 +601,104 @@ function StepIndicator({ current }: { current: number }) {
         </div>
       ))}
     </div>
+  );
+}
+
+function ManualBusinessEntry({
+  error,
+  onSubmit,
+  onToggle,
+  open,
+}: {
+  error: string | null;
+  onSubmit: (event: FormEvent<HTMLFormElement>) => void;
+  onToggle: () => void;
+  open: boolean;
+}) {
+  return (
+    <section className="manual-business-entry">
+      <div className="manual-business-callout">
+        <div>
+          <p className="mono">Not on Google Maps?</p>
+          <strong>Enter the business manually.</strong>
+          <span>
+            Use this for new businesses, service-area operators, or listings that Google does not
+            return yet.
+          </span>
+        </div>
+        <button
+          aria-expanded={open}
+          className="btn btn-soft"
+          onClick={onToggle}
+          type="button"
+        >
+          {open ? "Hide manual form" : "Enter manually"}
+          <ArrowRight size={14} aria-hidden="true" />
+        </button>
+      </div>
+
+      {open ? (
+        <form className="manual-business-panel" onSubmit={onSubmit}>
+          {error ? <p className="manual-business-error">{error}</p> : null}
+          <div className="manual-business-grid">
+            <label className="manual-business-field">
+              <span>Business name</span>
+              <input name="manual-name" placeholder="Cardinal Plumbing Heating & Air" />
+            </label>
+            <label className="manual-business-field">
+              <span>Category</span>
+              <input name="manual-category" placeholder="Plumbing and HVAC contractor" />
+            </label>
+            <label className="manual-business-field">
+              <span>Service area</span>
+              <input name="manual-service-area" placeholder="Arlington, VA and nearby areas" />
+            </label>
+            <label className="manual-business-field">
+              <span>Business address</span>
+              <input name="manual-address" placeholder="123 Main St, Arlington, VA" />
+            </label>
+            <label className="manual-business-field">
+              <span>Phone</span>
+              <input name="manual-phone" placeholder="(703) 555-0123" />
+            </label>
+            <label className="manual-business-field">
+              <span>Email</span>
+              <input name="manual-email" placeholder="owner@example.com" type="email" />
+            </label>
+            <label className="manual-business-field manual-business-field-full">
+              <span>Website</span>
+              <input name="manual-website" placeholder="https://example.com" />
+            </label>
+            <label className="manual-business-field manual-business-field-full">
+              <span>Services</span>
+              <textarea
+                name="manual-services"
+                placeholder={"Emergency plumbing\nWater heater repair\nAC service"}
+                rows={3}
+              />
+            </label>
+            <label className="manual-business-field manual-business-field-full">
+              <span>Hours</span>
+              <textarea
+                name="manual-hours"
+                placeholder={"Mon-Fri: 8 AM-5 PM\nSat: 9 AM-1 PM\nSun: Closed"}
+                rows={3}
+              />
+            </label>
+          </div>
+          <div className="manual-business-actions">
+            <small>
+              Required: name, category, and either service area or address. You can add photos on
+              the next confirmation step.
+            </small>
+            <button className="btn btn-accent" type="submit">
+              Continue
+              <ArrowRight size={14} aria-hidden="true" />
+            </button>
+          </div>
+        </form>
+      ) : null}
+    </section>
   );
 }
 
@@ -1128,10 +1289,18 @@ function GenerateStep({
             value={generationPackage.style.notes.trim() || "No extra notes"}
           />
           <GenerateFact
-            label="Google data"
-            value={`${generationPackage.business.rating ?? "No rating"} rating, ${
-              generationPackage.business.photos.length || generationPackage.business.manual_photo ? "photo ready" : "no photo"
-            }`}
+            label={generationPackage.business.manual_entry ? "Business data" : "Google data"}
+            value={
+              generationPackage.business.manual_entry
+                ? `${generationPackage.business.category ?? "Manual business"}, ${
+                    generationPackage.business.manual_photo ? "photo ready" : "photo optional"
+                  }`
+                : `${generationPackage.business.rating ?? "No rating"} rating, ${
+                    generationPackage.business.photos.length || generationPackage.business.manual_photo
+                      ? "photo ready"
+                      : "no photo"
+                  }`
+            }
           />
         </div>
 
@@ -1272,6 +1441,7 @@ function BusinessConfirmationCard({
   }));
   const [photoUploadError, setPhotoUploadError] = useState<string | null>(null);
   const correctedBusiness = applyManualFallbacks(business, draft);
+  const isManualBusiness = Boolean(correctedBusiness.manual_entry);
   const primaryPhoto = correctedBusiness.photos[0];
   const manualPhoto = correctedBusiness.manual_photo;
   const attribution = primaryPhoto?.attribution;
@@ -1363,7 +1533,9 @@ function BusinessConfirmationCard({
           ) : (
             <div className="photo-placeholder">
               <ImageIcon size={28} aria-hidden="true" />
-              <span>No Google photo returned yet. Upload one below.</span>
+              <span>
+                {isManualBusiness ? "Upload a real business photo below." : "No Google photo returned yet. Upload one below."}
+              </span>
             </div>
           )}
         </div>
@@ -1372,7 +1544,9 @@ function BusinessConfirmationCard({
           <div className="confirmation-title-row">
             <BusinessMonogram name={correctedBusiness.name} />
             <div>
-              <p className="mono">Imported from Google Business Profile</p>
+              <p className="mono">
+                {isManualBusiness ? "Entered manually" : "Imported from Google Business Profile"}
+              </p>
               <h2 className="serif">{correctedBusiness.name || "Unnamed business"}</h2>
               {correctedBusiness.category ? (
                 <p className="confirmation-category">{correctedBusiness.category}</p>
@@ -1405,7 +1579,7 @@ function BusinessConfirmationCard({
               manualValue={draft.address}
               manualPlaceholder="123 Main St, Arlington, VA"
               manualLabel="Add business address"
-              editable={business.address === null}
+              editable={isManualBusiness || business.address === null}
               onManualChange={(value) => updateDraft("address", value)}
             />
             <ConfirmField
@@ -1416,7 +1590,7 @@ function BusinessConfirmationCard({
               manualValue={draft.phone}
               manualPlaceholder="(703) 555-0123"
               manualLabel="Add phone number"
-              editable={business.phone === null}
+              editable={isManualBusiness || business.phone === null}
               onManualChange={(value) => updateDraft("phone", value)}
             />
             <ConfirmField
@@ -1427,7 +1601,7 @@ function BusinessConfirmationCard({
               manualValue={draft.hours}
               manualPlaceholder={"Mon-Fri: 8 AM-5 PM\nSat: 9 AM-1 PM\nSun: Closed"}
               manualLabel="Add hours"
-              editable={!business.hours?.length}
+              editable={isManualBusiness || !business.hours?.length}
               multiline
               onManualChange={(value) => updateDraft("hours", value)}
             />
@@ -1468,7 +1642,9 @@ function BusinessConfirmationCard({
             <span>
               {missingCount > 0
                 ? "Add the highlighted missing details before continuing. Anything you enter manually is used for this confirmed business."
-                : "Onara will use this confirmed business data as the starting point."}
+                : isManualBusiness
+                  ? "Onara will use the manual business data exactly as confirmed here."
+                  : "Onara will use this confirmed business data as the starting point."}
             </span>
           </div>
         </div>
@@ -1571,14 +1747,44 @@ function applyManualFallbacks(business: PlaceSearchResult, draft: ManualDraft): 
     .split("\n")
     .map((line) => line.trim())
     .filter(Boolean);
+  const useManualValues = Boolean(business.manual_entry);
 
   return {
     ...business,
-    address: business.address ?? emptyToNull(draft.address),
-    phone: business.phone ?? emptyToNull(draft.phone),
-    hours: business.hours?.length ? business.hours : manualHours.length > 0 ? manualHours : null,
+    address: useManualValues ? emptyToNull(draft.address) : business.address ?? emptyToNull(draft.address),
+    phone: useManualValues ? emptyToNull(draft.phone) : business.phone ?? emptyToNull(draft.phone),
+    hours: useManualValues
+      ? manualHours.length > 0
+        ? manualHours
+        : null
+      : business.hours?.length
+        ? business.hours
+        : manualHours.length > 0
+          ? manualHours
+          : null,
     manual_photo: business.photos.length === 0 ? draft.photo : null,
   };
+}
+
+function formString(formData: FormData, key: string) {
+  const value = formData.get(key);
+  return typeof value === "string" ? value.trim().slice(0, 700) : "";
+}
+
+function splitManualLines(value: string) {
+  return value
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .slice(0, 12);
+}
+
+function splitManualList(value: string) {
+  return value
+    .split(/[\n,]/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .slice(0, 12);
 }
 
 function emptyToNull(value: string) {

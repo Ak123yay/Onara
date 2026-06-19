@@ -64,6 +64,14 @@ class PatternStore:
         self.collection.modify(metadata=expected_metadata)
         return count
 
+    def metadata_exists(self, key: str, value: str) -> bool:
+        if not key or not value:
+            return False
+
+        result = self.collection.get(where={key: value}, include=["metadatas"])
+        ids = result.get("ids") or []
+        return bool(ids)
+
     def search(
         self,
         *,

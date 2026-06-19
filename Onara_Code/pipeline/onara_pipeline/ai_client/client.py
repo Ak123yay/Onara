@@ -14,7 +14,7 @@ from onara_pipeline.ai_client.ollama import OllamaClient
 from onara_pipeline.ai_client.types import AIRequest, AIResponse
 from onara_pipeline.config import Settings
 
-RETRYABLE_ERRORS = (AIRateLimitError, AIServiceUnavailableError)
+RATE_LIMIT_RETRY_DELAY_SECONDS = 15.0
 FALLBACK_ERRORS = (AIConfigurationError, AIRateLimitError, AIServiceUnavailableError)
 
 
@@ -70,11 +70,13 @@ class AIClient:
                 return await self._provider(provider).generate(model=model, request=request)
             except AIConfigurationError:
                 raise
-            except RETRYABLE_ERRORS as exc:
+            except AIRateLimitError as exc:
                 last_error = exc
                 if attempt >= self.max_retries:
                     raise
-                await asyncio.sleep(self.retry_base_delay * (2**attempt))
+                await asyncio.sleep(max(RATE_LIMIT_RETRY_DELAY_SECONDS, self.retry_base_delay * (2**attempt)))
+            except AIServiceUnavailableError:
+                raise
             except AIProviderError:
                 raise
 

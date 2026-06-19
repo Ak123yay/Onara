@@ -173,10 +173,12 @@ Current actionable phase.
 - [x] Generated-site Onara theme enforcement: paper/ink/terracotta tokens, Fraunces/Inter/mono typography, low-radius panels, and QA theme check
 - [x] PM2 config: auto-restart FastAPI on crash, log to file
 - [x] UptimeRobot: monitor `/health`, alert at 5-min downtime
-- [ ] AI blackboard reviewer: advisory-only model pass over blackboard outputs; deterministic supervisor remains final authority
+- [x] AI blackboard reviewer: advisory-only model pass over blackboard outputs; deterministic supervisor remains final authority
+- [x] Curated RAG learning loop: save redacted QA-approved generated component patterns back into ChromaDB with hash dedupe
+- [x] Training data pipeline: consent fields and `training_examples` storage for QA-approved redacted generation examples
 - [ ] PostHog analytics: instrument key events (see `wiki/operations/monitoring.md`)
 - [ ] Rate limiting on Next.js API routes (Upstash Redis or Vercel middleware)
-- [ ] Structured error logging to `pipeline_errors` table
+- [x] Structured error logging to `pipeline_errors` table
 
 ## Phase 28 — Pre-Launch
 - [ ] Deploy privacy policy + terms of service pages

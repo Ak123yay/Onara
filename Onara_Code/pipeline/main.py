@@ -43,14 +43,9 @@ def verify_pipeline_secret(
         )
 
 
-@app.get("/health", response_model=HealthResponse)
+@app.api_route("/health", methods=["GET", "HEAD"], response_model=HealthResponse)
 async def health(settings: Settings = Depends(get_settings)) -> HealthResponse:
     return await build_health_response(settings=settings, queue=queue)
-
-
-@app.head("/health")
-async def health_head() -> Response:
-    return Response(status_code=status.HTTP_200_OK)
 
 
 @app.post(

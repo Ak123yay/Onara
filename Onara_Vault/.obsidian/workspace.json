@@ -183,6 +183,8 @@
   },
   "active": "de4a1b08c70ed4a5",
   "lastOpenFiles": [
+    "wiki/ai_agents/training-data.md",
+    "wiki/architecture/production-hardening.md",
     "logs/devlog-002-real-pipeline-billing.md",
     "raw/Onara_30_Step_Roadmap.md",
     "TASKS.md",
@@ -209,8 +211,6 @@
     "CONTEXT_INDEX.md",
     "CONTEXT_LOCK.md",
     "wiki/testing/test-strategy.md",
-    "wiki/testing/e2e-tests.md",
-    "wiki/integrations/stripe.md",
     "wiki/_master-index.md.tmp.122081.432a98d15d1a",
     "wiki/_master-index.md.tmp.122081.09e860bcaa50",
     "wiki/architecture/rate-limiting.md.tmp.122081.823a6fca9762",

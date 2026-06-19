@@ -29,16 +29,21 @@ The build flow is the core product experience. A user enters a business name or 
 | Field | Type | Required | Notes |
 |-------|------|----------|-------|
 | Business name / Place search | Text input | Yes | Calls `/api/places/search` on change |
-| Select from results | Dropdown | Yes | Lists matching Google Places results |
+| Select from results | Dropdown | Preferred | Lists matching Google Places results |
+| Manual business details | Form | Fallback | Used when the business is not listed on Google Maps yet |
 | Confirm business details | Preview card | Display only | Shows name, address, category, rating |
 
 **Places search flow**:
 - User types ≥ 3 characters → debounced 300ms → POST `/api/places/search`
 - Results: business name, address, category shown as dropdown options
 - On select: `placeId` stored; preview card renders name/address/category/rating/hours
+- If no Google result exists, user can enter business name, category, address or service area,
+  phone, email, website, services, and hours manually. This creates a generation package without
+  `google_place_id`; Google reviews refresh skips those projects until a Place ID exists.
 
 **Validation before submission**:
-- `placeId` must be non-null (user must select from results, not freetext)
+- Either a Google result with `placeId` is selected, or manual business details include name,
+  category, and address or service area.
 - Plan limit check (client-side): warn at plan site limit, block if exceeded (Free 1, Starter 1, Trial/Pro 3)
 
 ---
@@ -140,7 +145,7 @@ Triggered by "Request Revision" button.
 
 | Error | Display |
 |-------|---------|
-| Places API unavailable | "Search unavailable — enter your Google Place ID manually" with link to instructions |
+| Places API unavailable | "Search unavailable" plus manual business details fallback |
 | Pipeline offline | "Our generation service is temporarily offline. Try again in a few minutes." |
 | Job failed (agent error) | "Generation failed at [step name]. Your credits are not affected. Try again." |
 | Plan limit reached | "You've reached your site limit for this plan. Upgrade to Pro for up to 3 live sites." with upgrade CTA |

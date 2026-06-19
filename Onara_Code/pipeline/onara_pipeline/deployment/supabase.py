@@ -13,6 +13,48 @@ class SupabaseProjectStoreError(RuntimeError):
 
 
 @dataclass(frozen=True, slots=True)
+class SupabasePipelineErrorResult:
+    status: str
+    error: str | None = None
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "error": self.error,
+            "status": self.status,
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class SupabaseTrainingConsentResult:
+    enabled: bool
+    status: str
+    consent_version: str | None = None
+    error: str | None = None
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "consent_version": self.consent_version,
+            "enabled": self.enabled,
+            "error": self.error,
+            "status": self.status,
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class SupabaseTrainingExampleResult:
+    status: str
+    content_hash: str | None = None
+    error: str | None = None
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "content_hash": self.content_hash,
+            "error": self.error,
+            "status": self.status,
+        }
+
+
+@dataclass(frozen=True, slots=True)
 class SupabaseProjectStoreResult:
     project_id: str
     status: str
@@ -47,6 +89,164 @@ def missing_supabase_project_settings(settings: Settings) -> list[str]:
     if not _service_role_key(settings):
         missing.append("SUPABASE_SERVICE_ROLE_KEY")
     return missing
+
+
+async def fetch_training_data_consent(
+    *,
+    settings: Settings,
+    user_id: str,
+    http_client: httpx.AsyncClient | None = None,
+) -> SupabaseTrainingConsentResult:
+    missing = missing_supabase_project_settings(settings)
+    if missing:
+        return SupabaseTrainingConsentResult(
+            enabled=False,
+            error=f"Missing Supabase training-consent settings: {', '.join(missing)}",
+            status="skipped",
+        )
+
+    service_role_key = _service_role_key(settings)
+    if not settings.supabase_url or not service_role_key:
+        raise SupabaseProjectStoreError("Supabase settings unexpectedly missing after validation")
+
+    close_client = http_client is None
+    client = http_client or httpx.AsyncClient(timeout=min(settings.ai_request_timeout, 20.0))
+    try:
+        response = await client.get(
+            f"{settings.supabase_url}/rest/v1/users",
+            params={
+                "id": f"eq.{user_id}",
+                "limit": "1",
+                "select": "training_data_consent,training_data_consent_at,training_data_consent_version",
+            },
+            headers={
+                "Authorization": f"Bearer {service_role_key}",
+                "apikey": service_role_key,
+            },
+        )
+        if response.status_code != 200:
+            return SupabaseTrainingConsentResult(
+                enabled=False,
+                error=_supabase_error_message(response),
+                status="failed",
+            )
+
+        rows = response.json()
+        row = rows[0] if isinstance(rows, list) and rows and isinstance(rows[0], dict) else {}
+        enabled = bool(row.get("training_data_consent")) and bool(row.get("training_data_consent_at"))
+        return SupabaseTrainingConsentResult(
+            consent_version=_optional_str(row.get("training_data_consent_version")),
+            enabled=enabled,
+            status="enabled" if enabled else "disabled",
+        )
+    finally:
+        if close_client:
+            await client.aclose()
+
+
+async def insert_training_example(
+    *,
+    consent_version: str,
+    example_payload: dict[str, Any],
+    project_id: str,
+    settings: Settings,
+    user_id: str,
+    http_client: httpx.AsyncClient | None = None,
+) -> SupabaseTrainingExampleResult:
+    missing = missing_supabase_project_settings(settings)
+    if missing:
+        return SupabaseTrainingExampleResult(
+            error=f"Missing Supabase training-example settings: {', '.join(missing)}",
+            status="skipped",
+        )
+
+    service_role_key = _service_role_key(settings)
+    if not settings.supabase_url or not service_role_key:
+        raise SupabaseProjectStoreError("Supabase settings unexpectedly missing after validation")
+
+    content_hash = _optional_str(example_payload.get("content_hash"))
+    payload = {
+        **example_payload,
+        "consent_version": consent_version,
+        "project_id": _uuid_or_none(project_id),
+        "user_id": _uuid_or_none(user_id),
+    }
+    close_client = http_client is None
+    client = http_client or httpx.AsyncClient(timeout=min(settings.ai_request_timeout, 20.0))
+    try:
+        response = await client.post(
+            f"{settings.supabase_url}/rest/v1/training_examples",
+            headers={
+                "Authorization": f"Bearer {service_role_key}",
+                "Content-Type": "application/json",
+                "Prefer": "return=minimal",
+                "apikey": service_role_key,
+            },
+            json=payload,
+        )
+        if response.status_code == 409:
+            return SupabaseTrainingExampleResult(content_hash=content_hash, status="duplicate")
+        if response.status_code not in {200, 201, 204}:
+            raise SupabaseProjectStoreError(_supabase_error_message(response))
+    finally:
+        if close_client:
+            await client.aclose()
+
+    return SupabaseTrainingExampleResult(content_hash=content_hash, status="stored")
+
+
+async def insert_pipeline_error(
+    *,
+    active_agent: str | None,
+    blackboard_snapshot: dict[str, Any],
+    error_message: str,
+    error_type: str,
+    job_id: str | None,
+    project_id: str,
+    settings: Settings,
+    user_id: str,
+    http_client: httpx.AsyncClient | None = None,
+) -> SupabasePipelineErrorResult:
+    missing = missing_supabase_project_settings(settings)
+    if missing:
+        return SupabasePipelineErrorResult(
+            error=f"Missing Supabase pipeline-error settings: {', '.join(missing)}",
+            status="skipped",
+        )
+
+    service_role_key = _service_role_key(settings)
+    if not settings.supabase_url or not service_role_key:
+        raise SupabaseProjectStoreError("Supabase settings unexpectedly missing after validation")
+
+    payload = {
+        "active_agent": active_agent,
+        "blackboard_snapshot": blackboard_snapshot,
+        "error_message": error_message[:4000],
+        "error_type": error_type[:200],
+        "job_id": _uuid_or_none(job_id),
+        "project_id": _uuid_or_none(project_id),
+        "user_id": _uuid_or_none(user_id),
+    }
+    close_client = http_client is None
+    client = http_client or httpx.AsyncClient(timeout=min(settings.ai_request_timeout, 20.0))
+    try:
+        response = await client.post(
+            f"{settings.supabase_url}/rest/v1/pipeline_errors",
+            headers={
+                "Authorization": f"Bearer {service_role_key}",
+                "Content-Type": "application/json",
+                "Prefer": "return=minimal",
+                "apikey": service_role_key,
+            },
+            json=payload,
+        )
+        if response.status_code not in {200, 201, 204}:
+            raise SupabaseProjectStoreError(_supabase_error_message(response))
+    finally:
+        if close_client:
+            await client.aclose()
+
+    return SupabasePipelineErrorResult(status="stored")
 
 
 async def update_revision_record(
@@ -305,6 +505,13 @@ def _optional_str(value: Any) -> str | None:
     return text or None
 
 
+def _uuid_or_none(value: Any) -> str | None:
+    text = _optional_str(value)
+    if not text:
+        return None
+    return text
+
+
 def _json_value(value: Any) -> Any:
     return value if isinstance(value, (dict, list, str, int, float, bool)) or value is None else str(value)
 
@@ -394,4 +601,4 @@ def _supabase_error_message(response: httpx.Response) -> str:
                 detail = str(message)
     except ValueError:
         pass
-    return f"Supabase project record upsert failed ({response.status_code}): {re.sub(r'\\s+', ' ', detail).strip()}"
+    return f"Supabase request failed ({response.status_code}): {re.sub(r'\\s+', ' ', detail).strip()}"

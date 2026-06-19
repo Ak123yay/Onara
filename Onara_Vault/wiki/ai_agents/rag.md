@@ -123,6 +123,36 @@ collection.add(
 
 ---
 
+## Curated Learning Loop
+
+Completed generated sites can feed ChromaDB, but only through a conservative gate:
+
+- The user must have `training_data_consent = true`.
+- The user must have `training_data_consent_at` set.
+- The saved blackboard `qa_output.status` must be `pass`.
+- `qa_output.blocking_issues` must be empty.
+- No deterministic QA check may be false.
+- The final deployment artifact is re-checked with deterministic QA after parser/reviews/contact-form mutations.
+- If the final artifact fails that second check, nothing is saved.
+- If ChromaDB is unavailable, site generation still completes and the blackboard records `rag_learning.status = failed`.
+
+The loop saves redacted component patterns, not full customer sites. Business name, phone, email, address, URLs, and project/user/job data attributes are replaced with placeholders before embedding.
+
+Duplicate prevention:
+
+- Each learned document stores `content_hash`.
+- Each source project/component pair stores `source_key_hash`.
+- The pattern store skips candidates when either hash already exists.
+- This prevents repeated builds from stuffing the collection with duplicate versions of the same site.
+
+Runtime files:
+
+- `Onara_Code/pipeline/onara_pipeline/rag/learning.py` builds the curated pattern documents.
+- `Onara_Code/pipeline/onara_pipeline/rag/chroma_client.py` checks existing metadata before upsert.
+- `Onara_Code/pipeline/onara_pipeline/job_queue.py` runs the learning step after deployment storage and before job completion.
+
+---
+
 ## Maintenance
 
 - ChromaDB persists to disk at `CHROMA_PERSIST_PATH` — back up this directory

@@ -13,6 +13,8 @@ from onara_pipeline.config import Settings
 
 GITHUB_API_VERSION = "2022-11-28"
 TokenProvider = Callable[[], str | Awaitable[str]]
+INSTALLATION_TOKEN_CACHE_SECONDS = 50 * 60
+_INSTALLATION_TOKEN_CACHE: dict[tuple[str, str, str], tuple[str, float]] = {}
 
 
 class GitHubDeploymentError(RuntimeError):
@@ -262,6 +264,12 @@ class GitHubDeploymentClient:
                 raise GitHubDeploymentError("Injected GitHub token provider returned an invalid token")
             return token
 
+        cache_key = (self.api_url, self.app_id, self.installation_id)
+        cached = _INSTALLATION_TOKEN_CACHE.get(cache_key)
+        now = time.time()
+        if cached and cached[1] > now:
+            return cached[0]
+
         app_jwt = generate_app_jwt(app_id=self.app_id, private_key=self.private_key)
         response = await self._request_json(
             client,
@@ -272,6 +280,7 @@ class GitHubDeploymentClient:
         token = response.get("token")
         if not isinstance(token, str) or not token:
             raise GitHubDeploymentError("GitHub installation token response did not include a token")
+        _INSTALLATION_TOKEN_CACHE[cache_key] = (token, now + INSTALLATION_TOKEN_CACHE_SECONDS)
         return token
 
     async def _request_json(

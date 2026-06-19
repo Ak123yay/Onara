@@ -1791,6 +1791,126 @@ button {
   opacity: 0.74;
 }
 
+.manual-business-entry {
+  margin-top: 16px;
+  text-align: left;
+}
+
+.manual-business-callout {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+  background: var(--paper);
+  padding: 15px 16px;
+}
+
+.manual-business-callout div {
+  display: grid;
+  gap: 3px;
+}
+
+.manual-business-callout p,
+.manual-business-callout strong,
+.manual-business-callout span {
+  margin: 0;
+}
+
+.manual-business-callout strong {
+  color: var(--ink);
+  font-family: var(--serif);
+  font-size: 20px;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+}
+
+.manual-business-callout span {
+  max-width: 620px;
+  color: var(--ink-3);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.manual-business-panel {
+  margin-top: 10px;
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+  background: var(--paper);
+  padding: 18px;
+}
+
+.manual-business-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+}
+
+.manual-business-field {
+  display: grid;
+  gap: 7px;
+}
+
+.manual-business-field-full {
+  grid-column: 1 / -1;
+}
+
+.manual-business-field span {
+  color: var(--ink-3);
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.manual-business-field input,
+.manual-business-field textarea {
+  width: 100%;
+  border: 1px solid var(--rule);
+  border-radius: 2px;
+  background: var(--paper-2);
+  color: var(--ink);
+  font: inherit;
+  outline: 0;
+  padding: 11px 12px;
+  transition:
+    border-color 150ms ease,
+    background 150ms ease;
+}
+
+.manual-business-field textarea {
+  min-height: 92px;
+  resize: vertical;
+}
+
+.manual-business-field input:focus,
+.manual-business-field textarea:focus {
+  border-color: var(--ink);
+  background: var(--paper);
+}
+
+.manual-business-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.manual-business-actions small {
+  max-width: 520px;
+  color: var(--ink-3);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.manual-business-error {
+  margin: 0 0 12px;
+  color: var(--accent-ink);
+  font-size: 13px;
+}
+
 .places-error {
   margin: 16px 0 0;
   color: var(--accent-ink);
@@ -4029,6 +4149,8 @@ textarea.confirm-manual-control {
   }
 
   .places-search-form,
+  .manual-business-callout,
+  .manual-business-actions,
   .place-result-card,
   .confirmation-title-row,
   .confirmation-actions,
@@ -4053,6 +4175,12 @@ textarea.confirm-manual-control {
 
   .places-search-form input {
     width: 100%;
+  }
+
+  .manual-business-callout .btn,
+  .manual-business-actions .btn {
+    width: 100%;
+    justify-content: center;
   }
 
   .place-result-meta {

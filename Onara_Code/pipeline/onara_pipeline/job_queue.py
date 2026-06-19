@@ -115,93 +115,113 @@ class JobQueue:
                 return
 
             try:
-                from onara_pipeline.agents import run_phase_18, run_phase_19, run_phase_20, run_phase_21
-
-                async def progress(
-                    event: str,
-                    agent_id: str | None,
-                    message: str,
-                    extra: dict[str, Any] | None = None,
-                ) -> None:
-                    await self.record_progress(job.job_id, event, agent_id, message, extra)
-
-                await self._update_project_record_status(
+                await asyncio.wait_for(
+                    self._run_job(job, settings),
+                    timeout=float(settings.pipeline_job_timeout),
+                )
+            except TimeoutError:
+                await self._handle_job_failure(
                     job,
                     settings,
-                    current_agent="analyst",
-                    status="generating",
+                    TimeoutError(f"Pipeline job timed out after {settings.pipeline_job_timeout}s"),
                 )
-                await self._enrich_business_photos(job, settings, progress)
-                await self._run_supervised_phase(
-                    job=job,
-                    progress=progress,
-                    runner=lambda: run_phase_18(job, settings, progress),
-                    settings=settings,
-                    stage="after_phase_18",
-                )
-                await self.record_progress(
-                    job.job_id,
-                    "phase_completed",
-                    None,
-                    "Phase 18 completed. Agents 1-3 outputs are ready.",
-                    {"phase": "phase_18"},
-                )
-                await self._run_supervised_phase(
-                    job=job,
-                    progress=progress,
-                    runner=lambda: run_phase_19(job, settings, progress),
-                    settings=settings,
-                    stage="after_phase_19",
-                )
-                await self.record_progress(
-                    job.job_id,
-                    "phase_completed",
-                    None,
-                    "Phase 19 completed. Agents 4-5 outputs are ready.",
-                    {"phase": "phase_19"},
-                )
-                await self._run_supervised_phase(
-                    job=job,
-                    progress=progress,
-                    runner=lambda: run_phase_20(job, settings, progress),
-                    settings=settings,
-                    stage="after_phase_20",
-                )
-                await self.record_progress(
-                    job.job_id,
-                    "phase_completed",
-                    None,
-                    "Phase 20 completed. Agent 6 draft is ready for debugging.",
-                    {"phase": "phase_20"},
-                )
-                await run_phase_21(job, settings, progress)
-                await self._prepare_deployment_artifact(job, progress)
-                await self._update_project_record_status(
-                    job,
-                    settings,
-                    current_agent="deploying",
-                    status="deploying",
-                )
-                await self._commit_deployment_files_to_github(job, settings, progress)
-                await self._deploy_to_cloudflare_pages(job, settings, progress)
-                await self._store_project_record_in_supabase(job, settings, progress)
-                await self.record_progress(
-                    job.job_id,
-                    "phase_completed",
-                    None,
-                    "Phase 22 deployment pipeline completed.",
-                    {"phase": "phase_22"},
-                )
-                await self._mark_completed(job.job_id)
             except Exception as exc:
-                await self._mark_failed(job.job_id, exc)
-                await self._update_project_record_status(
-                    job,
-                    settings,
-                    current_agent="error",
-                    error_message=str(exc),
-                    status="failed",
-                )
+                await self._handle_job_failure(job, settings, exc)
+
+    async def _run_job(self, job: PipelineJob, settings: Settings) -> None:
+        from onara_pipeline.agents import run_phase_18, run_phase_19, run_phase_20, run_phase_21
+
+        async def progress(
+            event: str,
+            agent_id: str | None,
+            message: str,
+            extra: dict[str, Any] | None = None,
+        ) -> None:
+            await self.record_progress(job.job_id, event, agent_id, message, extra)
+
+        await self._update_project_record_status(
+            job,
+            settings,
+            current_agent="analyst",
+            status="generating",
+        )
+        await self._enrich_business_photos(job, settings, progress)
+        await self._run_supervised_phase(
+            job=job,
+            progress=progress,
+            runner=lambda: run_phase_18(job, settings, progress),
+            settings=settings,
+            stage="after_phase_18",
+        )
+        await self.record_progress(
+            job.job_id,
+            "phase_completed",
+            None,
+            "Phase 18 completed. Agents 1-3 outputs are ready.",
+            {"phase": "phase_18"},
+        )
+        await self._run_supervised_phase(
+            job=job,
+            progress=progress,
+            runner=lambda: run_phase_19(job, settings, progress),
+            settings=settings,
+            stage="after_phase_19",
+        )
+        await self.record_progress(
+            job.job_id,
+            "phase_completed",
+            None,
+            "Phase 19 completed. Agents 4-5 outputs are ready.",
+            {"phase": "phase_19"},
+        )
+        await self._run_supervised_phase(
+            job=job,
+            progress=progress,
+            runner=lambda: run_phase_20(job, settings, progress),
+            settings=settings,
+            stage="after_phase_20",
+        )
+        await self.record_progress(
+            job.job_id,
+            "phase_completed",
+            None,
+            "Phase 20 completed. Agent 6 draft is ready for debugging.",
+            {"phase": "phase_20"},
+        )
+        await run_phase_21(job, settings, progress)
+        await self._prepare_deployment_artifact(job, progress)
+        await self._update_project_record_status(
+            job,
+            settings,
+            current_agent="deploying",
+            status="deploying",
+        )
+        await self._commit_deployment_files_to_github(job, settings, progress)
+        await self._deploy_to_cloudflare_pages(job, settings, progress)
+        await self._store_project_record_in_supabase(job, settings, progress)
+        training_consent = await self._load_training_data_consent(job, settings, progress)
+        await self._save_curated_rag_patterns(job, settings, progress, training_consent=training_consent)
+        await self._store_training_example(job, settings, progress, training_consent=training_consent)
+        await self.record_progress(
+            job.job_id,
+            "phase_completed",
+            None,
+            "Phase 22 deployment pipeline completed.",
+            {"phase": "phase_22"},
+        )
+        await self._mark_completed(job.job_id)
+
+    async def _handle_job_failure(self, job: PipelineJob, settings: Settings, exc: Exception) -> None:
+        active_agent = _agent_phase_for_error(job)
+        await self._mark_failed(job.job_id, exc)
+        await self._record_pipeline_error(job, settings, exc, active_agent=active_agent)
+        await self._update_project_record_status(
+            job,
+            settings,
+            current_agent="error",
+            error_message=str(exc),
+            status="failed",
+        )
 
     async def _prepare_deployment_artifact(self, job: PipelineJob, progress: Any) -> None:
         from onara_pipeline.agents.contracts import PlannerOutput
@@ -483,6 +503,193 @@ class JobQueue:
                 "status": "failed",
             }
 
+    async def _save_curated_rag_patterns(
+        self,
+        job: PipelineJob,
+        settings: Settings,
+        progress: Any,
+        *,
+        training_consent: dict[str, Any],
+    ) -> None:
+        from onara_pipeline.rag.learning import save_qa_approved_patterns
+
+        if not training_consent.get("enabled"):
+            payload = {
+                "reason": "training data consent is not enabled",
+                "status": "skipped",
+                "stored_count": 0,
+            }
+            job.blackboard["rag_learning"] = payload
+            await progress(
+                "rag_learning",
+                "rag_learning",
+                "RAG learning skipped: training data consent is not enabled.",
+                {"phase": "phase_22_rag_learning", "rag_learning": payload},
+            )
+            return
+
+        try:
+            result = save_qa_approved_patterns(
+                blackboard=job.blackboard,
+                business_data=job.business_data,
+                job_id=job.job_id,
+                project_id=job.project_id,
+                settings=settings,
+                style_preferences=job.style_preferences,
+            )
+            payload = result.to_dict()
+            job.blackboard["rag_learning"] = payload
+            await progress(
+                "rag_learning",
+                "rag_learning",
+                (
+                    f"Stored {result.stored_count} QA-approved component pattern(s) in RAG."
+                    if result.status == "stored"
+                    else f"RAG learning skipped: {result.reason}."
+                ),
+                {"phase": "phase_22_rag_learning", "rag_learning": payload},
+            )
+        except Exception as exc:
+            payload = {
+                "error": str(exc)[:500],
+                "status": "failed",
+            }
+            job.blackboard["rag_learning"] = payload
+            await progress(
+                "deployment_warning",
+                "rag_learning",
+                "RAG learning failed; continuing because site deployment is already complete.",
+                {"phase": "phase_22_rag_learning", "rag_learning": payload},
+            )
+
+    async def _load_training_data_consent(
+        self,
+        job: PipelineJob,
+        settings: Settings,
+        progress: Any,
+    ) -> dict[str, Any]:
+        from onara_pipeline.deployment import fetch_training_data_consent
+
+        result = await fetch_training_data_consent(settings=settings, user_id=job.user_id)
+        payload = result.to_dict()
+        job.blackboard["training_data_consent"] = payload
+
+        if result.status == "failed":
+            await progress(
+                "deployment_warning",
+                "training_data",
+                "Training consent check failed; skipping learning and training storage.",
+                {"phase": "phase_22_training_data", "training_data_consent": payload},
+            )
+
+        return payload
+
+    async def _store_training_example(
+        self,
+        job: PipelineJob,
+        settings: Settings,
+        progress: Any,
+        *,
+        training_consent: dict[str, Any],
+    ) -> None:
+        from onara_pipeline.deployment import insert_training_example
+        from onara_pipeline.training_examples import build_qa_approved_training_example
+
+        if not training_consent.get("enabled"):
+            payload = {
+                "reason": "training data consent is not enabled",
+                "status": "skipped",
+            }
+            job.blackboard["training_example"] = payload
+            await progress(
+                "training_data",
+                "training_data",
+                "Training example storage skipped because the user has not opted in.",
+                {"phase": "phase_22_training_data", "training_example": payload},
+            )
+            return
+
+        try:
+            candidate = build_qa_approved_training_example(
+                agent_6_model=job.agent_6_model,
+                blackboard=job.blackboard,
+                business_data=job.business_data,
+                job_id=job.job_id,
+                project_id=job.project_id,
+                style_preferences=job.style_preferences,
+                user_plan=job.user_plan,
+            )
+            if candidate.status != "ready" or not candidate.payload:
+                payload = candidate.to_dict()
+                job.blackboard["training_example"] = payload
+                await progress(
+                    "training_data",
+                    "training_data",
+                    f"Training example storage skipped: {candidate.reason}.",
+                    {"phase": "phase_22_training_data", "training_example": payload},
+                )
+                return
+
+            result = await insert_training_example(
+                consent_version=str(training_consent.get("consent_version") or "unknown"),
+                example_payload=candidate.payload,
+                project_id=job.project_id,
+                settings=settings,
+                user_id=job.user_id,
+            )
+            payload = {**candidate.to_dict(), **result.to_dict()}
+            job.blackboard["training_example"] = payload
+            await progress(
+                "training_data",
+                "training_data",
+                (
+                    "Stored QA-approved redacted training example."
+                    if result.status == "stored"
+                    else f"Training example storage skipped: {result.status}."
+                ),
+                {"phase": "phase_22_training_data", "training_example": payload},
+            )
+        except Exception as exc:
+            payload = {
+                "error": str(exc)[:500],
+                "status": "failed",
+            }
+            job.blackboard["training_example"] = payload
+            await progress(
+                "deployment_warning",
+                "training_data",
+                "Training example storage failed; continuing because site deployment is already complete.",
+                {"phase": "phase_22_training_data", "training_example": payload},
+            )
+
+    async def _record_pipeline_error(
+        self,
+        job: PipelineJob,
+        settings: Settings,
+        exc: Exception,
+        *,
+        active_agent: str | None,
+    ) -> None:
+        from onara_pipeline.deployment import insert_pipeline_error
+
+        try:
+            result = await insert_pipeline_error(
+                active_agent=active_agent,
+                blackboard_snapshot=_blackboard_error_snapshot(job),
+                error_message=str(exc),
+                error_type=type(exc).__name__,
+                job_id=job.job_id,
+                project_id=job.project_id,
+                settings=settings,
+                user_id=job.user_id,
+            )
+            job.blackboard["pipeline_error_log"] = result.to_dict()
+        except Exception as log_error:
+            job.blackboard["pipeline_error_log"] = {
+                "error": str(log_error)[:500],
+                "status": "failed",
+            }
+
     async def _run_supervised_phase(
         self,
         *,
@@ -667,6 +874,130 @@ class JobQueue:
             task.result()
         except Exception:
             pass
+
+
+AGENT_PHASE_BY_ID = {
+    "agent_01_analyst": "analyst",
+    "analyst": "analyst",
+    "photo_resolver": "analyst",
+    "agent_02_content": "content_writer",
+    "content_writer": "content_writer",
+    "agent_03_style": "style_agent",
+    "style_agent": "style_agent",
+    "agent_04_planner": "planner",
+    "planner": "planner",
+    "agent_05_prompt_engineer": "prompt_engineer",
+    "prompt_engineer": "prompt_engineer",
+    "agent_06_codegen": "code_generator",
+    "code_generator": "code_generator",
+    "agent_07_debugger": "debugger",
+    "debugger": "debugger",
+    "agent_08_seo": "seo_agent",
+    "seo_agent": "seo_agent",
+    "agent_09_qa": "qa_agent",
+    "qa_agent": "qa_agent",
+    "agent_10_mobile": "mobile_agent",
+    "mobile_agent": "mobile_agent",
+    "deployment_parser": "deploying",
+    "github": "deploying",
+    "cloudflare": "deploying",
+    "supabase": "deploying",
+    "rag_learning": "deploying",
+    "training_data": "deploying",
+    "deploying": "deploying",
+}
+LARGE_BLACKBOARD_KEYS = {
+    "component_files",
+    "debugged_html",
+    "deployment_files",
+    "final_html",
+    "generated_html",
+    "mobile_html",
+    "raw_code",
+    "raw_debugger_output",
+    "raw_mobile_output",
+    "raw_seo_output",
+    "seo_html",
+    "training_example",
+}
+MAX_SNAPSHOT_VALUE_CHARS = 3000
+
+
+def _agent_phase_for_error(job: PipelineJob) -> str | None:
+    candidates = [job.current_agent]
+    candidates.extend(
+        str(entry.get("agent_id"))
+        for entry in reversed(job.progress_log[-10:])
+        if isinstance(entry, dict) and entry.get("agent_id")
+    )
+
+    for candidate in candidates:
+        if not candidate:
+            continue
+        phase = AGENT_PHASE_BY_ID.get(str(candidate))
+        if phase:
+            return phase
+    return None
+
+
+def _blackboard_error_snapshot(job: PipelineJob) -> dict[str, Any]:
+    snapshot: dict[str, Any] = {
+        "available_keys": sorted(job.blackboard.keys()),
+        "business": _safe_business_snapshot(job.business_data),
+        "omitted_large_fields": {},
+        "progress_log_tail": job.progress_log[-8:],
+        "style_preferences": _truncate_snapshot_value(job.style_preferences),
+    }
+
+    for key in sorted(job.blackboard.keys()):
+        value = job.blackboard[key]
+        if key in LARGE_BLACKBOARD_KEYS:
+            snapshot["omitted_large_fields"][key] = _large_value_summary(value)
+            continue
+        snapshot[key] = _truncate_snapshot_value(value)
+
+    return snapshot
+
+
+def _safe_business_snapshot(business_data: dict[str, Any]) -> dict[str, Any]:
+    allowed_keys = (
+        "category",
+        "manual_entry",
+        "name",
+        "place_id",
+        "review_count",
+        "service_area",
+        "services",
+    )
+    return {key: business_data.get(key) for key in allowed_keys if key in business_data}
+
+
+def _large_value_summary(value: Any) -> dict[str, Any]:
+    if isinstance(value, str):
+        return {"chars": len(value), "type": "str"}
+    if isinstance(value, dict):
+        return {"items": len(value), "type": "dict"}
+    if isinstance(value, list):
+        return {"items": len(value), "type": "list"}
+    return {"type": type(value).__name__}
+
+
+def _truncate_snapshot_value(value: Any) -> Any:
+    if isinstance(value, str):
+        if len(value) <= MAX_SNAPSHOT_VALUE_CHARS:
+            return value
+        return f"{value[:MAX_SNAPSHOT_VALUE_CHARS]}...[truncated {len(value) - MAX_SNAPSHOT_VALUE_CHARS} chars]"
+    if isinstance(value, dict):
+        return {
+            str(key): _truncate_snapshot_value(item)
+            for key, item in list(value.items())[:40]
+            if str(key) not in LARGE_BLACKBOARD_KEYS
+        }
+    if isinstance(value, list):
+        return [_truncate_snapshot_value(item) for item in value[:20]]
+    if value is None or isinstance(value, (bool, int, float)):
+        return value
+    return str(value)[:MAX_SNAPSHOT_VALUE_CHARS]
 
 
 def request_signature(request: GenerateRequest) -> str:

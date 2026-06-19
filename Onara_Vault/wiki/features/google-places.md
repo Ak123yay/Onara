@@ -6,7 +6,7 @@ _How the Google Places API (New) is used to fetch business data for site generat
 
 ## Overview
 
-The Places API is the data source for every site generation. The Next.js build flow calls it to pull available business information: name, address, phone, hours, description, photos, rating, and reviews. Agent 1 (Business Analyst) receives that confirmed business data and turns it into site requirements for the rest of the pipeline.
+The Places API is the preferred data source for site generation. The Next.js build flow calls it to pull available business information: name, address, phone, hours, description, photos, rating, and reviews. Agent 1 (Business Analyst) receives that confirmed business data and turns it into site requirements for the rest of the pipeline. If the business is not listed on Google Maps yet, the user can enter the same core business details manually and continue without a `google_place_id`.
 
 ---
 
@@ -81,12 +81,14 @@ X-Goog-FieldMask: displayName,formattedAddress,nationalPhoneNumber,websiteUri,
 
 ---
 
-## Fallback: Manual Place ID Entry
+## Fallback: Manual Business Entry
 
 If the Places text search fails (API error or no results), the UI shows:
-- "Search unavailable — enter your Google Place ID manually"
-- Link to instructions: how to find Place ID from Google Maps URL
-- User pastes Place ID directly → skips text search, goes straight to detail fetch
+- A manual business details form for name, category, service area or address, phone, email,
+  website, services, and hours
+- User confirms the manually entered profile, then continues to style and generation
+- The project is created with `google_place_id = null`, so reviews refresh and GBP-only
+  retention jobs skip it until a Place ID is available
 
 This ensures business owners can still generate a site even if search doesn't find them.
 
