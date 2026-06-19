@@ -189,7 +189,7 @@ class JobQueue:
             {"phase": "phase_20"},
         )
         await run_phase_21(job, settings, progress)
-        await self._prepare_deployment_artifact(job, progress)
+        await self._prepare_deployment_artifact(job, settings, progress)
         await self._update_project_record_status(
             job,
             settings,
@@ -223,7 +223,7 @@ class JobQueue:
             status="failed",
         )
 
-    async def _prepare_deployment_artifact(self, job: PipelineJob, progress: Any) -> None:
+    async def _prepare_deployment_artifact(self, job: PipelineJob, settings: Settings, progress: Any) -> None:
         from onara_pipeline.agents.contracts import PlannerOutput
         from onara_pipeline.deployment import build_deployment_artifact, lead_capture_endpoint
 
