@@ -1,6 +1,15 @@
 import Link from "next/link";
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { RevisionWorkspace } from "@/components/revisions/RevisionWorkspace";
+
+export const metadata: Metadata = {
+  robots: {
+    follow: false,
+    index: false,
+  },
+  title: "Revision workspace",
+};
 
 export default function DevRevisionWorkspacePage() {
   if (process.env.NODE_ENV === "production") {

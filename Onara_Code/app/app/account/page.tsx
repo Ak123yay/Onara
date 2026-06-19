@@ -18,7 +18,11 @@ type AccountProfile = {
 };
 
 export const metadata: Metadata = {
-  title: "Account - Onara",
+  robots: {
+    follow: false,
+    index: false,
+  },
+  title: "Account",
 };
 
 function formatDate(value: string | null | undefined) {

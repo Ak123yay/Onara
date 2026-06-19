@@ -1,8 +1,17 @@
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { BusinessSearchFlow } from "@/components/places/BusinessSearchFlow";
 import { effectiveUserPlan, type UserPlan } from "@/lib/build/agent6-models";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
+
+export const metadata: Metadata = {
+  robots: {
+    follow: false,
+    index: false,
+  },
+  title: "Build a site",
+};
 
 type BuildProfile = {
   full_name: string | null;

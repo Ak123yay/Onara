@@ -233,7 +233,8 @@ Execution rule:
 ### Phase 28 — Pre-Launch
 
 - [x] Privacy policy + terms of service
-- [x] **Update .env.example**
+- [x] **Update .env.example** 
+- [x] Launch SEO metadata, robots, sitemap, manifest, and social cards
 - [ ] Add `support@onara.tech` across the website and app surfaces (footer, account/help areas, auth emails, billing/contact copy)
 - [ ] Support email AI responder: keep forwarding `support@onara.tech` to Aarush, but add an inbound email worker/webhook that uses an NVIDIA NIM model to send the first support reply, log the thread, and escalate billing/security/account issues to human review
 - [ ] Training-data consent copy, opt-out/delete handling, and privacy-policy disclosure for using approved generated sites/edits/feedback to improve Onara models

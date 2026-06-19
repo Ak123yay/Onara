@@ -20,7 +20,12 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 
 export const metadata: Metadata = {
-  title: "Help - Onara",
+  alternates: {
+    canonical: "/help",
+  },
+  description:
+    "Get help with Onara site generation, revisions, billing, public URLs, lead forms, and account support.",
+  title: "Help",
 };
 
 const supportEmail = "support@onara.tech";

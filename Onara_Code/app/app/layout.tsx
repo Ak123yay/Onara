@@ -1,12 +1,63 @@
 import type { Metadata } from "next";
+import { absoluteUrl, getSiteUrl, siteConfig } from "@/lib/seo";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Onara - AI Website Builder for Local Contractors",
-  description:
-    "Turn your Google Business Profile into a professional contractor website in 90 seconds. No designer, no code, no hassle.",
+  applicationName: siteConfig.name,
+  authors: [{ name: "Onara", url: getSiteUrl() }],
+  category: "technology",
+  creator: "Onara",
+  description: siteConfig.description,
   icons: {
     icon: [{ url: "/icon.svg", type: "image/svg+xml" }],
+  },
+  keywords: [
+    "AI website builder",
+    "contractor website builder",
+    "local business website builder",
+    "Google Business Profile website",
+    "plumber website builder",
+    "HVAC website builder",
+    "roofer website builder",
+  ],
+  metadataBase: new URL(getSiteUrl()),
+  openGraph: {
+    description: siteConfig.description,
+    images: [
+      {
+        alt: siteConfig.ogImageAlt,
+        height: 630,
+        url: absoluteUrl("/opengraph-image"),
+        width: 1200,
+      },
+    ],
+    locale: "en_US",
+    siteName: siteConfig.name,
+    title: siteConfig.title,
+    type: "website",
+    url: getSiteUrl(),
+  },
+  publisher: "Onara",
+  robots: {
+    follow: true,
+    googleBot: {
+      follow: true,
+      index: true,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+      "max-video-preview": -1,
+    },
+    index: true,
+  },
+  title: {
+    default: siteConfig.title,
+    template: "%s - Onara",
+  },
+  twitter: {
+    card: "summary_large_image",
+    description: siteConfig.description,
+    images: [absoluteUrl("/twitter-image")],
+    title: siteConfig.title,
   },
 };
 

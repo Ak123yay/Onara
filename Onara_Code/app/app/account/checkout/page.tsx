@@ -22,7 +22,11 @@ type CheckoutPlan = {
 };
 
 export const metadata: Metadata = {
-  title: "Checkout - Onara",
+  robots: {
+    follow: false,
+    index: false,
+  },
+  title: "Checkout",
 };
 
 const checkoutPlans: Record<string, CheckoutPlan> = {

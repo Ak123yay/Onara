@@ -183,6 +183,7 @@ Current actionable phase.
 ## Phase 28 — Pre-Launch
 - [x] Deploy privacy policy + terms of service pages
 - [x] Update env example templates
+- [x] Add launch SEO metadata, robots, sitemap, manifest, and social cards
 - [ ] Publish Google OAuth app (remove testing mode)
 - [ ] Security audit: RLS policy test, API key rotation, CORS headers
 - [ ] Lighthouse audit all key pages (target 90+ performance, 100 accessibility)

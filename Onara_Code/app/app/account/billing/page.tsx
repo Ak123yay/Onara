@@ -28,7 +28,11 @@ type BillingPageProps = {
 };
 
 export const metadata: Metadata = {
-  title: "Billing - Onara",
+  robots: {
+    follow: false,
+    index: false,
+  },
+  title: "Billing",
 };
 
 const planRank: Record<PlanType, number> = {

@@ -2,8 +2,11 @@ import type { Metadata } from "next";
 import { LegalPage, type LegalSection } from "@/components/legal/LegalPage";
 
 export const metadata: Metadata = {
-  title: "Terms of Service - Onara",
+  alternates: {
+    canonical: "/terms",
+  },
   description: "The terms that apply when using Onara to generate, revise, host, and manage local business websites.",
+  title: "Terms of Service",
 };
 
 const sections: LegalSection[] = [

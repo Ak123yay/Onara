@@ -10,6 +10,7 @@ import {
   RefreshCw,
   Sparkles,
 } from "lucide-react";
+import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { CopyLinkButton } from "@/components/dashboard/CopyLinkButton";
@@ -17,6 +18,14 @@ import { DeleteSiteButton } from "@/components/dashboard/DeleteSiteButton";
 import { RetryBuildButton } from "@/components/dashboard/RetryBuildButton";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
+
+export const metadata: Metadata = {
+  robots: {
+    follow: false,
+    index: false,
+  },
+  title: "Dashboard",
+};
 
 type ProjectStatus = "queued" | "generating" | "deploying" | "live" | "failed" | "suspended";
 type PlanType = "free" | "starter" | "pro";
