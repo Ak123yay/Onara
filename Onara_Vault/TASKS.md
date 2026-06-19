@@ -239,8 +239,8 @@ Execution rule:
 - [x] Support email AI responder: keep forwarding `support@onara.tech` to Aarush, but add an inbound email worker/webhook that uses an NVIDIA NIM model to send the first support reply, log the thread, and escalate billing/security/account issues to human review
 - [x] Training-data consent copy, opt-out/delete handling, and privacy-policy disclosure for using approved generated sites/edits/feedback to improve Onara models
 - [ ] Error monitoring (Sentry or equivalent)
-- [ ] Security review: RLS audit, API key rotation
-- [ ] Publish Google OAuth app (remove testing mode)
+- [x] Security review: RLS audit, API key rotation checklist, vulnerability audit _(report: wiki/operations/security-review-2026-06-19.md; manual provider-dashboard key rotation still required before launch)_
+- [x] Publish Google OAuth app (remove testing mode)
 
 ### Phase 29 — Distribution
 
