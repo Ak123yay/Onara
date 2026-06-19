@@ -840,7 +840,21 @@ export function LandingPage() {
   );
 
   return (
-    <main className="paper min-h-screen overflow-hidden" ref={pageRef}>
+    <main className="paper min-h-screen overflow-hidden gsap-landing-page" ref={pageRef}>
+      <noscript>
+        <style>{`
+          .gsap-landing-page [data-gsap-nav],
+          .gsap-landing-page [data-gsap-hero-item],
+          .gsap-landing-page [data-gsap-hero-showcase],
+          .gsap-landing-page [data-gsap-showcase-piece],
+          .gsap-landing-page [data-gsap-reveal],
+          .gsap-landing-page [data-gsap-stagger-item] {
+            opacity: 1 !important;
+            filter: none !important;
+            transform: none !important;
+          }
+        `}</style>
+      </noscript>
       <header
         className="nav"
         data-gsap-nav
@@ -937,7 +951,7 @@ export function LandingPage() {
             </span>
           </div>
 
-          <div className="hero-showcase-wrap">
+          <div className="hero-showcase-wrap" data-gsap-hero-showcase>
             <HeroShowcase />
           </div>
         </div>
