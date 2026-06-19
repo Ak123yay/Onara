@@ -330,6 +330,7 @@ Billing includes:
 - Subscription deleted handling.
 - Payment failed handling.
 - Payment succeeded handling.
+- Billing page subscription cancellation action.
 - Reverse trial support.
 - Subscription period tracking.
 
@@ -947,6 +948,7 @@ Completed:
 - Delete finished/failed sites.
 - Plan-gated Agent 6 model picker.
 - Cancellation placeholder deployment flow.
+- Billing page subscription cancellation action.
 
 ### Phase 26: Retention Features
 

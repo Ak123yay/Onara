@@ -4,6 +4,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
+import { CancelSubscriptionButton } from "@/components/billing/CancelSubscriptionButton";
 
 type PlanType = "free" | "starter" | "pro";
 
@@ -209,6 +210,8 @@ export default async function BillingPage({ searchParams }: BillingPageProps) {
   const checkout = checkoutStatus(resolvedSearchParams);
   const daysLeft = daysUntil(profile.trial_ends_at);
   const currentPlanRank = planRank[profile.plan];
+  const canCancelSubscription =
+    !profile.is_trial && Boolean(profile.stripe_subscription_id) && profile.subscription_status !== "canceled";
 
   return (
     <div className="account-billing-page">
@@ -301,6 +304,7 @@ export default async function BillingPage({ searchParams }: BillingPageProps) {
                 ? "Your subscription is managed by Stripe."
                 : "Add billing by choosing a paid plan below."}
             </p>
+            {canCancelSubscription ? <CancelSubscriptionButton /> : null}
           </div>
         )}
       </section>

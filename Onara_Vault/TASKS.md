@@ -206,6 +206,7 @@ Execution rule:
 - [x] Allow users to delete finished/failed sites from the dashboard and free the site slot
 - [x] Plan gating for Agent 6 model picker
 - [x] Cancellation flow (deploy placeholder page to Cloudflare)
+- [x] Billing page subscription cancellation action
 
 ### Phase 26 — Retention Features
 

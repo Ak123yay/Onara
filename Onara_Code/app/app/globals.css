@@ -7032,6 +7032,40 @@ button.revision-component-chip:disabled {
   background: var(--accent);
 }
 
+.account-billing-cancel {
+  display: grid;
+  gap: 8px;
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--rule-2);
+}
+
+.account-billing-cancel-button {
+  justify-self: start;
+  border-color: color-mix(in oklab, var(--accent) 28%, var(--rule));
+  color: var(--accent-ink);
+}
+
+.account-billing-cancel-note,
+.account-billing-cancel-message,
+.account-billing-cancel-error {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.account-billing-cancel-note {
+  color: var(--ink-3);
+}
+
+.account-billing-cancel-message {
+  color: var(--leaf);
+}
+
+.account-billing-cancel-error {
+  color: var(--color-danger);
+}
+
 .account-plan-section {
   margin-top: 34px;
 }
