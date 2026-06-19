@@ -213,7 +213,7 @@ Execution rule:
 - [x] Code download as a folder included for Pro users
 - [x] Create the help page
 - [x] Google Reviews badge refresh (weekly pull)
-- [ ] Keep GBP polling/change detection disabled for v1 (`FEATURE_GBP_SYNC=false`)
+- [x] Keep GBP polling/change detection disabled for v1 (`FEATURE_GBP_SYNC=false`)
 
 ### Phase 27 — Architecture Hardening
 
@@ -221,9 +221,11 @@ Execution rule:
 - [x] Generated-site photo resolver: convert Google Places photo references into deploy-safe image URLs and require photo usage when photos are available
 - [x] Generated-site Onara theme enforcement: require paper/ink/terracotta variables, Fraunces/Inter/mono typography, low-radius panels, and Onara QA gate before deploy
 - [x] Build progress page redesign: structured live build summary, status cards, agent queue, and cleaner preview workspace
+- [ ]  **if not listed on google maps,you can create your own and put your own information in**
+- [ ] **Add onara favicon**
 - [ ] 11 production fixes (document each in wiki as identified)
-- [ ] PM2 setup on pipeline server
-- [ ] UptimeRobot monitoring on /health endpoint
+- [x] PM2 setup on pipeline server
+- [x] UptimeRobot monitoring on /health endpoint
 - [x] AI blackboard reviewer: optional advisory model pass over blackboard outputs that suggests warnings/reruns, while deterministic supervisor remains the final pass/fail authority
 - [ ] Curated RAG learning loop: save only QA-approved generated components/patterns back into ChromaDB so future builds improve without storing bad or duplicate sites
 - [ ] Training data pipeline: add user consent fields and `training_examples` storage for QA-approved, redacted generation examples that can feed RAG now and future model fine-tuning later
@@ -231,6 +233,7 @@ Execution rule:
 ### Phase 28 — Pre-Launch
 
 - [ ] Privacy policy + terms of service
+- [ ] **Update .env.example**
 - [ ] Add `support@onara.tech` across the website and app surfaces (footer, account/help areas, auth emails, billing/contact copy)
 - [ ] Support email AI responder: keep forwarding `support@onara.tech` to Aarush, but add an inbound email worker/webhook that uses an NVIDIA NIM model to send the first support reply, log the thread, and escalate billing/security/account issues to human review
 - [ ] Training-data consent copy, opt-out/delete handling, and privacy-policy disclosure for using approved generated sites/edits/feedback to improve Onara models

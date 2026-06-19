@@ -206,30 +206,63 @@ async function patchAndDeployLiveHtml({
   project: ProjectRecord;
   reviews: ReviewDetails;
 }): Promise<{ changed: boolean; deployed: boolean }> {
-  const publicUrl = stringValue(project.public_url);
-  if (!publicUrl) {
+  const projectName = cloudflareProjectName(project);
+  const currentHtml = await fetchLiveHtml(project, projectName);
+  if (!currentHtml) {
     return { changed: false, deployed: false };
   }
 
-  const response = await fetch(publicUrl, { headers: { accept: "text/html" } });
-  if (!response.ok) {
-    throw new Error(`live_html_fetch_failed:${response.status}`);
-  }
-
-  const currentHtml = await response.text();
   const nextHtml = patchReviewsHtml(currentHtml, project, reviews);
   const changed = nextHtml !== currentHtml;
   if (!changed || dryRun) {
     return { changed, deployed: false };
   }
 
-  const projectName = cloudflareProjectName(project);
   if (!projectName) {
     throw new Error("cloudflare_project_name_unavailable");
   }
 
   await deployIndexHtml(projectName, nextHtml);
   return { changed: true, deployed: true };
+}
+
+async function fetchLiveHtml(project: ProjectRecord, projectName: string | null): Promise<string | null> {
+  const urls = liveHtmlUrlCandidates(project, projectName);
+  if (urls.length === 0) {
+    return null;
+  }
+
+  const errors: string[] = [];
+  for (const url of urls) {
+    try {
+      const response = await fetch(url, { headers: { accept: "text/html" } });
+      if (!response.ok) {
+        errors.push(`${url}:${response.status}`);
+        continue;
+      }
+
+      return await response.text();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "unknown_fetch_error";
+      errors.push(`${url}:${message.slice(0, 160)}`);
+    }
+  }
+
+  throw new Error(`live_html_fetch_failed:${errors.join("|").slice(0, 500)}`);
+}
+
+function liveHtmlUrlCandidates(project: ProjectRecord, projectName: string | null): string[] {
+  const urls = new Set<string>();
+  if (projectName) {
+    urls.add(`https://${projectName}.pages.dev`);
+  }
+
+  const publicUrl = stringValue(project.public_url);
+  if (publicUrl) {
+    urls.add(publicUrl);
+  }
+
+  return Array.from(urls);
 }
 
 function patchReviewsHtml(html: string, project: ProjectRecord, reviews: ReviewDetails): string {
@@ -351,13 +384,78 @@ function updateAggregateRatingNode(value: unknown, reviews: ReviewDetails): bool
 async function deployIndexHtml(projectName: string, html: string): Promise<void> {
   await ensureCloudflareProject(projectName);
 
+  const bytes = new TextEncoder().encode(html);
+  const hash = await sha256Hex(bytes);
+  const uploadToken = await cloudflareUploadToken(projectName);
+  await uploadCloudflareAsset(uploadToken, {
+    contentType: "text/html;charset=utf-8",
+    hash,
+    value: base64Encode(bytes),
+  });
+  await upsertCloudflareAssetHash(uploadToken, hash);
+
   const body = new FormData();
-  body.append("file", new Blob([html], { type: "text/html;charset=utf-8" }), "index.html");
+  body.append("manifest", JSON.stringify({ "/index.html": hash }));
 
   await cloudflareRequest(`/pages/projects/${encodeURIComponent(projectName)}/deployments`, {
     body,
     method: "POST",
   });
+}
+
+async function cloudflareUploadToken(projectName: string): Promise<string> {
+  const result = await cloudflareRequest(`/pages/projects/${encodeURIComponent(projectName)}/upload-token`, {
+    method: "GET",
+  });
+  const jwt = isRecord(result) && typeof result.jwt === "string" ? result.jwt : null;
+  if (!jwt) {
+    throw new Error("cloudflare_upload_token_missing");
+  }
+
+  return jwt;
+}
+
+async function uploadCloudflareAsset(
+  uploadToken: string,
+  asset: { contentType: string; hash: string; value: string },
+): Promise<void> {
+  await cloudflareAssetRequest("/pages/assets/upload?base64=true", uploadToken, {
+    body: JSON.stringify([
+      {
+        base64: true,
+        key: asset.hash,
+        metadata: { contentType: asset.contentType },
+        value: asset.value,
+      },
+    ]),
+    headers: { "content-type": "application/json" },
+    method: "POST",
+  });
+}
+
+async function upsertCloudflareAssetHash(uploadToken: string, hash: string): Promise<void> {
+  await cloudflareAssetRequest("/pages/assets/upsert-hashes", uploadToken, {
+    body: JSON.stringify({ hashes: [hash] }),
+    headers: { "content-type": "application/json" },
+    method: "POST",
+  });
+}
+
+async function cloudflareAssetRequest(path: string, uploadToken: string, init: RequestInit): Promise<unknown> {
+  const apiUrl = (Deno.env.get("CLOUDFLARE_API_URL") || "https://api.cloudflare.com/client/v4").replace(/\/+$/, "");
+  const headers = new Headers(init.headers);
+  headers.set("authorization", `Bearer ${uploadToken}`);
+
+  const response = await fetch(`${apiUrl}${path}`, {
+    ...init,
+    headers,
+  });
+  const payload = await response.json().catch(() => null);
+  if (!response.ok || !cloudflareSucceeded(payload)) {
+    throw new Error(cloudflareErrorMessage(payload) ?? `cloudflare_asset_request_failed:${response.status}`);
+  }
+
+  return payload;
 }
 
 async function ensureCloudflareProject(projectName: string): Promise<void> {
@@ -537,6 +635,23 @@ function escapeHtml(value: string): string {
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#39;");
+}
+
+async function sha256Hex(bytes: Uint8Array): Promise<string> {
+  const digest = await crypto.subtle.digest("SHA-256", bytes);
+  return Array.from(new Uint8Array(digest))
+    .map((byte) => byte.toString(16).padStart(2, "0"))
+    .join("");
+}
+
+function base64Encode(bytes: Uint8Array): string {
+  let binary = "";
+  const chunkSize = 0x8000;
+  for (let index = 0; index < bytes.length; index += chunkSize) {
+    binary += String.fromCharCode(...bytes.subarray(index, index + chunkSize));
+  }
+
+  return btoa(binary);
 }
 
 function isUuid(value: string): boolean {

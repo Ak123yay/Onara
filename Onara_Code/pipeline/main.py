@@ -48,6 +48,11 @@ async def health(settings: Settings = Depends(get_settings)) -> HealthResponse:
     return await build_health_response(settings=settings, queue=queue)
 
 
+@app.head("/health")
+async def health_head() -> Response:
+    return Response(status_code=status.HTTP_200_OK)
+
+
 @app.post(
     "/dashboard/brief",
     response_model=DashboardBriefResponse,

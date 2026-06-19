@@ -163,7 +163,7 @@ Current actionable phase.
 - [ ] Plan gating: verify Agent 6 model picker reads user plan correctly
 
 ## Phase 26 — Retention Features
-- [ ] GBP polling: cron job to check Google for hours/phone changes every 24h
+- [x] Keep GBP polling/change detection disabled for v1 (`FEATURE_GBP_SYNC=false`)
 - [x] Google Reviews badge: weekly pull + embed on generated sites
 - [x] Lead email notification on contact form submit (Resend)
 
@@ -171,8 +171,8 @@ Current actionable phase.
 - [x] Generated-site visual quality gate: GLM style routing, anti-generic layout QA, and professional composition checks
 - [x] Generated-site photo resolver: Google Places photo URLs, uploaded image support, and QA photo usage gate
 - [x] Generated-site Onara theme enforcement: paper/ink/terracotta tokens, Fraunces/Inter/mono typography, low-radius panels, and QA theme check
-- [ ] PM2 config: auto-restart FastAPI on crash, log to file
-- [ ] UptimeRobot: monitor `/health`, alert at 5-min downtime
+- [x] PM2 config: auto-restart FastAPI on crash, log to file
+- [x] UptimeRobot: monitor `/health`, alert at 5-min downtime
 - [ ] AI blackboard reviewer: advisory-only model pass over blackboard outputs; deterministic supervisor remains final authority
 - [ ] PostHog analytics: instrument key events (see `wiki/operations/monitoring.md`)
 - [ ] Rate limiting on Next.js API routes (Upstash Redis or Vercel middleware)
