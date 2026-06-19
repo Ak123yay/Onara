@@ -147,6 +147,16 @@ def layout_balance_issues(html: str) -> list[str]:
             "Hero side stack is too tall and can leave a large blank left-column gap before services; compact the side stack or move lower proof cards out of the hero"
         )
 
+    page_shell_rule = " ".join(
+        _css_rule(lower, selector)
+        for selector in ("body", ".site-shell", ".page-shell", ".site-wrapper", ".website-shell", "main")
+    )
+    if (
+        "max-width" in page_shell_rule
+        and not any(token in lower for token in ("onara-full-width-lock", "onara-layout-guardrails"))
+    ):
+        issues.append("Page uses a narrow max-width shell; header, hero, and main sections must span the browser width")
+
     visible_text = re.sub(r"<[^>]+>", " ", html)
     visible_text = re.sub(r"\s+", " ", visible_text).strip().lower()
     if re.search(r"\bdaily\s*:?\s*open\s+24\s+hours\b", visible_text):

@@ -72,11 +72,12 @@ async def _google_photo_assets(
         return []
 
     photos = business_data.get("photos")
-    if not isinstance(photos, list):
-        return []
 
     output: list[dict[str, str]] = []
     async with httpx.AsyncClient(timeout=min(settings.ai_request_timeout, 20.0)) as client:
+        if not isinstance(photos, list) or not photos:
+            photos = await _fetch_place_photos(client, business_data, settings.google_places_api_key)
+
         for photo in photos:
             if len(output) >= limit:
                 break
@@ -85,7 +86,7 @@ async def _google_photo_assets(
 
             photo_name = _string_value(photo, "name")
             if not PHOTO_NAME_PATTERN.match(photo_name):
-                direct_url = _first_string(photo, ("src", "url", "photo_url", "photoUrl"))
+                direct_url = _first_string(photo, ("src", "url", "photo_url", "photoUrl", "photoUri", "uri"))
                 if direct_url.startswith(("https://", "data:image/")):
                     output.append(_photo_asset_from_values(business_data, photo, direct_url, source="direct"))
                 continue
@@ -95,6 +96,36 @@ async def _google_photo_assets(
                 output.append(_photo_asset_from_values(business_data, photo, resolved_url, source="google_places"))
 
     return output
+
+
+async def _fetch_place_photos(
+    client: httpx.AsyncClient,
+    business_data: dict[str, Any],
+    api_key: str,
+) -> list[dict[str, Any]]:
+    place_id = _string_value(business_data, "place_id")
+    if not place_id:
+        return []
+
+    resource_name = place_id if place_id.startswith("places/") else f"places/{place_id}"
+    try:
+        response = await client.get(
+            f"https://places.googleapis.com/v1/{resource_name}",
+            headers={
+                "X-Goog-Api-Key": api_key,
+                "X-Goog-FieldMask": "photos.name,photos.authorAttributions.displayName,photos.authorAttributions.uri",
+            },
+        )
+        response.raise_for_status()
+        payload = response.json()
+    except (httpx.HTTPError, ValueError):
+        return []
+
+    photos = payload.get("photos") if isinstance(payload, dict) else None
+    if not isinstance(photos, list):
+        return []
+
+    return [photo for photo in photos if isinstance(photo, dict)]
 
 
 async def _resolve_google_photo(client: httpx.AsyncClient, photo_name: str, api_key: str) -> str:

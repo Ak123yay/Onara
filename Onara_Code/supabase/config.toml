@@ -1,0 +1,17 @@
+[functions.lead-email]
+verify_jwt = false
+
+[functions.refresh-reviews]
+verify_jwt = false
+
+[functions.reset-revisions]
+verify_jwt = false
+
+[functions.downgrade-trials]
+verify_jwt = false
+
+[functions.support-email]
+verify_jwt = false
+
+[functions.stripe-webhook]
+verify_jwt = false

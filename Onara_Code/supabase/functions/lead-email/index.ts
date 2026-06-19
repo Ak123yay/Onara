@@ -129,8 +129,8 @@ Deno.serve(async (request) => {
     .eq("id", project.user_id)
     .maybeSingle<UserRecord>();
 
-  const recipient = sanitizeEmail(project.business_email) ?? sanitizeEmail(owner?.email);
-  if (!recipient) {
+  const recipients = uniqueEmails(project.business_email, owner?.email);
+  if (recipients.length === 0) {
     await updateLeadEmailStatus(supabase, insertedLead.id, "failed", "recipient_email_missing");
     return jsonResponse({ ok: true, lead_id: insertedLead.id, email_status: "failed" });
   }
@@ -139,7 +139,7 @@ Deno.serve(async (request) => {
     businessName: project.business_name,
     lead,
     ownerName: owner?.full_name ?? null,
-    to: recipient,
+    to: recipients,
   });
 
   if (!emailResult.ok) {
@@ -182,6 +182,18 @@ function sanitizeEmail(value: unknown): string | null {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ? email.slice(0, 254) : null;
 }
 
+function uniqueEmails(...values: unknown[]): string[] {
+  const output: string[] = [];
+  const seen = new Set<string>();
+  for (const value of values) {
+    const email = sanitizeEmail(value);
+    if (!email || seen.has(email)) continue;
+    seen.add(email);
+    output.push(email);
+  }
+  return output;
+}
+
 function isUuid(value: string): boolean {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{12}$/i.test(value);
 }
@@ -195,7 +207,7 @@ async function sendLeadEmail({
   businessName: string;
   lead: Lead;
   ownerName: string | null;
-  to: string;
+  to: string[];
 }): Promise<{ ok: true } | { ok: false; error: string }> {
   const resendApiKey = Deno.env.get("RESEND_API_KEY")?.trim();
   if (!resendApiKey) {

@@ -58,6 +58,7 @@ def build_deployment_artifact(
         project_id=project_id,
     )
     index_html = apply_reviews_badge(index_html, business_data=business_data)
+    index_html = apply_layout_guardrails(index_html)
     files = split_atomic_files(index_html, planner)
     manifest = _build_manifest(
         business_data=business_data,
@@ -180,7 +181,7 @@ def apply_lead_capture(
 
 
 def _ensure_lead_form(html: str, *, business_data: dict[str, Any]) -> str:
-    if re.search(r"<form\b", html, flags=re.IGNORECASE):
+    if re.search(r"<form\b[^>]*\bdata-onara-lead-form\b", html, flags=re.IGNORECASE):
         return html
 
     business_name = html_lib.escape(str(business_data.get("name") or "the business"))
@@ -212,6 +213,30 @@ def _ensure_lead_form(html: str, *, business_data: dict[str, Any]) -> str:
       </form>
     """.rstrip()
 
+    contact_form_pattern = re.compile(
+        r"(?P<form><form\b(?P<attrs>[^>]*)>(?P<body>.*?</form>))",
+        flags=re.IGNORECASE | re.DOTALL,
+    )
+    for match in contact_form_pattern.finditer(html):
+        nearby_start = max(0, match.start() - 900)
+        nearby = html[nearby_start : match.start()].lower()
+        attrs = match.group("attrs")
+        if "contact" not in nearby and "estimate" not in nearby and "quote" not in nearby:
+            continue
+
+        replacement = match.group("form")
+        if "data-onara-lead-form" not in attrs.lower():
+            replacement = replacement.replace("<form", "<form data-onara-lead-form", 1)
+        if "onara_website" not in replacement:
+            replacement = replacement.replace(
+                "</form>",
+                '<input aria-hidden="true" autocomplete="off" class="onara-lead-hp" name="onara_website" tabindex="-1" type="text">\n'
+                '<p class="onara-lead-status" role="status"></p>\n'
+                "</form>",
+                1,
+            )
+        return html[: match.start()] + replacement + html[match.end() :]
+
     contact_pattern = re.compile(
         r"(?P<section><section\b[^>]*(?:id=[\"']contact[\"']|data-component=[\"']contact[\"'])[^>]*>.*?)(?P<close></section>)",
         flags=re.IGNORECASE | re.DOTALL,
@@ -239,6 +264,76 @@ def _ensure_lead_form(html: str, *, business_data: dict[str, Any]) -> str:
     </section>
     """.rstrip()
     return re.sub(r"</body>", f"{section}\n</body>", html, count=1, flags=re.IGNORECASE)
+
+
+def apply_layout_guardrails(html: str) -> str:
+    if "onara-layout-guardrails" in html:
+        return html
+
+    style = """
+<style id="onara-layout-guardrails">
+  html,
+  body {
+    width: 100%;
+    min-width: 0;
+    margin: 0;
+  }
+  body {
+    overflow-x: hidden;
+  }
+  body > header,
+  body > main,
+  body > footer,
+  body > .site-shell,
+  body > .page-shell,
+  body > .site-wrapper,
+  body > .website-shell {
+    width: 100%;
+    max-width: none;
+    margin-left: 0;
+    margin-right: 0;
+  }
+  body > main > section,
+  body > section,
+  [data-component="site_header"],
+  [data-component="hero"],
+  [data-component="services"],
+  [data-component="trust"],
+  [data-component="reviews"],
+  [data-component="contact"],
+  [data-component="site_footer"] {
+    width: 100%;
+    max-width: none;
+  }
+  [data-component="hero"] {
+    min-height: auto;
+  }
+  [data-component="hero"] h1 {
+    max-width: min(100%, 12ch);
+    overflow-wrap: normal;
+    word-break: normal;
+    hyphens: none;
+  }
+  img {
+    max-width: 100%;
+    height: auto;
+  }
+  @media (min-width: 900px) {
+    [data-component="hero"] h1 {
+      font-size: clamp(3.6rem, 7.2vw, 8.5rem);
+      line-height: 0.9;
+    }
+  }
+  @media (max-width: 780px) {
+    [data-component="hero"] h1 {
+      max-width: 100%;
+      font-size: clamp(2.75rem, 14vw, 4.75rem);
+      line-height: 0.92;
+    }
+  }
+</style>
+""".strip()
+    return re.sub(r"</head>", f"{style}\n</head>", html, count=1, flags=re.IGNORECASE)
 
 
 def _inject_lead_capture_style(html: str) -> str:
