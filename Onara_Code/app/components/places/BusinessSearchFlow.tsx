@@ -1258,10 +1258,6 @@ function GenerateStep({
         <h1 className="serif">
           Ready for the <span className="serif-italic">agent build</span>.
         </h1>
-        <p>
-          Phase 14 streams a live build console and preview now. Phase 15 swaps this mock stream to
-          the real FastAPI generation server.
-        </p>
       </div>
 
       <section className="generate-card card">
