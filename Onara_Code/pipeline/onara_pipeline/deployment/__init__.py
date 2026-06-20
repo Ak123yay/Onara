@@ -21,6 +21,7 @@ from onara_pipeline.deployment.github import (
 from onara_pipeline.deployment.parser import (
     DeploymentArtifact,
     DeploymentParserError,
+    apply_onara_attribution,
     lead_capture_endpoint,
     build_deployment_artifact,
     extract_final_html,
@@ -60,6 +61,7 @@ __all__ = [
     "SupabaseRevisionStoreResult",
     "SupabaseTrainingConsentResult",
     "SupabaseTrainingExampleResult",
+    "apply_onara_attribution",
     "build_deployment_artifact",
     "cloudflare_project_name",
     "commit_deployment_files",

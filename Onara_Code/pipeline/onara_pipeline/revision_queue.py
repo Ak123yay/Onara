@@ -14,6 +14,7 @@ from onara_pipeline.ai_client import AIClientError, AIMessage, AIRequest, build_
 from onara_pipeline.config import Settings
 from onara_pipeline.deployment import (
     GitHubDeploymentError,
+    apply_onara_attribution,
     build_deployment_artifact,
     commit_deployment_files,
     consume_revision_credit,
@@ -244,6 +245,10 @@ class RevisionQueue:
         planner = planner_from_files(files, updated_html)
         if updated_files:
             artifact_files = normalize_deployment_files(updated_files)
+            artifact_files["index.html"] = apply_onara_attribution(
+                artifact_files.get("index.html") or "",
+                user_plan=job.user_plan,
+            )
             artifact_files["deployment-manifest.json"] = json.dumps(
                 {
                     "business_name": str(job.business_data.get("name") or "Unknown Business"),
@@ -253,6 +258,7 @@ class RevisionQueue:
                     "job_id": job.job_id,
                     "project_id": job.project_id,
                     "revision_kind": "rollback",
+                    "starter_attribution_enabled": str(job.user_plan or "").strip().lower() == "starter",
                     "user_id": job.user_id,
                 },
                 ensure_ascii=False,
@@ -270,6 +276,7 @@ class RevisionQueue:
                 ),
                 planner=planner,
                 project_id=job.project_id,
+                user_plan=job.user_plan,
                 user_id=job.user_id,
             )
             artifact_files = artifact.files

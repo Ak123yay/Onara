@@ -48,6 +48,7 @@ def build_deployment_artifact(
     lead_capture_endpoint: str | None = None,
     planner: PlannerOutput,
     project_id: str,
+    user_plan: str = "free",
     user_id: str,
 ) -> DeploymentArtifact:
     index_html = extract_final_html(raw_html)
@@ -59,6 +60,7 @@ def build_deployment_artifact(
     )
     index_html = apply_reviews_badge(index_html, business_data=business_data)
     index_html = apply_layout_guardrails(index_html)
+    index_html = apply_onara_attribution(index_html, user_plan=user_plan)
     files = split_atomic_files(index_html, planner)
     manifest = _build_manifest(
         business_data=business_data,
@@ -67,6 +69,7 @@ def build_deployment_artifact(
         lead_capture_enabled=bool(lead_capture_endpoint),
         planner=planner,
         project_id=project_id,
+        starter_attribution_enabled=str(user_plan or "").strip().lower() == "starter",
         user_id=user_id,
     )
     files["deployment-manifest.json"] = json.dumps(manifest, ensure_ascii=False, indent=2, sort_keys=True)
@@ -78,6 +81,27 @@ def lead_capture_endpoint(*, enabled: bool, supabase_url: str | None) -> str | N
     if not enabled or not supabase_url:
         return None
     return f"{supabase_url.rstrip('/')}/functions/v1/lead-email"
+
+
+def apply_onara_attribution(html: str, *, user_plan: str) -> str:
+    cleaned = _remove_onara_attribution(html)
+    if str(user_plan or "").strip().lower() != "starter":
+        return cleaned
+
+    updated = _inject_onara_attribution_style(cleaned)
+    attribution = """
+<div class="onara-powered-by" data-onara-attribution>
+  <span>Made with</span>
+  <a href="https://www.onara.tech" target="_blank" rel="noopener">Onara</a>
+</div>
+""".strip()
+
+    footer_matches = list(re.finditer(r"</footer>", updated, flags=re.IGNORECASE))
+    if footer_matches:
+        footer_end = footer_matches[-1]
+        return updated[: footer_end.start()] + "\n" + attribution + "\n" + updated[footer_end.start() :]
+
+    return re.sub(r"</body>", f"{attribution}\n</body>", updated, count=1, flags=re.IGNORECASE)
 
 
 def apply_reviews_badge(html: str, *, business_data: dict[str, Any]) -> str:
@@ -151,6 +175,7 @@ def _build_manifest(
     lead_capture_enabled: bool,
     planner: PlannerOutput,
     project_id: str,
+    starter_attribution_enabled: bool,
     user_id: str,
 ) -> dict[str, Any]:
     return {
@@ -161,6 +186,7 @@ def _build_manifest(
         "job_id": job_id,
         "lead_capture_enabled": lead_capture_enabled,
         "project_id": project_id,
+        "starter_attribution_enabled": starter_attribution_enabled,
         "user_id": user_id,
     }
 
@@ -334,6 +360,53 @@ def apply_layout_guardrails(html: str) -> str:
 </style>
 """.strip()
     return re.sub(r"</head>", f"{style}\n</head>", html, count=1, flags=re.IGNORECASE)
+
+
+def _inject_onara_attribution_style(html: str) -> str:
+    if "onara-attribution-style" in html:
+        return html
+
+    style = """
+<style id="onara-attribution-style">
+  .onara-powered-by {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.35rem;
+    width: 100%;
+    border-top: 1px solid rgba(30, 30, 30, 0.12);
+    background: rgba(255, 252, 246, 0.92);
+    color: #6a6258;
+    font: 600 0.78rem/1.3 Inter, ui-sans-serif, system-ui, sans-serif;
+    letter-spacing: 0.02em;
+    padding: 0.85rem 1rem;
+  }
+  .onara-powered-by a {
+    color: #c76f3a;
+    font-weight: 800;
+    text-decoration: none;
+  }
+  .onara-powered-by a:hover {
+    text-decoration: underline;
+  }
+</style>
+""".strip()
+    return re.sub(r"</head>", f"{style}\n</head>", html, count=1, flags=re.IGNORECASE)
+
+
+def _remove_onara_attribution(html: str) -> str:
+    without_badge = re.sub(
+        r"\s*<div\b[^>]*data-onara-attribution\b[^>]*>.*?</div>",
+        "",
+        html,
+        flags=re.IGNORECASE | re.DOTALL,
+    )
+    return re.sub(
+        r"\s*<style\b[^>]*id=[\"']onara-attribution-style[\"'][^>]*>.*?</style>",
+        "",
+        without_badge,
+        flags=re.IGNORECASE | re.DOTALL,
+    )
 
 
 def _inject_lead_capture_style(html: str) -> str:

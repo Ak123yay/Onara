@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useRef } from "react";
+import { useRouter } from "next/navigation";
+import { type FormEvent, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import gsap from "gsap";
 import { useGSAP } from "@gsap/react";
@@ -612,6 +613,19 @@ function ContractorStyleGallery() {
 
 export function LandingPage() {
   const pageRef = useRef<HTMLElement>(null);
+  const router = useRouter();
+  const [heroQuery, setHeroQuery] = useState("");
+
+  function submitHeroSearch(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    const trimmedQuery = heroQuery.trim();
+    const buildPath = trimmedQuery
+      ? `/dashboard/build?query=${encodeURIComponent(trimmedQuery)}`
+      : "/dashboard/build";
+
+    router.push(`/auth/signup?next=${encodeURIComponent(buildPath)}`);
+  }
 
   useGSAP(
     () => {
@@ -946,25 +960,32 @@ export function LandingPage() {
             CTAs, service areas, trust badges, and clean local SEO.
           </p>
 
-          <div
+          <form
+            onSubmit={submitHeroSearch}
             className="mx-auto mt-10 flex max-w-2xl flex-col gap-3 rounded-card border border-ink bg-paper p-2 shadow-lift sm:flex-row sm:items-center"
             data-gsap-hero-item
             data-gsap-hover
             data-gsap-hover-y="-2"
           >
-            <div className="flex min-w-0 flex-1 items-center gap-3 px-3 py-3 text-left">
-              <Search className="size-5 shrink-0 text-ink-4" />
-              <span className="truncate text-[15px] text-ink-3">
-                Search for your business...
-              </span>
-            </div>
+            <label className="flex min-w-0 flex-1 items-center gap-3 px-3 py-3 text-left">
+              <Search className="size-5 shrink-0 text-ink-4" aria-hidden="true" />
+              <input
+                aria-label="Search for your business"
+                className="min-w-0 flex-1 bg-transparent text-[15px] text-ink outline-none placeholder:text-ink-3"
+                name="query"
+                onChange={(event) => setHeroQuery(event.target.value)}
+                placeholder="Search for your business..."
+                type="search"
+                value={heroQuery}
+              />
+            </label>
             <div data-gsap-hover data-gsap-hover-scale="0.98">
-              <Link href="/auth/signup" className="btn btn-accent btn-lg shrink-0">
+              <button className="btn btn-accent btn-lg shrink-0" type="submit">
                 Build My Website Free
                 <ArrowRight className="size-4" />
-              </Link>
+              </button>
             </div>
-          </div>
+          </form>
 
           <div
             className="mono mt-5 flex flex-wrap justify-center gap-x-6 gap-y-2"

@@ -238,6 +238,7 @@ class JobQueue:
             ),
             planner=planner,
             project_id=job.project_id,
+            user_plan=job.user_plan,
             user_id=job.user_id,
         )
 
