@@ -1,4 +1,5 @@
 # Onara
+# Currently, it is taking much longer (>5-10 minutes) to generate websites than expected, hope to fix this soon. 
 
 Onara is an AI website builder for local businesses.
 
