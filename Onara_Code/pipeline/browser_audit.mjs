@@ -240,7 +240,10 @@ try {
 } catch (error) {
   report.warnings.push(`Lighthouse unavailable: ${error instanceof Error ? error.message : String(error)}`);
 } finally {
-  if (chrome) await chrome.kill();
+  if (chrome) {
+    await chrome.kill();
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+  }
   await new Promise((resolvePromise) => server.close(resolvePromise));
 }
 
