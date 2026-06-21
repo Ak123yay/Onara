@@ -105,6 +105,38 @@ curl -H "X-Pipeline-Secret: your-secret" http://localhost:8000/health
 
 ---
 
+## Pipeline V2
+
+```powershell
+# Apply migration 022 and any earlier pending migrations
+cd "C:\Users\Aarush\Downloads\Onara\Onara_Code"
+supabase db push --linked
+
+# Install browser quality-gate dependencies
+cd ".\pipeline"
+npm install
+npm run install-browser
+
+# Verify pipeline code
+python -m compileall onara_pipeline main.py
+python -m unittest discover -s tests -p "test_*.py"
+node --check browser_audit.mjs
+
+# Restart after changing PIPELINE_V2_ENABLED in pipeline/.env
+pm2 restart onara-pipeline
+pm2 logs onara-pipeline --lines 50
+```
+
+```dotenv
+# V1 / rollback
+PIPELINE_V2_ENABLED=false
+
+# V2
+PIPELINE_V2_ENABLED=true
+```
+
+---
+
 ## Next.js
 
 ```bash

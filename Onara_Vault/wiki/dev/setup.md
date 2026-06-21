@@ -73,7 +73,11 @@ cloudflared --version
 
 Only do this after Phase 3 works locally.
 
-Recommended server path for this workspace: run **FastAPI, `cloudflared`, and PM2 on the mini PC or DigitalOcean Droplet**. Keep Ollama on the main PC and set `OLLAMA_BASE_URL` on the server to the main PC's private LAN URL. Node.js/pnpm are only required on the server if you also plan to build or run the Next.js app there.
+Recommended server path for this workspace: run **FastAPI, `cloudflared`, and PM2 on the mini PC or DigitalOcean Droplet**. Keep Ollama on the main PC and set `OLLAMA_BASE_URL` on the server to the main PC's private LAN URL.
+
+Node.js is also required on the pipeline server when Pipeline V2 is enabled because its
+release gate runs Playwright, Axe, and Lighthouse in Chromium. The Next.js app does not need
+to run on the mini PC.
 
 Do not run FastAPI on the mini PC with `OLLAMA_BASE_URL=http://localhost:11434` because Ollama is not running there. Use the model PC's private LAN URL instead, and keep firewall access restricted to the private network.
 
@@ -117,7 +121,40 @@ GITHUB_APP_ID=xxx
 GITHUB_APP_INSTALLATION_ID=xxx
 GITHUB_APP_PRIVATE_KEY="-----BEGIN RSA PRIVATE KEY-----\n..."
 COPILOT_GITHUB_TOKEN=github_pat_...
+PIPELINE_V2_ENABLED=false
 ```
+
+---
+
+## Pipeline V2 Setup
+
+Pipeline V1 remains active while `PIPELINE_V2_ENABLED=false`. To prepare and activate V2:
+
+```powershell
+cd "C:\Users\Aarush\Downloads\Onara\Onara_Code"
+supabase db push --linked
+
+cd ".\pipeline"
+python -m pip install -r requirements.txt
+npm install
+npm run install-browser
+python -m unittest discover -s tests -p "test_*.py"
+```
+
+Change `Onara_Code/pipeline/.env` to:
+
+```dotenv
+PIPELINE_V2_ENABLED=true
+```
+
+Restart the mini-PC process:
+
+```powershell
+pm2 restart onara-pipeline
+pm2 logs onara-pipeline --lines 50
+```
+
+To return to V1, set the flag back to `false` and restart PM2. Do not revert migration `022`.
 
 ---
 

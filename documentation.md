@@ -1,6 +1,6 @@
 # Onara Documentation
 
-Last updated: 2026-06-19
+Last updated: 2026-06-21
 
 This document is a broad record of what Onara is, what has been built, how the system works, what is AI-assisted, what is deterministic production code, and what remains before launch.
 
@@ -115,7 +115,11 @@ The FastAPI generation pipeline. It contains:
 - `/health` endpoint.
 - `/generate` endpoint.
 - Pipeline status endpoints.
-- In-memory job queue.
+- Pipeline V1 in-memory job queue.
+- Pipeline V2 durable Supabase queue, leases, heartbeats, events, and checkpoints.
+- Parallel website candidate generation.
+- Playwright, Axe, Lighthouse, responsive, and visual quality evaluation.
+- Bounded component repair and deterministic release safeguards.
 - Revision queue.
 - AI client abstraction.
 - Agent pipeline.
@@ -445,7 +449,12 @@ Launch SEO work includes:
 
 ## AI Pipeline Details
 
-The pipeline uses 10 agents:
+Onara keeps both generation paths available during rollout:
+
+- `PIPELINE_V2_ENABLED=false` runs Pipeline V1. This is the default and rollback path.
+- `PIPELINE_V2_ENABLED=true` runs Pipeline V2 for new initial-generation jobs.
+
+Pipeline V1 uses 10 agents:
 
 1. Analyst.
 2. Content Writer.
@@ -457,6 +466,35 @@ The pipeline uses 10 agents:
 8. SEO Agent.
 9. QA.
 10. Mobile Optimizer.
+
+Pipeline V2 preserves the useful analysis, content, style, deployment, and safety logic but
+changes the orchestration:
+
+```text
+trusted business brief
+  -> content and style in parallel
+  -> deterministic concept recipes and prompts
+  -> two AI-generated websites in parallel
+  -> browser and visual evaluation
+  -> at most one targeted repair
+  -> final deterministic safeguards
+  -> deploy
+```
+
+V2 stores unfinished jobs in Supabase, so PM2 or mini-PC restarts do not automatically lose
+the build. It also prevents duplicate active requests using a fixed request signature.
+
+Before enabling V2:
+
+1. Apply migration `022_pipeline_v2_durable_jobs.sql`.
+2. Run `npm install` from `Onara_Code/pipeline`.
+3. Install Chromium with `npm run install-browser`.
+4. Run the pipeline unit tests.
+5. Set `PIPELINE_V2_ENABLED=true` in the FastAPI `.env`.
+6. Restart `onara-pipeline` in PM2.
+
+Rollback is setting the flag to `false` and restarting PM2. Migration `022` does not need to
+be reverted.
 
 ### Agent 1: Analyst
 
@@ -1145,7 +1183,9 @@ For pipeline changes:
 
 ```powershell
 cd C:\Users\Aarush\Downloads\Onara\Onara_Code\pipeline
-python -m compileall -q onara_pipeline
+python -m compileall onara_pipeline main.py
+python -m unittest discover -s tests -p "test_*.py"
+node --check browser_audit.mjs
 ```
 
 For Supabase changes:

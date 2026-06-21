@@ -2,11 +2,77 @@
 
 FastAPI server for the Onara generation pipeline.
 
+## Pipeline Modes
+
+Both pipeline versions remain available:
+
+| Setting | Active path | Use |
+| --- | --- | --- |
+| `PIPELINE_V2_ENABLED=false` | Pipeline V1 | Default and immediate rollback |
+| `PIPELINE_V2_ENABLED=true` | Pipeline V2 | Durable dual-candidate generation |
+
+Pipeline V1 is the original 10-agent, in-memory generation flow described later in this
+document. Pipeline V2 replaces the initial website-generation orchestration while keeping
+the existing project, deployment, revision, and billing contracts compatible.
+
+Pipeline V2 adds:
+
+- Durable Supabase job leases, heartbeats, ordered events, and restart checkpoints.
+- Two code candidates generated concurrently through separate model routes.
+- Desktop, mobile, and 320px browser rendering.
+- Axe accessibility and Lighthouse quality gates.
+- Two independent visual reviews with reversed rubric order.
+- One hash-checked component repair instead of a full-page rewrite.
+- A hard release rule: no candidate deploys with blockers or below the configured score.
+
+## Enable Pipeline V2
+
+```powershell
+cd "C:\Users\Aarush\Downloads\Onara\Onara_Code"
+supabase db push --linked
+
+cd ".\pipeline"
+python -m pip install -r requirements.txt
+npm install
+npm run install-browser
+python -m unittest discover -s tests -p "test_*.py"
+```
+
+Set this in `Onara_Code/pipeline/.env`:
+
+```dotenv
+PIPELINE_V2_ENABLED=true
+PIPELINE_JOB_TIMEOUT=600
+PIPELINE_V2_BROWSER_AUDIT_TIMEOUT=75
+PIPELINE_V2_CANDIDATE_TIMEOUT=150
+PIPELINE_V2_LEASE_SECONDS=60
+PIPELINE_V2_MAX_ATTEMPTS=3
+PIPELINE_V2_MIN_SCORE=80
+AI_NIM_CONCURRENCY=3
+AI_OLLAMA_CONCURRENCY=1
+AI_COPILOT_CONCURRENCY=1
+```
+
+Restart and verify:
+
+```powershell
+pm2 restart onara-pipeline
+pm2 logs onara-pipeline --lines 50
+Invoke-WebRequest -Method GET https://pipeline.onara.tech/health -UseBasicParsing
+```
+
+### Roll Back to Pipeline V1
+
+Set `PIPELINE_V2_ENABLED=false` and restart PM2. Migration `022` can remain applied because
+V1 ignores the V2-only fields and tables.
+
 ## Local Run
 
 ```powershell
 cd C:\Users\Aarush\Downloads\Onara\Onara_Code\pipeline
 python -m pip install -r requirements.txt
+npm install
+npm run install-browser
 python -m uvicorn main:app --reload --port 8000
 ```
 
@@ -37,7 +103,8 @@ curl http://localhost:8000/pipeline/status/$jobId `
   -UseBasicParsing
 ```
 
-Phase 18 through Phase 21 Agents 7-10 now run in the background after enqueue:
+When Pipeline V1 is active, Phase 18 through Phase 21 Agents 7-10 run in the background
+after enqueue:
 
 - Agent 1 Analyst: `z-ai/glm-5.1` through NIM, with NIM/local fallback and deterministic repair fallback.
 - Agent 2 Content Writer: `qwen3.5:9b` through Ollama, runs in parallel with Agent 3.

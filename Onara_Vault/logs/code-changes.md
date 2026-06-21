@@ -191,6 +191,19 @@ Also documents 5 new Blackboard fields, a v1/later priority table, and design re
 
 ## 2026-06-21
 
+### Pipeline V1/V2 documentation
+
+- Updated the root README and pipeline README to explain that Pipeline V1 remains available
+  as the default rollback path.
+- Documented migration `022`, Playwright Chromium installation, the V2 feature flag, PM2
+  restart, verification, and rollback commands.
+- Updated broad documentation, developer setup/commands, operations runbook, and testing
+  strategy so activation instructions are consistent.
+
+---
+
+## 2026-06-21
+
 ### Pipeline V2 + Build Studio
 
 **Files affected**:

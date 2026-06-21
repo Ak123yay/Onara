@@ -46,6 +46,22 @@ ORDER BY started_at;
 
 ---
 
+### Pipeline V2 Rollback
+
+Use this when V2 shows a systemic regression, repeated browser-audit failures, or a durable
+queue problem affecting multiple builds.
+
+1. Open `Onara_Code/pipeline/.env` on the mini PC.
+2. Set `PIPELINE_V2_ENABLED=false`.
+3. Run `pm2 restart onara-pipeline`.
+4. Verify `https://pipeline.onara.tech/health`.
+5. Start one test generation and confirm it follows the V1 progress path.
+
+Do not delete V2 job/event/candidate rows and do not revert migration `022` during an
+incident. They preserve diagnostic evidence and are ignored by V1.
+
+---
+
 ### 2. Generation Stuck (Individual Job)
 
 **Symptoms**: Single user reports progress bar stopped; SSE events stopped; job still shows `running`

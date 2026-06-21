@@ -1,5 +1,4 @@
 # Onara
-# Currently, it is taking much longer (>5-10 minutes) to generate websites than expected, hope to fix this soon. 
 
 Onara is an AI website builder for local businesses.
 
@@ -99,6 +98,28 @@ Onara/
 
 ## AI pipeline agents
 
+Onara keeps two generation pipelines available:
+
+- **Pipeline V1** is the original 10-agent pipeline and remains the default rollback path.
+- **Pipeline V2** uses durable Supabase jobs, two parallel website candidates, browser
+  testing, visual scoring, and one bounded repair before deployment.
+
+The FastAPI environment flag selects the active path:
+
+```dotenv
+# V1 (default and rollback)
+PIPELINE_V2_ENABLED=false
+
+# V2
+PIPELINE_V2_ENABLED=true
+```
+
+Changing the flag requires a FastAPI/PM2 restart. Do not enable V2 until migration
+`022_pipeline_v2_durable_jobs.sql` is applied and the Playwright browser dependencies are
+installed.
+
+### Pipeline V1
+
 ```text
 Agent 1  Analyst
 Agent 2  Content Writer
@@ -114,6 +135,22 @@ Agent 10 Mobile Optimizer
 
 Each agent writes to a shared build state. The supervisor checks the output and
 decides if the pipeline can keep going, needs a repair, or should fail safely.
+
+### Pipeline V2
+
+```text
+Business facts
+  -> content and style in parallel
+  -> two distinct code candidates in parallel
+  -> desktop, mobile, accessibility, and Lighthouse tests
+  -> independent visual scoring
+  -> one targeted component repair if needed
+  -> deterministic SEO, mobile, and QA safeguards
+  -> Cloudflare Pages deployment
+```
+
+V2 stores jobs, events, leases, checkpoints, and candidate results in Supabase. A
+mini-PC restart can recover an unfinished build instead of losing an in-memory job.
 
 ## Local development
 
@@ -137,6 +174,8 @@ pnpm.cmd build
 ```powershell
 cd C:\Users\Aarush\Downloads\Onara\Onara_Code\pipeline
 python -m pip install -r requirements.txt
+npm install
+npm run install-browser
 python -m uvicorn main:app --reload --port 8000
 ```
 
@@ -160,6 +199,35 @@ Restart after pipeline code changes:
 ```powershell
 pm2 restart onara-pipeline
 ```
+
+### Enable Pipeline V2
+
+```powershell
+cd "C:\Users\Aarush\Downloads\Onara\Onara_Code"
+supabase db push --linked
+
+cd ".\pipeline"
+npm install
+npm run install-browser
+python -m unittest discover -s tests -p "test_*.py"
+```
+
+Set this in `Onara_Code/pipeline/.env`:
+
+```dotenv
+PIPELINE_V2_ENABLED=true
+```
+
+Restart and verify:
+
+```powershell
+pm2 restart onara-pipeline
+pm2 logs onara-pipeline --lines 50
+Invoke-WebRequest -Method GET https://pipeline.onara.tech/health -UseBasicParsing
+```
+
+Rollback does not require reverting code or migration `022`. Set
+`PIPELINE_V2_ENABLED=false`, then run `pm2 restart onara-pipeline`.
 
 ## Environment files
 
@@ -204,7 +272,9 @@ For pipeline changes:
 
 ```powershell
 cd C:\Users\Aarush\Downloads\Onara\Onara_Code\pipeline
-python -m compileall -q onara_pipeline
+python -m compileall onara_pipeline main.py
+python -m unittest discover -s tests -p "test_*.py"
+node --check browser_audit.mjs
 ```
 
 Manual checks:
