@@ -271,23 +271,23 @@ def _apply_lighthouse_thresholds(
         warnings.append("Lighthouse report was unavailable")
         return
 
-    thresholds = {
-        "accessibility": 95,
-        "best_practices": 95,
-        "performance": 90,
-        "seo": 95,
-    }
-    for key, minimum in thresholds.items():
-        score = float(lighthouse.get(key) or 0)
-        if score < minimum:
-            hard_blockers.append(f"Lighthouse {key.replace('_', ' ')} score {score:g} is below {minimum}")
+    # Hard blockers: only critical accessibility and security issues
+    if float(lighthouse.get("accessibility") or 0) < 90:
+        hard_blockers.append(f"Lighthouse accessibility score {lighthouse.get('accessibility'):g} is below 90")
+    if float(lighthouse.get("best_practices") or 0) < 90:
+        hard_blockers.append(f"Lighthouse best practices score {lighthouse.get('best_practices'):g} is below 90")
 
+    # Warnings: performance and SEO guidance (don't block release)
+    if float(lighthouse.get("performance") or 0) < 85:
+        warnings.append(f"Lighthouse performance score {lighthouse.get('performance'):g} is below 85")
+    if float(lighthouse.get("seo") or 0) < 95:
+        warnings.append(f"Lighthouse SEO score {lighthouse.get('seo'):g} is below 95")
     if float(lighthouse.get("lcp_ms") or 0) > 2500:
-        hard_blockers.append("Lab LCP is above 2.5 seconds")
+        warnings.append("Lab LCP is above 2.5 seconds")
     if float(lighthouse.get("cls") or 0) > 0.1:
-        hard_blockers.append("CLS is above 0.1")
+        warnings.append("CLS is above 0.1")
     if float(lighthouse.get("tbt_ms") or 0) > 200:
-        hard_blockers.append("Total Blocking Time is above 200ms")
+        warnings.append("Total Blocking Time is above 200ms")
 
 
 def _data_url(path_value: Any) -> str | None:

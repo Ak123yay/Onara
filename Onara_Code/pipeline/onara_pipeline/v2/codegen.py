@@ -74,11 +74,20 @@ async def generate_candidates(
     ]
     results = await asyncio.gather(*tasks, return_exceptions=True)
     candidates = [result for result in results if isinstance(result, CandidateArtifact)]
+    
+    # Log failures for debugging
+    for i, result in enumerate(results):
+        if isinstance(result, Exception):
+            key = "a" if i == 0 else "b"
+            error_msg = f"Candidate {key} initial generation failed: {type(result).__name__}: {str(result)[:200]}"
+            print(f"[codegen] {error_msg}")
+    
     if len(candidates) == 1:
         missing_key = "a" if candidates[0].key == "b" else "b"
         missing_prompt = prompt_a if missing_key == "a" else prompt_b
         missing_recipe = recipe_a if missing_key == "a" else recipe_b
         recovery_route = route_b if missing_key == "a" else route_a
+        print(f"[codegen] Attempting recovery for candidate {missing_key}")
         try:
             recovered = await _generate_candidate(
                 ai_client=ai_client,
@@ -94,8 +103,9 @@ async def generate_candidates(
                 "Original candidate route failed; alternate route recovered this concept"
             )
             candidates.append(recovered)
-        except (AIClientError, TimeoutError):
-            pass
+            print(f"[codegen] Recovery succeeded for candidate {missing_key}")
+        except (AIClientError, TimeoutError) as exc:
+            print(f"[codegen] Recovery failed for candidate {missing_key}: {type(exc).__name__}: {str(exc)[:200]}")
     if len(candidates) >= 2:
         return sorted(candidates, key=lambda candidate: candidate.key)
     if candidates:
