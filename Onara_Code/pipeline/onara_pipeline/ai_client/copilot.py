@@ -134,7 +134,8 @@ class CopilotSDKClient:
         parts = []
         for message in request.messages:
             role = message.role.upper()
-            parts.append(f"{role}:\n{message.content.strip()}")
+            content = message.content if isinstance(message.content, str) else str(message.content)
+            parts.append(f"{role}:\n{content.strip()}")
 
         return "\n\n".join(parts)
 

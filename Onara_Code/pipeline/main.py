@@ -1,3 +1,5 @@
+from contextlib import asynccontextmanager
+
 from fastapi import Depends, FastAPI, Header, HTTPException, Response, status
 
 from onara_pipeline.ai_client import get_agent_6_model_selection
@@ -21,9 +23,18 @@ from onara_pipeline.schemas import (
     RevisionStatusResponse,
 )
 
-app = FastAPI(title="Onara Pipeline Server", version="0.1.0")
 queue = JobQueue()
 revision_queue = RevisionQueue()
+
+
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    settings = get_settings()
+    await queue.start_workers(settings)
+    yield
+
+
+app = FastAPI(title="Onara Pipeline Server", version="0.2.0", lifespan=lifespan)
 
 
 def verify_pipeline_secret(
@@ -67,9 +78,9 @@ async def dashboard_brief(
     dependencies=[Depends(verify_pipeline_secret)],
 )
 async def generate(body: GenerateRequest) -> JobEnqueueResponse:
-    enqueue_result = await queue.enqueue(body)
-    job = enqueue_result.job
     settings = get_settings()
+    enqueue_result = await queue.enqueue(body, settings)
+    job = enqueue_result.job
     await queue.start_workers(settings)
     agent_6_selection = get_agent_6_model_selection(
         requested_option_id=job.agent_6_model,
@@ -107,7 +118,8 @@ async def start_pipeline(body: GenerateRequest) -> JobEnqueueResponse:
     dependencies=[Depends(verify_pipeline_secret)],
 )
 async def pipeline_status(job_id: str) -> JobStatusResponse:
-    job = await queue.get(job_id)
+    settings = get_settings()
+    job = await queue.get(job_id, settings)
 
     if not job:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Job not found")

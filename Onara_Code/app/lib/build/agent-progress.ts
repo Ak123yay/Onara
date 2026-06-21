@@ -1,14 +1,11 @@
 export type AgentStepId =
-  | "analyst"
-  | "writer"
-  | "style"
-  | "planner"
-  | "prompt"
-  | "code"
-  | "debug"
-  | "seo"
-  | "qa"
-  | "mobile";
+  | "understanding"
+  | "writing"
+  | "concepts"
+  | "building"
+  | "testing"
+  | "polishing"
+  | "publishing";
 
 export type AgentStep = {
   id: AgentStepId;
@@ -21,69 +18,109 @@ export type AgentStatus = "pending" | "active" | "retry" | "done";
 
 export const AGENT_STEPS: AgentStep[] = [
   {
-    id: "analyst",
-    model: "GLM 5.1",
-    name: "Business Analyst",
-    task: "Reading Google facts, services, and service area",
+    id: "understanding",
+    model: "Business brief",
+    name: "Understanding your business",
+    task: "Checking the business facts, services, service area, and conversion goal",
   },
   {
-    id: "writer",
-    model: "Qwen local",
-    name: "Content Writer",
-    task: "Drafting contractor-specific headlines and service copy",
+    id: "writing",
+    model: "Content",
+    name: "Writing your content",
+    task: "Writing specific headlines, services, proof, and contact copy",
   },
   {
-    id: "style",
-    model: "GLM 5.1",
-    name: "Style Agent",
-    task: "Choosing palette, type scale, sections, and trust layout",
+    id: "concepts",
+    model: "Two directions",
+    name: "Designing two concepts",
+    task: "Planning two distinct visual directions that fit the business data",
   },
   {
-    id: "planner",
-    model: "GLM 5.1",
-    name: "Planner",
-    task: "Turning copy and style into a component blueprint",
+    id: "building",
+    model: "Parallel build",
+    name: "Building your websites",
+    task: "Generating two complete website candidates in parallel",
   },
   {
-    id: "prompt",
-    model: "GLM 5.1",
-    name: "Prompt Engineer",
-    task: "Writing exact build instructions for the code agent",
+    id: "testing",
+    model: "Browser QA",
+    name: "Testing desktop and mobile",
+    task: "Rendering both concepts and checking layout, accessibility, assets, and performance",
   },
   {
-    id: "code",
-    model: "Model picker",
-    name: "Code Generator",
-    task: "Generating HTML, CSS, and interaction hooks",
+    id: "polishing",
+    model: "Focused repair",
+    name: "Polishing the strongest version",
+    task: "Applying one focused repair and final SEO, contact, and responsive safeguards",
   },
   {
-    id: "debug",
-    model: "GLM 5.1 + RAG",
-    name: "Debugger",
-    task: "Fixing broken markup, spacing, and responsive bugs",
-  },
-  {
-    id: "seo",
-    model: "Qwen local",
-    name: "SEO Agent",
-    task: "Adding title tags, schema, and local service metadata",
-  },
-  {
-    id: "qa",
-    model: "GLM 5.1",
-    name: "QA Agent",
-    task: "Checking calls to action, missing data, and launch blockers",
-  },
-  {
-    id: "mobile",
-    model: "Qwen local",
-    name: "Mobile Optimizer",
-    task: "Testing tap targets, stack order, and mobile readability",
+    id: "publishing",
+    model: "Cloudflare",
+    name: "Publishing your site",
+    task: "Publishing the tested website and saving its project record",
   },
 ];
 
 export const MOCK_QUEUE_MS = 700;
 export const MOCK_STEP_MS = 1250;
+
+export function loadingPreviewHtml(businessName: string) {
+  const safeBusinessName = escapeHtml(businessName || "Your Contractor Site");
+  return `<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+      * { box-sizing: border-box; }
+      body {
+        display: grid;
+        min-height: 100vh;
+        margin: 0;
+        place-items: center;
+        background:
+          radial-gradient(circle at 18% 12%, rgba(202,113,52,.12), transparent 34%),
+          #f7f2e9;
+        color: #1a1815;
+        font-family: ui-sans-serif, system-ui, sans-serif;
+      }
+      main { width: min(560px, calc(100% - 48px)); }
+      .label {
+        color: #9a5427;
+        font: 600 11px ui-monospace, monospace;
+        letter-spacing: .16em;
+        text-transform: uppercase;
+      }
+      h1 {
+        margin: 18px 0 10px;
+        font: 400 clamp(34px, 8vw, 58px) Georgia, serif;
+        letter-spacing: -.045em;
+        line-height: .98;
+      }
+      p { max-width: 440px; color: #686159; line-height: 1.65; }
+      .lines { display: grid; gap: 9px; margin-top: 30px; }
+      .lines span {
+        height: 8px;
+        background: linear-gradient(90deg, #dfd6c9, #f7f2e9, #dfd6c9);
+        background-size: 220% 100%;
+        animation: loading 1.8s ease-in-out infinite;
+      }
+      .lines span:nth-child(2) { width: 78%; animation-delay: 120ms; }
+      .lines span:nth-child(3) { width: 54%; animation-delay: 240ms; }
+      @keyframes loading { 50% { background-position: 100% 0; } }
+      @media (prefers-reduced-motion: reduce) { .lines span { animation: none; } }
+    </style>
+  </head>
+  <body>
+    <main>
+      <div class="label">Onara build studio</div>
+      <h1>${safeBusinessName}</h1>
+      <p>Your real preview will appear after a structurally valid concept passes the first browser check.</p>
+      <div class="lines" aria-hidden="true"><span></span><span></span><span></span></div>
+    </main>
+  </body>
+</html>`;
+}
 
 export function progressForElapsed(elapsedMs: number) {
   if (elapsedMs <= MOCK_QUEUE_MS) {
@@ -295,7 +332,7 @@ export function previewHtmlForStep(stepIndex: number, businessName: string) {
           ? `<section class="proof fade"><div><strong>90 sec</strong><span>Search to draft</span></div><div><strong>No code</strong><span>Built for owners</span></div><div><strong>Phone-first</strong><span>Made for local calls</span></div></section>`
           : ""
       }
-      ${show(8) ? `<div class="seo fade">SEO meta added · LocalBusiness schema embedded · service-area copy ready</div>` : ""}
+      ${show(5) ? `<div class="seo fade">SEO meta added · LocalBusiness schema embedded · service-area copy ready</div>` : ""}
     </main>
   </body>
 </html>`;

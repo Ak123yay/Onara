@@ -53,6 +53,31 @@ class Settings(BaseSettings):
     pipeline_api_secret: str | None = Field(default=None, alias="PIPELINE_API_SECRET")
     pipeline_max_concurrency: int = Field(default=1, ge=1, le=10, alias="PIPELINE_MAX_CONCURRENCY")
     pipeline_job_timeout: int = Field(default=600, ge=30, le=3600, alias="PIPELINE_JOB_TIMEOUT")
+    pipeline_v2_enabled: bool = Field(default=False, alias="PIPELINE_V2_ENABLED")
+    pipeline_v2_browser_audit_timeout: int = Field(
+        default=75,
+        ge=20,
+        le=180,
+        alias="PIPELINE_V2_BROWSER_AUDIT_TIMEOUT",
+    )
+    pipeline_v2_candidate_timeout: int = Field(
+        default=150,
+        ge=30,
+        le=300,
+        alias="PIPELINE_V2_CANDIDATE_TIMEOUT",
+    )
+    pipeline_v2_lease_seconds: int = Field(
+        default=60,
+        ge=30,
+        le=300,
+        alias="PIPELINE_V2_LEASE_SECONDS",
+    )
+    pipeline_v2_max_attempts: int = Field(default=3, ge=1, le=5, alias="PIPELINE_V2_MAX_ATTEMPTS")
+    pipeline_v2_min_score: float = Field(default=80.0, ge=0, le=100, alias="PIPELINE_V2_MIN_SCORE")
+    pipeline_v2_worker_id: str | None = Field(default=None, alias="PIPELINE_V2_WORKER_ID")
+    ai_nim_concurrency: int = Field(default=3, ge=1, le=8, alias="AI_NIM_CONCURRENCY")
+    ai_ollama_concurrency: int = Field(default=1, ge=1, le=4, alias="AI_OLLAMA_CONCURRENCY")
+    ai_copilot_concurrency: int = Field(default=1, ge=1, le=4, alias="AI_COPILOT_CONCURRENCY")
     feature_lead_email: bool = Field(default=False, alias="FEATURE_LEAD_EMAIL")
     supabase_url: str | None = Field(default=None, alias="SUPABASE_URL")
     supabase_service_role_key: str | None = Field(default=None, alias="SUPABASE_SERVICE_ROLE_KEY")

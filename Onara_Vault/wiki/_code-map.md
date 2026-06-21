@@ -115,6 +115,16 @@ Onara_Code/pipeline/
     chroma_client.py            → ChromaDB vector store client
     bm25.py                     → BM25 hybrid search layer
     ingest.py                   → populate knowledge base with HTML/CSS/JS patterns
+  onara_pipeline/v2/
+    contracts.py                → typed brief, candidate, browser, and patch contracts
+    prompt_compiler.py          → deterministic dual-recipe prompt assembly
+    codegen.py                  → parallel candidate generation and emergency fallback
+    evaluator.py                → deterministic + visual candidate scoring
+    repair.py                   → one bounded hash-checked component patch
+    browser_quality.py          → Node browser-audit runner
+    orchestrator.py             → Pipeline V2 stage workflow
+  browser_audit.mjs             → Playwright, Axe, and Lighthouse release audit
+  package.json                  → browser-audit Node dependencies
   deployment/
     parser.py                   → split generated HTML into atomic component files
     github.py                   → commit files to onara-sites via GitHub App
@@ -136,6 +146,7 @@ Onara_Code/supabase/
     001_initial_schema.sql      → users, projects, revisions tables
     002_rls_policies.sql        → Row Level Security for all tables
     003_auth_trigger.sql        → on new user signup trigger
+    022_pipeline_v2_durable_jobs.sql → durable leases, events, checkpoints, and candidates
 ```
 
 ---

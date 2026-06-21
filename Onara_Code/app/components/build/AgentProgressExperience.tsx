@@ -1,5 +1,7 @@
 "use client";
 
+/* eslint-disable @next/next/no-img-element */
+
 import {
   AlertTriangle,
   ArrowLeft,
@@ -14,9 +16,9 @@ import { useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   AGENT_STEPS,
+  loadingPreviewHtml,
   type AgentStatus,
   type AgentStep,
-  previewHtmlForStep,
 } from "@/lib/build/agent-progress";
 
 type StoredGenerationPackage = {
@@ -39,13 +41,19 @@ type StoredGenerationPackage = {
 
 type StreamPayload = {
   agent?: AgentStep;
+  candidate?: CandidateSummary;
+  candidates?: CandidateSummary[];
   elapsedSeconds?: number;
+  etaSeconds?: number | null;
+  fallbackUsed?: boolean;
   html?: string;
   message?: string;
   notice?: string;
   position?: number;
   progress?: number;
   publicUrl?: string;
+  qualityBadges?: string[];
+  selectedCandidateId?: string | null;
   siteId?: string;
   stepIndex?: number;
 };
@@ -53,11 +61,25 @@ type StreamPayload = {
 type StatusPayload = StreamPayload & {
   complete?: boolean;
   currentStepIndex?: number;
+  failed?: boolean;
   queued?: boolean;
   retrying?: boolean;
 };
 
 type ConnectionMode = "connecting" | "sse" | "polling" | "complete" | "error";
+
+type CandidateSummary = {
+  candidateKey?: string;
+  deterministicScore?: number;
+  fallbackUsed?: boolean;
+  finalScore?: number;
+  hardBlockers?: string[];
+  recipe?: string;
+  selected?: boolean;
+  thumbnailDataUrl?: string | null;
+  visualScore?: number;
+  warnings?: string[];
+};
 
 const emptyStatuses = AGENT_STEPS.map<AgentStatus>(() => "pending");
 const previewCachePrefix = "onara:build-preview:";
@@ -127,6 +149,24 @@ function cachePreview(jobId: string, html: string) {
   }
 }
 
+function mergeCandidateList(current: CandidateSummary[], incoming: CandidateSummary) {
+  const key = incoming.candidateKey;
+  if (!key) {
+    return current;
+  }
+
+  const existingIndex = current.findIndex((candidate) => candidate.candidateKey === key);
+  if (existingIndex < 0) {
+    return [...current, incoming].sort((left, right) =>
+      String(left.candidateKey).localeCompare(String(right.candidateKey)),
+    );
+  }
+
+  return current.map((candidate, index) =>
+    index === existingIndex ? { ...candidate, ...incoming } : candidate,
+  );
+}
+
 export function AgentProgressExperience() {
   const searchParams = useSearchParams();
   const jobId = searchParams.get("jobId") || "mock-local";
@@ -136,12 +176,17 @@ export function AgentProgressExperience() {
   const [connectionMode, setConnectionMode] = useState<ConnectionMode>("connecting");
   const [currentMessage, setCurrentMessage] = useState("Preparing the agent workspace.");
   const [aiNotice, setAiNotice] = useState<string | null>(null);
-  const [previewHtml, setPreviewHtml] = useState(() => previewHtmlForStep(0, "Your Contractor Site"));
+  const [previewHtml, setPreviewHtml] = useState(() => loadingPreviewHtml("Your Contractor Site"));
   const [progress, setProgress] = useState(0);
   const [publicUrl, setPublicUrl] = useState<string | null>(null);
   const [queuePosition, setQueuePosition] = useState<number | null>(null);
   const [siteId, setSiteId] = useState<string | null>(null);
   const [statuses, setStatuses] = useState<AgentStatus[]>(emptyStatuses);
+  const [candidates, setCandidates] = useState<CandidateSummary[]>([]);
+  const [etaSeconds, setEtaSeconds] = useState<number | null>(null);
+  const [fallbackUsed, setFallbackUsed] = useState(false);
+  const [qualityBadges, setQualityBadges] = useState<string[]>([]);
+  const [selectedCandidateId, setSelectedCandidateId] = useState<string | null>(null);
   const [startedAt, setStartedAt] = useState<number | null>(null);
   const eventSourceRef = useRef<EventSource | null>(null);
 
@@ -156,14 +201,17 @@ export function AgentProgressExperience() {
   }, [statuses]);
 
   const completedCount = statuses.filter((status) => status === "done").length;
-  const etaSeconds = connectionMode === "complete" ? 0 : Math.max(6, Math.round((100 - progress) * 0.82));
   const activeAgent = AGENT_STEPS[activeIndex];
   const progressLabel = connectionMode === "complete"
     ? "Complete"
     : connectionMode === "error"
       ? "Needs attention"
       : `${progress}% complete`;
-  const etaLabel = connectionMode === "complete" ? "Ready" : `${etaSeconds}s est.`;
+  const etaLabel = connectionMode === "complete"
+    ? "Ready"
+    : typeof etaSeconds === "number"
+      ? `${etaSeconds}s est.`
+      : "Calculating";
   const hasConnectionIssue = connectionMode === "error";
 
   useEffect(() => {
@@ -177,7 +225,7 @@ export function AgentProgressExperience() {
 
     setBusinessName(nextBusinessName);
     setBusinessMeta(metaParts.join(" / ") || "Google Business data confirmed");
-    setPreviewHtml(readCachedPreview(jobId) || previewHtmlForStep(0, nextBusinessName));
+    setPreviewHtml(readCachedPreview(jobId) || loadingPreviewHtml(nextBusinessName));
     setStartedAt(Date.now());
   }, [jobId, projectId]);
 
@@ -214,6 +262,34 @@ export function AgentProgressExperience() {
       cachePreview(jobId, html);
     }
 
+    function applyBuildMetadata(data: StreamPayload) {
+      if (typeof data.etaSeconds === "number" || data.etaSeconds === null) {
+        setEtaSeconds(data.etaSeconds ?? null);
+      }
+      if (data.candidates) {
+        setCandidates(data.candidates);
+      }
+      if (data.candidate) {
+        setCandidates((current) => mergeCandidateList(current, data.candidate as CandidateSummary));
+      }
+      if (data.qualityBadges) {
+        setQualityBadges(data.qualityBadges);
+      }
+      if (data.selectedCandidateId !== undefined) {
+        setSelectedCandidateId(data.selectedCandidateId ?? null);
+      }
+      if (data.fallbackUsed !== undefined) {
+        setFallbackUsed(Boolean(data.fallbackUsed));
+      }
+    }
+
+    function stopPolling() {
+      if (pollingTimer) {
+        clearInterval(pollingTimer);
+        pollingTimer = null;
+      }
+    }
+
     async function pollStatus() {
       const elapsedMs = Date.now() - streamStartedAt;
       const statusUrl = `/api/build/progress/status?jobId=${encodeURIComponent(jobId)}&businessName=${businessParam}&elapsedMs=${elapsedMs}${projectParam}`;
@@ -231,15 +307,25 @@ export function AgentProgressExperience() {
       pollingFailures = 0;
 
       applyPreview(data.html);
+      applyBuildMetadata(data);
       setAiNotice(data.notice || null);
 
       if (data.complete) {
+        stopPolling();
         setConnectionMode("complete");
         setStatuses(AGENT_STEPS.map(() => "done"));
         setProgress(100);
+        setEtaSeconds(0);
         setCurrentMessage(data.message || "Generation complete.");
         setPublicUrl(data.publicUrl || null);
         setSiteId(data.siteId || null);
+        return;
+      }
+
+      if (data.failed) {
+        stopPolling();
+        setConnectionMode("error");
+        setCurrentMessage(data.message || "This build stopped before publishing.");
         return;
       }
 
@@ -326,6 +412,7 @@ export function AgentProgressExperience() {
 
     eventSource.addEventListener("queued", (event) => {
       const data = JSON.parse((event as MessageEvent).data) as StreamPayload;
+      applyBuildMetadata(data);
       setQueuePosition(typeof data.position === "number" ? data.position : 1);
       setCurrentMessage(data.message || "Your site is queued.");
       setProgress(safeProgress(data.progress));
@@ -333,17 +420,20 @@ export function AgentProgressExperience() {
 
     eventSource.addEventListener("step", (event) => {
       const data = JSON.parse((event as MessageEvent).data) as StreamPayload;
+      applyBuildMetadata(data);
       setQueuePosition(null);
       applyStep(data.stepIndex ?? 0, "active", data.message, data.progress);
     });
 
     eventSource.addEventListener("agent_retry", (event) => {
       const data = JSON.parse((event as MessageEvent).data) as StreamPayload;
+      applyBuildMetadata(data);
       applyStep(data.stepIndex ?? 0, "retry", data.message, data.progress);
     });
 
     eventSource.addEventListener("agent_complete", (event) => {
       const data = JSON.parse((event as MessageEvent).data) as StreamPayload;
+      applyBuildMetadata(data);
       const stepIndex = data.stepIndex ?? 0;
 
       setStatuses(AGENT_STEPS.map((_, index) => {
@@ -375,6 +465,13 @@ export function AgentProgressExperience() {
       }
     });
 
+    for (const candidateEvent of ["candidate_ready", "candidate_scored"]) {
+      eventSource.addEventListener(candidateEvent, (event) => {
+        const data = JSON.parse((event as MessageEvent).data) as StreamPayload;
+        applyBuildMetadata(data);
+      });
+    }
+
     eventSource.addEventListener("reconnecting", (event) => {
       const data = JSON.parse((event as MessageEvent).data) as StreamPayload;
       setConnectionMode("sse");
@@ -383,10 +480,12 @@ export function AgentProgressExperience() {
 
     eventSource.addEventListener("complete", (event) => {
       const data = JSON.parse((event as MessageEvent).data) as StreamPayload;
+      applyBuildMetadata(data);
       closedByComplete = true;
       setConnectionMode("complete");
       setStatuses(AGENT_STEPS.map(() => "done"));
       setProgress(100);
+      setEtaSeconds(0);
       setCurrentMessage(data.message || "Generation complete.");
       setPublicUrl(data.publicUrl || null);
       setSiteId(data.siteId || null);
@@ -454,7 +553,7 @@ export function AgentProgressExperience() {
               </div>
               <div className="agent-progress-meter-footer">
                 <span>{progress}% complete</span>
-                <span>{etaSeconds}s est.</span>
+                <span>{etaLabel}</span>
               </div>
             </div>
 
@@ -481,7 +580,7 @@ export function AgentProgressExperience() {
 
           <div className={`agent-active-card card${hasConnectionIssue ? " agent-active-card-error" : ""}`}>
             <div className="agent-active-card-head">
-              <p className="mono">{connectionMode === "complete" ? "Ready" : "Current agent"}</p>
+              <p className="mono">{connectionMode === "complete" ? "Ready" : "Current stage"}</p>
               {hasConnectionIssue ? (
                 <span className="agent-active-state">
                   <AlertTriangle size={12} aria-hidden="true" />
@@ -491,6 +590,11 @@ export function AgentProgressExperience() {
             </div>
             <strong>{connectionMode === "complete" ? "Generation complete" : activeAgent.name}</strong>
             <span>{currentMessage}</span>
+            {hasConnectionIssue ? (
+              <Link className="agent-active-retry" href="/dashboard/build">
+                Try another build
+              </Link>
+            ) : null}
           </div>
 
           {queuePosition ? (
@@ -501,19 +605,54 @@ export function AgentProgressExperience() {
           ) : null}
 
           {aiNotice ? (
-            <div className="agent-progress-notice agent-progress-notice-ai">
-              <Sparkles size={15} aria-hidden="true" />
-              <span>
-                <strong>AI build note</strong>
-                {aiNotice}
-              </span>
-            </div>
+            <details className="agent-progress-notice agent-progress-notice-ai">
+              <summary>
+                <Sparkles size={15} aria-hidden="true" />
+                Build detail
+              </summary>
+              <p>{aiNotice}</p>
+            </details>
+          ) : null}
+
+          {candidates.length > 0 ? (
+            <section className="agent-concepts card" aria-label="Website concepts">
+              <div className="agent-step-list-head">
+                <p className="mono">Concepts</p>
+                <span>{candidates.length} generated</span>
+              </div>
+              <div className="agent-concept-grid">
+                {candidates.map((candidate) => (
+                  <CandidateCard
+                    candidate={candidate}
+                    key={candidate.candidateKey}
+                    selected={candidate.candidateKey === selectedCandidateId || candidate.selected}
+                  />
+                ))}
+              </div>
+            </section>
+          ) : null}
+
+          {qualityBadges.length > 0 ? (
+            <section className="agent-readiness card" aria-label="Release readiness">
+              <p className="mono">Release readiness</p>
+              <div>
+                {qualityBadges.map((badge) => (
+                  <span key={badge}>
+                    <Check aria-hidden="true" size={11} />
+                    {badge}
+                  </span>
+                ))}
+              </div>
+              {fallbackUsed ? (
+                <small>The safe fallback was used and still passed the release checks.</small>
+              ) : null}
+            </section>
           ) : null}
 
           <div className="agent-step-list-card card">
             <div className="agent-step-list-head">
-              <p className="mono">Agent queue</p>
-              <span>{AGENT_STEPS.length} steps</span>
+              <p className="mono">Build stages</p>
+              <span>{AGENT_STEPS.length} stages</span>
             </div>
             <div className="agent-step-list" aria-label="Agent progress">
               {AGENT_STEPS.map((agent, index) => (
@@ -554,7 +693,7 @@ export function AgentProgressExperience() {
 
           <div className="agent-preview-footer">
             <div>
-              <p className="mono">Current agent</p>
+              <p className="mono">Current stage</p>
               <strong>{connectionMode === "complete" ? "Generation complete" : activeAgent.name}</strong>
               <span>{currentMessage}</span>
             </div>
@@ -609,12 +748,41 @@ function AgentStepRow({
       </span>
       <span className="agent-step-copy">
         <strong>{agent.name}</strong>
-        <span>{active ? agent.task : agent.model}</span>
+        <span>{agent.task}</span>
       </span>
       <span className="agent-step-model">
         {status === "retry" ? "retry" : status}
       </span>
     </div>
+  );
+}
+
+function CandidateCard({
+  candidate,
+  selected,
+}: {
+  candidate: CandidateSummary;
+  selected?: boolean;
+}) {
+  const label = candidate.candidateKey?.toUpperCase() || "?";
+  const score = typeof candidate.finalScore === "number" ? Math.round(candidate.finalScore) : null;
+
+  return (
+    <article className={`agent-concept-card${selected ? " agent-concept-card-selected" : ""}`}>
+      <div className="agent-concept-thumb">
+        {candidate.thumbnailDataUrl ? (
+          <img alt={`Generated concept ${label}`} src={candidate.thumbnailDataUrl} />
+        ) : (
+          <span>Rendering concept {label}</span>
+        )}
+      </div>
+      <div className="agent-concept-copy">
+        <span className="mono">Concept {label}</span>
+        <strong>{candidate.recipe || "Custom direction"}</strong>
+        <small>{score === null ? "Testing" : `${score}/100 quality score`}</small>
+      </div>
+      {selected ? <span className="agent-concept-selected">Selected</span> : null}
+    </article>
   );
 }
 

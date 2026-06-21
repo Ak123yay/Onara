@@ -5,6 +5,7 @@
 # Generated data and runtime state
 Onara_Vault/output/
 Onara_Vault/ruvector.db
+.pnpm-store/
 
 # Uploaded/imported assets
 Onara_Design/uploads/

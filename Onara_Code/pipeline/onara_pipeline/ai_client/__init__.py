@@ -1,4 +1,4 @@
-from onara_pipeline.ai_client.client import AIClient, build_ai_client
+from onara_pipeline.ai_client.client import AIClient, ai_client_for_job, build_ai_client
 from onara_pipeline.ai_client.copilot import CopilotSDKClient
 from onara_pipeline.ai_client.errors import (
     AIClientError,
@@ -24,6 +24,7 @@ from onara_pipeline.ai_client.types import AIMessage, AIRequest, AIResponse
 
 __all__ = [
     "AIClient",
+    "ai_client_for_job",
     "AIClientError",
     "AIConfigurationError",
     "AIMessage",

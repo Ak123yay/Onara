@@ -16,17 +16,39 @@ type PipelineProgressEntry = {
   timestamp?: string;
 };
 
+type PipelineCandidate = {
+  candidateKey?: string;
+  deterministicScore?: number;
+  fallbackUsed?: boolean;
+  finalScore?: number;
+  hardBlockers?: string[];
+  model?: string;
+  provider?: string;
+  recipe?: string;
+  selected?: boolean;
+  thumbnailDataUrl?: string | null;
+  visualScore?: number;
+  warnings?: string[];
+};
+
 type PipelineStatusResponse = {
   agents_completed: number;
   agents_total: number;
+  candidates?: PipelineCandidate[];
   current_agent: string | null;
+  eta_seconds?: number | null;
   error_message?: string | null;
+  fallback_used?: boolean;
   job_id: string;
+  pipeline_version?: string;
   preview_html?: string | null;
   progress_log: PipelineProgressEntry[];
   public_url?: string | null;
+  quality_badges?: string[];
   queue_position?: number | null;
+  selected_candidate_id?: string | null;
   site_id?: string | null;
+  stage?: string | null;
   status: "queued" | "running" | "completed" | "failed";
 };
 
@@ -44,13 +66,20 @@ const PIPELINE_AGENT_TO_STEP_INDEX: Record<string, number> = {
   agent_01_analyst: 0,
   agent_02_content: 1,
   agent_03_style: 2,
-  agent_04_planner: 3,
-  agent_05_prompt_engineer: 4,
-  agent_06_codegen: 5,
-  agent_07_debugger: 6,
-  agent_08_seo: 7,
-  agent_09_qa: 8,
-  agent_10_mobile: 9,
+  agent_04_planner: 2,
+  agent_05_prompt_engineer: 2,
+  agent_06_codegen: 3,
+  agent_07_debugger: 5,
+  agent_08_seo: 5,
+  agent_09_qa: 4,
+  agent_10_mobile: 5,
+  building_candidates: 3,
+  designing_concepts: 2,
+  polishing: 5,
+  publishing: 6,
+  testing_candidates: 4,
+  understanding_business: 0,
+  writing_content: 1,
 };
 
 export async function GET(request: Request) {
@@ -66,13 +95,13 @@ export async function GET(request: Request) {
     if ("error" in status) {
       const projectStatus = projectId ? await fetchProjectResumeStatus(projectId) : null;
       if (projectStatus) {
-        return Response.json(mapProjectResumeStatus(projectStatus, jobId, businessName));
+        return Response.json(mapProjectResumeStatus(projectStatus, jobId));
       }
 
       return Response.json(status, { status: status.statusCode });
     }
 
-    return Response.json(mapPipelineStatus(status, businessName));
+    return Response.json(mapPipelineStatus(status));
   }
 
   return Response.json(mockStatus(jobId, businessName, Number.isFinite(elapsedMs) ? elapsedMs : 0));
@@ -99,7 +128,7 @@ async function fetchProjectResumeStatus(projectId: string) {
   return data ?? null;
 }
 
-function mapProjectResumeStatus(project: ProjectResumeStatus, jobId: string, businessName: string) {
+function mapProjectResumeStatus(project: ProjectResumeStatus, jobId: string) {
   const pipelineStatus = projectStatusToPipelineStatus(project.status);
   const currentStepIndex = currentStepIndexForProject(project);
   const activeAgent = AGENT_STEPS[currentStepIndex];
@@ -107,43 +136,53 @@ function mapProjectResumeStatus(project: ProjectResumeStatus, jobId: string, bus
 
   return {
     activeAgent,
+    candidates: [],
     complete,
     currentStepIndex,
-    html: previewHtmlForStep(complete ? AGENT_STEPS.length : currentStepIndex, project.business_name || businessName),
+    failed: pipelineStatus === "failed",
+    html: undefined,
     jobId: project.pipeline_job_id || jobId,
     message: project.error_message || messageForProjectStatus(project.status, activeAgent?.task),
+    etaSeconds: null,
     progress: progressForProjectStatus(project.status, currentStepIndex),
     publicUrl: project.public_url || publicJobUrl(project.pipeline_job_id || jobId),
     queued: project.status === "queued",
     queuePosition: null,
     retrying: false,
+    qualityBadges: complete
+      ? ["Desktop tested", "Mobile tested", "Business facts verified", "Contact form checked"]
+      : [],
     siteId: project.id,
     totalSteps: AGENT_STEPS.length,
   };
 }
 
-function mapPipelineStatus(status: PipelineStatusResponse, businessName: string) {
+function mapPipelineStatus(status: PipelineStatusResponse) {
   const currentStepIndex = currentStepIndexFor(status);
   const activeAgent = AGENT_STEPS[currentStepIndex];
   const complete = status.status === "completed";
   const queued = status.status === "queued";
   const latestMessage = latestProgressMessage(status);
   const progress = progressForPipeline(status, currentStepIndex);
-  const fallbackStep = complete ? AGENT_STEPS.length : currentStepIndex;
-
   return {
     activeAgent,
+    candidates: status.candidates ?? [],
     complete,
     currentStepIndex,
-    html: status.preview_html || previewHtmlForStep(fallbackStep, businessName),
+    failed: status.status === "failed",
+    html: status.preview_html || undefined,
     jobId: status.job_id,
     message: status.error_message || latestMessage || activeAgent?.task || "Build pipeline is running.",
     notice: latestBlackboardNotice(status),
+    etaSeconds: status.eta_seconds ?? null,
+    fallbackUsed: Boolean(status.fallback_used),
     progress,
     publicUrl: status.public_url || publicJobUrl(status.job_id),
     queued,
     queuePosition: status.queue_position ?? null,
     retrying: false,
+    qualityBadges: status.quality_badges ?? [],
+    selectedCandidateId: status.selected_candidate_id ?? null,
     siteId: status.site_id ?? null,
     totalSteps: AGENT_STEPS.length,
   };
@@ -152,7 +191,7 @@ function mapPipelineStatus(status: PipelineStatusResponse, businessName: string)
 function mockStatus(jobId: string, businessName: string, elapsedMs: number) {
   const progress = progressForElapsed(elapsedMs);
   const activeAgent = AGENT_STEPS[progress.currentStepIndex];
-  const retrying = activeAgent?.id === "debug" && elapsedMs % MOCK_STEP_MS > MOCK_STEP_MS * 0.42;
+  const retrying = activeAgent?.id === "testing" && elapsedMs % MOCK_STEP_MS > MOCK_STEP_MS * 0.42;
 
   return {
     activeAgent,
@@ -160,6 +199,7 @@ function mockStatus(jobId: string, businessName: string, elapsedMs: number) {
     currentStepIndex: progress.currentStepIndex,
     html: previewHtmlForStep(progress.complete ? AGENT_STEPS.length : progress.currentStepIndex, businessName),
     jobId,
+    failed: false,
     message: progress.queued
       ? "Your site is queued. Preparing the agent workspace."
       : progress.complete
@@ -215,6 +255,10 @@ async function fetchPipelineStatus(jobId: string) {
 }
 
 function currentStepIndexFor(status: PipelineStatusResponse) {
+  if (status.stage && status.stage in PIPELINE_AGENT_TO_STEP_INDEX) {
+    return PIPELINE_AGENT_TO_STEP_INDEX[status.stage];
+  }
+
   if (status.current_agent && status.current_agent in PIPELINE_AGENT_TO_STEP_INDEX) {
     return PIPELINE_AGENT_TO_STEP_INDEX[status.current_agent];
   }
@@ -236,9 +280,16 @@ function progressForPipeline(status: PipelineStatusResponse, currentStepIndex: n
     return 0;
   }
 
+  if (status.agents_total > 0) {
+    const activeOffset = status.current_agent ? 0.35 : 0;
+    return Math.max(
+      1,
+      Math.min(99, Math.round(((status.agents_completed + activeOffset) / status.agents_total) * 100)),
+    );
+  }
+
   const visibleStep = Math.max(0, Math.min(currentStepIndex, AGENT_STEPS.length - 1));
-  const activeOffset = status.current_agent ? 0.18 : 0;
-  return Math.max(1, Math.min(99, Math.round(((visibleStep + activeOffset) / AGENT_STEPS.length) * 100)));
+  return Math.max(1, Math.min(99, Math.round((visibleStep / AGENT_STEPS.length) * 100)));
 }
 
 function currentStepIndexForProject(project: ProjectResumeStatus) {
@@ -272,6 +323,13 @@ const PROJECT_PHASE_TO_PIPELINE_AGENT: Record<string, string> = {
   qa_agent: "agent_09_qa",
   seo_agent: "agent_08_seo",
   style_agent: "agent_03_style",
+  understanding_business: "understanding_business",
+  writing_content: "writing_content",
+  designing_concepts: "designing_concepts",
+  building_candidates: "building_candidates",
+  testing_candidates: "testing_candidates",
+  polishing: "polishing",
+  publishing: "publishing",
 };
 
 function projectStatusToPipelineStatus(status: ProjectResumeStatus["status"]): PipelineStatusResponse["status"] {

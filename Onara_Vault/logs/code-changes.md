@@ -189,6 +189,57 @@ Also documents 5 new Blackboard fields, a v1/later priority table, and design re
 
 ---
 
+## 2026-06-21
+
+### Pipeline V2 + Build Studio
+
+**Files affected**:
+- `Onara_Code/pipeline/onara_pipeline/v2/*`
+- `Onara_Code/pipeline/onara_pipeline/durable_jobs.py`
+- `Onara_Code/pipeline/onara_pipeline/job_queue.py`
+- `Onara_Code/pipeline/onara_pipeline/ai_client/*`
+- `Onara_Code/pipeline/browser_audit.mjs`
+- `Onara_Code/pipeline/package.json`
+- `Onara_Code/supabase/migrations/022_pipeline_v2_durable_jobs.sql`
+- `Onara_Code/app/components/places/BusinessSearchFlow.tsx`
+- `Onara_Code/app/components/build/AgentProgressExperience.tsx`
+- `Onara_Code/app/app/api/build/progress/*`
+- `Onara_Code/app/app/globals.css`
+- `Onara_Vault/TASKS.md`
+- `Onara_Vault/wiki/architecture/deployment-pipeline.md`
+- `Onara_Vault/wiki/architecture/env-vars.md`
+- `Onara_Vault/wiki/ai_agents/workflows.md`
+- `Onara_Vault/wiki/features/build-flow.md`
+
+**What changed**:
+- Added a disabled-by-default durable Pipeline V2 backed by Supabase job leases, ordered
+  events, checkpoints, candidate storage, heartbeats, and restart recovery.
+- Replaced the V2 Prompt Engineer model call with deterministic typed prompt compilation.
+- Added two parallel Agent 6 website candidates with separate routes and visual recipes.
+- Added real browser release checks through Playwright, Axe, Lighthouse, desktop/mobile/reflow
+  screenshots, deterministic scoring, and two independent visual reviews.
+- Replaced full-document repair loops with one document/component-hash-checked patch.
+- Kept deterministic SEO, responsive, contact, QA, deployment, and emergency fallback safeguards.
+- Reworked the generator into a Build Studio with a step rail, live brief, Smart Direction,
+  optional advanced settings, and verified-data section gating.
+- Reworked progress into seven customer stages with server ETA, real concept cards, selected
+  concept state, readiness badges, preserved previews, and plain-language failure behavior.
+- Added Pipeline V2 regression tests and mini-PC rollout/rollback documentation.
+
+**Verification**:
+- `pnpm.cmd type-check` passed.
+- `python -m compileall onara_pipeline main.py` passed.
+- `python -m unittest discover -s tests -p "test_*.py"` passed (15 tests).
+- `node --check browser_audit.mjs` passed.
+- `git diff --check` passed.
+- `pnpm.cmd build` remains blocked on this Windows machine by the existing `spawn EPERM`.
+
+**Why**: The serial one-candidate pipeline was slow and unreliable because it used another
+model to compile prompts, rewrote whole documents during repair, kept queue state in memory,
+and did not render/test competing concepts before deployment.
+
+---
+
 ### Phase 3 toolchain check
 
 **Files affected**: `TASKS.md`, `wiki/dev/phase-checklist.md`

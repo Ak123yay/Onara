@@ -1,6 +1,6 @@
 # _master-index.md — Onara Wiki Master Index
 
-_Claude keeps this file updated after every compile. You review it; you do not edit it manually._ _Last compiled: 2026-05-16 (fourth compile)_
+_Claude keeps this file updated after every compile. You review it; you do not edit it manually._ _Last compiled: 2026-06-21 (Pipeline V2 + Build Studio update)_
 
 ---
 
@@ -23,7 +23,7 @@ _Claude keeps this file updated after every compile. You review it; you do not e
 | `wiki/architecture/_index.md` | ✅ initialized | Section index for architecture articles |
 | `wiki/architecture/system-design.md` | ✅ initialized | 3-layer stack, request flow, infrastructure overview |
 | `wiki/architecture/modules.md` | ✅ initialized | Module interaction map: frontend ↔ API ↔ pipeline ↔ Supabase |
-| `wiki/architecture/deployment-pipeline.md` | ✅ initialized | 10-step deploy flow, concurrency config, error handling, CI/CD |
+| `wiki/architecture/deployment-pipeline.md` | ✅ initialized | Durable V2 queue, dual candidates, browser gates, repair policy, deployment, and rollout |
 | `wiki/architecture/security.md` | ✅ initialized | Auth JWT, pipeline secret, RLS per table, Stripe HMAC, CORS |
 | `wiki/architecture/env-vars.md` | ✅ initialized | Environment variables by service with usage context |
 | `wiki/architecture/api-reference.md` | ✅ initialized | Full API contract: all endpoints, request/response shapes, error codes, SSE |
@@ -39,7 +39,7 @@ _Claude keeps this file updated after every compile. You review it; you do not e
 | `wiki/features/auth.md` | ✅ initialized | Google OAuth, email/password, session handling, middleware |
 | `wiki/features/api.md` | ✅ initialized | All Next.js API routes: places, pipeline proxy, Stripe, preview |
 | `wiki/features/ui.md` | ✅ initialized | Design system, build flow UX, dashboard UX |
-| `wiki/features/build-flow.md` | ✅ initialized | Places search, SSE progress timeline, revision UI, error states |
+| `wiki/features/build-flow.md` | ✅ initialized | Build Studio, Smart Direction, supported sections, concept scoring, SSE/polling, and release states |
 | `wiki/features/billing.md` | ✅ initialized | Plan tiers, 14-day trial lifecycle, Stripe Checkout/Portal, limits |
 | `wiki/features/google-places.md` | ✅ initialized | Places API (New) endpoints, Blackboard mapping, GBP Sync flag |
 | `wiki/features/revision-system.md` | ✅ initialized | Revision schema, monthly limits, status lifecycle, v2 design |
@@ -54,7 +54,7 @@ _Claude keeps this file updated after every compile. You review it; you do not e
 |------|--------|-------------|
 | `wiki/ai_agents/_index.md` | ✅ initialized | Section index for agent articles |
 | `wiki/ai_agents/agents.md` | ✅ initialized | All 10 agents: model, job, input, output, retry logic |
-| `wiki/ai_agents/workflows.md` | ✅ initialized | Blackboard pattern, sequencing, parallel agents 2+3, SSE |
+| `wiki/ai_agents/workflows.md` | ✅ initialized | Pipeline V2 contracts, parallel candidates, evaluation, recovery, and progress contract |
 | `wiki/ai_agents/models.md` | ✅ initialized | Model assignment per agent, NIM specs, Ollama specs, plan-gated routing |
 | `wiki/ai_agents/rag.md` | ✅ initialized | ChromaDB schema, 60 seed patterns, Agent 7/9 query flow, adding patterns |
 | `wiki/ai_agents/prompts.md` | ✅ initialized | All 10 agent system prompts + user prompt templates + Supervisor |

@@ -101,7 +101,7 @@ _Environment variable reference. `[NEXT]` = Next.js `.env.local` | `[FAST]` = Fa
 
 ---
 
-## Pipeline (5 vars)
+## Pipeline
 
 | Variable | Target | Description |
 |----------|--------|-------------|
@@ -110,14 +110,24 @@ _Environment variable reference. `[NEXT]` = Next.js `.env.local` | `[FAST]` = Fa
 | `PIPELINE_API_SECRET` | BOTH | 32-char shared secret: `openssl rand -hex 32` |
 | `PIPELINE_MAX_CONCURRENCY` | FAST | `1` for local Ollama dev; raise after load testing on server |
 | `PIPELINE_JOB_TIMEOUT` | FAST | `600` — hard timeout per job in seconds |
+| `PIPELINE_V2_ENABLED` | FAST | `false` by default; enables durable dual-candidate V2 after migration/browser install |
+| `PIPELINE_V2_BROWSER_AUDIT_TIMEOUT` | FAST | Per-candidate Playwright/Axe/Lighthouse timeout; default `75` seconds |
+| `PIPELINE_V2_CANDIDATE_TIMEOUT` | FAST | Per-model candidate generation timeout; default `150` seconds |
+| `PIPELINE_V2_LEASE_SECONDS` | FAST | Durable worker lease duration; default `60` seconds |
+| `PIPELINE_V2_MAX_ATTEMPTS` | FAST | Maximum durable recovery claims; default `3` |
+| `PIPELINE_V2_MIN_SCORE` | FAST | Minimum blocker-free combined release score; default `80` |
+| `PIPELINE_V2_WORKER_ID` | FAST | Optional stable worker identifier; generated automatically when empty |
+| `AI_NIM_CONCURRENCY` | FAST | Shared per-job NIM request cap; recommended `3` |
+| `AI_OLLAMA_CONCURRENCY` | FAST | Shared per-job Ollama request cap; keep `1` on the mini PC |
+| `AI_COPILOT_CONCURRENCY` | FAST | Shared per-job Copilot request cap; default `1` |
 
 ---
 
-## Redis (1 var)
+## Redis (legacy future option)
 
 | Variable | Target | Description |
 |----------|--------|-------------|
-| `REDIS_URL` | FAST | `redis://localhost:6379` (v1.5+ only) |
+| `REDIS_URL` | FAST | Not used by Pipeline V2; Supabase leases provide the current durable queue |
 
 ---
 

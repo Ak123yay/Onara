@@ -1,162 +1,104 @@
-# Build Flow — Onara
+# Build Flow - Onara
 
-_The complete user-facing experience of generating a website, from form submission to live site._
+_The customer experience from business search to a tested live website._
 
----
+## Build Studio
 
-## Overview
+Route: `/dashboard/build`
 
-The build flow is the core product experience. A user enters a business name or Google Place ID, clicks Generate, watches real-time progress for 60–120 seconds, and lands on a live preview. The UI must be fast, reassuring, and handle failure gracefully.
+The generator uses a three-column desktop workspace:
 
----
+- Left: persistent four-step rail.
+- Center: the current task only.
+- Right: sticky live business brief with facts, photo/review counts, direction, and supported sections.
 
-## Entry Points
+It stacks into one column on mobile.
 
-| Entry Point | Route | Trigger |
-|-------------|-------|---------|
-| Dashboard CTA | `/dashboard` | "Generate New Site" button |
-| Onboarding wizard | `/onboarding` | Shown after first login |
-| Empty state | `/dashboard` | Shown when user has zero sites |
+## Step 1 - Find
 
----
+The user searches Google Places using the business name and location. Results show name,
+category, address, phone, rating, review count, and hours.
 
-## Step 1: Business Search Form
+If no listing exists, manual entry remains available. Manual generation requires name,
+category, and either address or service area. Phone, email, website, services, hours, and one
+photo can also be supplied.
 
-**Route**: `/dashboard/new` (or inline modal)
+## Step 2 - Confirm
 
-**Form fields**:
+The confirmation card shows every fact and asset Onara can safely use. Missing address, phone,
+hours, or manual photo fields are editable. The user confirms the corrected business object
+before style decisions begin.
 
-| Field | Type | Required | Notes |
-|-------|------|----------|-------|
-| Business name / Place search | Text input | Yes | Calls `/api/places/search` on change |
-| Select from results | Dropdown | Preferred | Lists matching Google Places results |
-| Manual business details | Form | Fallback | Used when the business is not listed on Google Maps yet |
-| Confirm business details | Preview card | Display only | Shows name, address, category, rating |
+## Step 3 - Style
 
-**Places search flow**:
-- User types ≥ 3 characters → debounced 300ms → POST `/api/places/search`
-- Results: business name, address, category shown as dropdown options
-- On select: `placeId` stored; preview card renders name/address/category/rating/hours
-- If no Google result exists, user can enter business name, category, address or service area,
-  phone, email, website, services, and hours manually. This creates a generation package without
-  `google_place_id`; Google reviews refresh skips those projects until a Place ID exists.
+`Smart Direction` is the default. It selects an Onara contractor recipe and only enables
+sections supported by verified data:
 
-**Validation before submission**:
-- Either a Google result with `placeId` is selected, or manual business details include name,
-  category, and address or service area.
-- Plan limit check (client-side): warn at plan site limit, block if exceeded (Free 1, Starter 1, Trial/Pro 3)
+- Reviews require a real rating and review count.
+- Gallery requires at least one Google or manually uploaded photo.
+- Service area requires a service area or address.
+- FAQ is always available.
+- License and financing remain disabled unless those facts are explicitly added to the data model.
 
----
+Advanced settings expose palette, layout, tone, conversion goal, supported sections, and notes.
 
-## Step 2: Confirmation + Generate
+## Step 4 - Generate
 
-**UI**: "Generate Site" button (primary CTA) below the preview card
+The user confirms the package and plan-gated Agent 6 route. Next.js:
 
-**On click**:
-1. Button disabled + spinner shown
-2. POST `/api/generate` → returns `{ jobId }`
-3. Route transitions to `/dashboard/build/:jobId` (progress screen)
+1. Verifies the session and active-site limit.
+2. Creates/reuses the project record.
+3. Calls FastAPI `/generate`.
+4. Routes to `/dashboard/build/progress?jobId=...&projectId=...`.
 
----
+## Progress Experience
 
-## Step 3: Progress Screen
+The progress page shows:
 
-**Route**: `/dashboard/build/:jobId`
+- Seven customer-facing build stages.
+- Durable queue/reconnect status.
+- Server-provided ETA rather than a client guess.
+- An intentional loading canvas until valid generated HTML exists.
+- Candidate A/B thumbnail and score cards.
+- Selected-concept state.
+- Release-readiness badges.
+- A collapsible technical build detail.
+- Plain-language failure copy and a new-build action.
 
-**SSE connection**: Opens immediately on mount → `GET /api/stream/:jobId`
+The page uses SSE first and polling as fallback. It can reconstruct the build from Supabase after
+a FastAPI restart. Preview HTML is cached in session storage so a transient disconnect does not
+replace a valid preview with a fake or blank site.
 
-**Progress UI**:
+## Progress Events
 
-| SSE Event | UI Action |
-|-----------|-----------|
-| `event: queued` | "Your site is in the queue (position N)" |
-| `event: step` | Step name highlighted in timeline; progress bar advances |
-| `event: agent_complete` | Step marked green with checkmark |
-| `event: agent_retry` | Step shows yellow "Retrying..." indicator |
-| `event: complete` | Confetti animation; redirect to `/dashboard/sites/:siteId` |
-| `event: error` | Red error banner; retry button shown |
-| `event: timeout` | "Generation timed out" message; contact support link |
+| Event | UI behavior |
+| --- | --- |
+| `queued` | Show saved queue state and position |
+| `step` | Activate the mapped customer stage and apply backend ETA |
+| `candidate_ready` | Add a concept card |
+| `candidate_scored` | Add thumbnail, quality score, warnings, and eligibility state |
+| `agent_complete` | Complete the customer stage |
+| `preview` | Replace the iframe only with non-empty real HTML |
+| `notice` | Add a collapsible build detail |
+| `reconnecting` | Keep last preview and explain that the job is saved |
+| `complete` | Show selected concept, release badges, and live-site action |
+| `error` | Preserve preview, show plain-language issue, and offer another build |
 
-**Timeline display** (left rail):
+## Release Conditions
 
-```
-[done] Analyze Business
-[done] Write Copy + Style (parallel)
-[done] Plan Components
-[done] Build Code Prompt
-[done] Generate HTML
-[done] Debug HTML
-[done] Add SEO
-[done] Quality Check
-[active] Mobile Pass
-        Deploy
-```
+A site cannot publish unless one candidate:
 
-**Auto-retry on SSE disconnect**: Reconnects up to 3× with exponential backoff before showing "Connection lost" warning.
+- Has no structural, security, asset, form, responsive, or critical accessibility blocker.
+- Reaches the configured combined quality score.
+- Passes the final deterministic Debugger/SEO/Mobile/QA path.
+- Passes the final browser audit.
 
----
-
-## Step 4: Site Preview
-
-**Route**: `/dashboard/sites/:siteId`
-
-**Layout**:
-- Left panel: site metadata (business name, URL, generated date, plan)
-- Center: iframe showing the live Cloudflare Pages URL
-- Right panel: action buttons
-
-**Action buttons**:
-
-| Button | Plan | Action |
-|--------|------|--------|
-| Visit Site | All | Opens `site_url` in new tab |
-| Regenerate | All | Triggers new build job (counts against limit) |
-| Request Revision | All | Opens revision form (3/month Free, 10/month Starter, unlimited Trial/Pro) |
-| Download Code | Pro / Trial | Downloads a `.zip` folder of the generated site files |
-| Copy Site URL | All | Copies URL to clipboard |
-
----
-
-## Step 5: Revision Flow
-
-Triggered by "Request Revision" button.
-
-**Revision form fields**:
-
-| Field | Type | Required |
-|-------|------|----------|
-| What to change | Textarea | Yes |
-| Priority section | Select (Hero / Services / Colors / Footer / Other) | No |
-
-**On submit**:
-- POST `/api/revisions/create` → inserts row in `revisions` table
-- Status: `pending` → processed by revision pipeline (future; v2)
-- User sees "Revision requested — we'll notify you when it's ready"
-- Resend email sent when revision complete
-
-**Revision limits**:
-- Free: 3/month (reset by pg_cron on the 1st)
-- Starter: 10/month (reset on the Stripe billing period)
-- Trial/Pro: unlimited
-
----
-
-## Error States
-
-| Error | Display |
-|-------|---------|
-| Places API unavailable | "Search unavailable" plus manual business details fallback |
-| Pipeline offline | "Our generation service is temporarily offline. Try again in a few minutes." |
-| Job failed (agent error) | "Generation failed at [step name]. Your credits are not affected. Try again." |
-| Plan limit reached | "You've reached your site limit for this plan. Upgrade to Pro for up to 3 live sites." with upgrade CTA |
-| Revision limit reached | "You've used your revisions for this billing period. Resets on [date]. Upgrade for unlimited revisions." |
-
----
+Failed generation does not consume a revision.
 
 ## Related Files
 
-- `wiki/architecture/deployment-pipeline.md` — technical pipeline steps
-- `wiki/features/google-places.md` — Places API integration details
-- `wiki/features/auth.md` — session verification during build flow
-- `wiki/features/billing.md` — plan limits and upgrade gates
-- `wiki/ai_agents/workflows.md` — agent sequence the progress screen reflects
+- `Onara_Code/app/components/places/BusinessSearchFlow.tsx`
+- `Onara_Code/app/components/build/AgentProgressExperience.tsx`
+- `Onara_Code/app/app/api/build/progress/`
+- `Onara_Code/pipeline/onara_pipeline/v2/`
+- `wiki/architecture/deployment-pipeline.md`

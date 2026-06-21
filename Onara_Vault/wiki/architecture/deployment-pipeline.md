@@ -1,166 +1,143 @@
-# Deployment Pipeline — Onara
+# Deployment Pipeline - Onara
 
-_How a user's website goes from "Generate" button click to live URL._
+_How a build moves from the Next.js Build Studio to a tested Cloudflare Pages site._
 
----
+## Current Architecture
 
-## Overview
+Pipeline V2 is a feature-flagged replacement for the original in-memory, single-candidate
+pipeline. The FastAPI process still runs on the mini PC, but Supabase now owns durable job,
+event, lease, checkpoint, and candidate state.
 
-A single build job touches 6 systems in sequence: Next.js → FastAPI → 10 AI agents → Cloudflare Pages → GitHub → Supabase + Resend. Total wall-clock time: 60–120 seconds.
-
----
-
-## Step-by-Step Flow
-
-### 1. User Triggers Build (Next.js)
-
-- User clicks **Generate Site** in the dashboard (`/dashboard`)
-- Browser POSTs to `/api/generate` with `{ placeId, businessName, planTier }`
-- Next.js API route:
-  - Verifies Supabase session (JWT)
-  - Checks `projects` for plan project limits
-  - If limit exceeded → returns `429` with upgrade prompt
-  - Otherwise → calls FastAPI `POST /pipeline/start`
-
-### 2. Job Enqueue (FastAPI)
-
-- FastAPI receives `{ userId, placeId, businessName, planTier }`
-- Creates a `job_id` (UUID)
-- Inserts row into `pipeline_jobs` table: `status = 'queued'`
-- Enqueues job:
-  - **v1.0**: In-memory dict (`active_jobs: Dict[str, JobState]`)
-  - **v1.5+**: Redis queue (`REDIS_URL`)
-- Returns `{ jobId }` immediately (non-blocking)
-
-### 3. SSE Connection (Browser → FastAPI)
-
-- Next.js passes `jobId` to frontend
-- Browser opens SSE connection: `GET /api/stream/:jobId`
-- Next.js `/api/stream/:jobId` proxies to FastAPI `GET /pipeline/status/:jobId`
-- FastAPI streams `data:` events as pipeline progresses
-- SSE stays open until `event: complete` or `event: error`
-
-### 4. Pipeline Execution (10 Agents)
-
-See `wiki/ai_agents/workflows.md` for full sequence. Summary:
-
-| Step | Agent | Model | Output |
-|------|-------|-------|--------|
-| 1 | Business Analyst | NVIDIA NIM z-ai/glm-5.1 | Site requirements JSON |
-| 2 | Content Writer | Ollama qwen3.5:9b | Copy JSON |
-| 3 | Style Agent | NVIDIA NIM z-ai/glm-5.1 | Design tokens |
-| 4 | Planner | NVIDIA NIM z-ai/glm-5.1 | Component blueprint |
-| 5 | Prompt Engineer | NVIDIA NIM z-ai/glm-5.1 | Code-generation prompt |
-| 6 | Code Generator | Plan-gated model | Complete index.html |
-| 7 | Debugger | NVIDIA NIM z-ai/glm-5.1 | Fixed HTML or PASS |
-| 8 | SEO Agent | Ollama qwen3.5:9b | SEO-injected HTML |
-| 9 | QA Agent | NVIDIA NIM z-ai/glm-5.1 | PASS/FAIL report |
-| 10 | Mobile Agent | Ollama qwen3.5:9b | Final mobile-optimized HTML |
-
-- Supervisor runs between each agent step, validating output
-- If Supervisor rejects → agent retries up to 3× then marks job failed
-- Each step emits SSE event: `{ step, agentName, status, progress }`
-
-### 5. Cloudflare Pages Deployment
-
-After Agent 10 produces `final_html`, the deployment module uses the **Cloudflare Pages Direct Upload API** (not Git integration):
-
-```
-POST https://api.cloudflare.com/client/v4/accounts/{accountId}/pages/projects/{projectName}/deployments
-Authorization: Bearer {CLOUDFLARE_API_TOKEN}
-Content-Type: multipart/form-data
+```text
+Build Studio
+  -> Next.js generate route
+  -> FastAPI durable queue
+  -> business brief + content/style
+  -> two code candidates in parallel
+  -> browser + visual evaluation
+  -> one bounded repair when needed
+  -> deterministic final safeguards
+  -> Cloudflare Pages
+  -> Supabase project record
+  -> GitHub backup
 ```
 
-- Uploads `index.html` as a deployment artifact
-- Each user's site lives under a unique project name: `onara-{userId-short}`
-- First deployment creates the Pages project; subsequent builds update it
-- Cloudflare returns `{ url }` — the live site URL (e.g., `onara-abc123.pages.dev`)
-- Custom domains: added via Cloudflare API when user configures one (future)
+`PIPELINE_V2_ENABLED=false` is the safe default. The legacy pipeline remains available while
+V2 is rolled out.
 
-**Why Direct Upload (not Git integration):** No GitHub Actions wait time; no CI quota; instant deployment; full programmatic control. See `wiki/decisions/adr-002.md`.
+## Durable Queue
 
-### 6. GitHub Commit
+Migration `022_pipeline_v2_durable_jobs.sql` extends `pipeline_jobs` and adds:
 
-- The deployment module commits the generated `index.html` to `onara-sites` repo (owned by `GITHUB_REPO_OWNER`)
-- Path: `sites/{userId}/{jobId}/index.html`
-- Uses GitHub App authentication (`GITHUB_APP_ID`, `GITHUB_APP_PRIVATE_KEY`, `GITHUB_APP_INSTALLATION_ID`)
-- Serves as a backup + audit trail; not the live serving path (Cloudflare serves live)
+- `pipeline_job_events` for ordered progress recovery.
+- `pipeline_candidates` for both generated concepts and their scores.
+- Lease owner, lease expiry, heartbeat, attempt, stage, ETA, and checkpoint columns.
+- `claim_pipeline_job(...)`, which uses `FOR UPDATE SKIP LOCKED`.
+- `heartbeat_pipeline_job(...)`, which renews the active worker lease.
 
-### 7. Supabase Storage
+A worker restart reloads queued/running V2 jobs from Supabase. It restores completed stage
+outputs and candidate HTML, then resumes from the last safe checkpoint. A request signature
+prevents duplicate active jobs for the same user and input.
 
-- HTML blob uploaded to Supabase Storage bucket: `site-html`
-- Path: `{userId}/{jobId}.html`
-- Enables revision history — each build is a separate object
-- Users can view/restore previous versions (Pro feature roadmap)
+## Generation Stages
 
-### 8. Database Update
+| Customer stage | Internal work |
+| --- | --- |
+| Understanding your business | Resolve photos, normalize trusted facts, run Analyst |
+| Writing your content | Run Content Writer and Style Agent in parallel |
+| Designing two concepts | Run Planner and compile two deterministic prompts/recipes |
+| Building your websites | Generate candidate A and B concurrently through separate model routes |
+| Testing desktop and mobile | Render 1440px, 390px, and 320px; run Axe and Lighthouse; run two visual reviews |
+| Polishing the strongest version | Apply at most one hash-checked component patch, then deterministic SEO/mobile/QA safeguards |
+| Publishing your site | Build artifact, deploy to Cloudflare, persist Supabase project, back up to GitHub |
 
-```sql
-UPDATE pipeline_jobs
-SET status = 'completed',
-    completed_at = now(),
-    duration_ms = {duration_ms}
-WHERE id = '{jobId}';
+Agent 5 is not used in V2. Prompt assembly is deterministic so facts, component order, safety
+rules, and visual recipes cannot disappear during another model call.
 
-UPDATE projects
-SET public_url = '{cloudflare_url}',
-    status = 'live',
-    last_deployed_at = now()
-WHERE id = '{projectId}';
+## Candidate Evaluation
+
+Each concept receives up to 100 points:
+
+- 70 deterministic points: document structure, header/hero/CTA, reflow, images/forms,
+  accessibility, and safe output.
+- 30 visual points: hierarchy, typography, composition, trust/CTA, and fit to the brief.
+
+Two independent visual reviews use reversed rubric order. A large disagreement uses the
+lower score. Near-duplicate candidates receive a penalty. A candidate is eligible only when
+it has no hard blocker and reaches `PIPELINE_V2_MIN_SCORE` (default `80`).
+
+The browser gate also checks:
+
+- No horizontal overflow at desktop, mobile, or 320px reflow.
+- No broken images or unlabeled controls.
+- No executable scripts, event handlers, iframes, unsafe URLs, or unapproved form actions.
+- No serious/critical automated Axe violations.
+- Lighthouse performance >= 90 and accessibility/SEO/best-practices >= 95.
+- Lab LCP <= 2.5s, CLS <= 0.1, and TBT <= 200ms.
+
+## Repair Policy
+
+V2 never asks a model to rewrite the entire page after evaluation. It permits one narrow
+JSON patch:
+
+- The document hash must match.
+- Every replacement targets an existing `data-component`.
+- Every component source hash must match.
+- CSS can only be appended to the existing style block.
+- Scripts, event handlers, iframes, new claims, and unsafe URLs are rejected.
+
+Structural failures such as a missing header, hero, CTA, or valid HTML document are not
+repairable. If neither candidate passes after the single repair opportunity, the build fails
+with a clear diagnostic and preserves the last valid state.
+
+## Publish Order
+
+1. Parse the final tested HTML into the deployment artifact.
+2. Deploy to Cloudflare Pages.
+3. Store/update the project record in Supabase.
+4. Commit the artifact to GitHub as a non-critical backup.
+5. Mark the durable job completed and release its lease.
+
+Cloudflare or final Supabase persistence failure fails V2. GitHub backup failure is logged but
+does not take an otherwise live site offline.
+
+## Mini PC Rollout
+
+Run from `Onara_Code`:
+
+```powershell
+supabase db push --linked
+
+cd pipeline
+npm install
+npm run install-browser
+python -m unittest discover -s tests -p "test_*.py"
 ```
 
-### 9. Email Notification (Deployment → Resend)
+Set these in `pipeline/.env`:
 
-- The deployment module triggers `POST https://api.resend.com/emails`
-- Template: "Site Live" (see `wiki/content/email-copy.md`)
-- Variables: `{{first_name}}`, `{{site_url}}`, `{{business_name}}`
-- From: `hello@onara.tech` (`RESEND_FROM_EMAIL`)
-- Sent within seconds of Cloudflare deployment confirming
+```dotenv
+PIPELINE_V2_ENABLED=true
+PIPELINE_V2_BROWSER_AUDIT_TIMEOUT=75
+PIPELINE_V2_CANDIDATE_TIMEOUT=150
+PIPELINE_V2_LEASE_SECONDS=60
+PIPELINE_V2_MAX_ATTEMPTS=3
+PIPELINE_V2_MIN_SCORE=80
+AI_NIM_CONCURRENCY=3
+AI_OLLAMA_CONCURRENCY=1
+AI_COPILOT_CONCURRENCY=1
+```
 
-### 10. SSE Close
+Restart the PM2 pipeline process after installing the Node browser dependencies and applying
+the migration. Roll back immediately by setting `PIPELINE_V2_ENABLED=false` and restarting
+PM2; existing legacy generation remains intact.
 
-- FastAPI emits `event: complete\ndata: { "siteUrl": "..." }`
-- Browser receives event → redirects to `/dashboard/sites/{siteId}` showing live preview
-- SSE connection closed
+## Related Files
 
----
-
-## Error Handling
-
-| Failure Point | Behavior |
-|---------------|----------|
-| FastAPI unreachable | Next.js returns `503`; user sees "Pipeline offline" banner |
-| Agent exceeds 3 retries | Job marked `failed`; SSE `event: error`; user notified |
-| Cloudflare API error | Job marked `failed`; retry queued for 5 minutes |
-| GitHub commit fails | Logged; job still marked `completed` (non-critical path) |
-| Resend email fails | Logged; job still `completed` (non-critical path) |
-| Job exceeds `PIPELINE_JOB_TIMEOUT` (600s) | Hard-killed; marked `timeout`; user sees error |
-
----
-
-## Concurrency
-
-- `PIPELINE_MAX_CONCURRENCY` (default: 1 for local Ollama dev) — max simultaneous jobs
-- Jobs beyond limit are queued (in-memory v1.0; Redis v1.5+)
-- Queue position shown in SSE: `event: queued\ndata: { "position": 2 }`
-
----
-
-## Environment Variables
-
-| Variable | Used By | Purpose |
-|----------|---------|---------|
-| `PIPELINE_SERVER_URL` | Next.js | FastAPI base URL |
-| `PIPELINE_API_SECRET` | Both | Shared secret for Next.js → FastAPI auth |
-| `PIPELINE_MAX_CONCURRENCY` | FastAPI | Max simultaneous jobs |
-| `PIPELINE_JOB_TIMEOUT` | FastAPI | Hard timeout per job (seconds) |
-| `CLOUDFLARE_ACCOUNT_ID` | FastAPI deployment module | Cloudflare API auth |
-| `CLOUDFLARE_API_TOKEN` | FastAPI deployment module | Cloudflare API auth |
-| `GITHUB_APP_ID` | FastAPI deployment module | GitHub App auth |
-| `GITHUB_APP_PRIVATE_KEY` | FastAPI deployment module | GitHub App auth |
-| `GITHUB_APP_INSTALLATION_ID` | FastAPI deployment module | GitHub App auth |
-| `GITHUB_REPO_OWNER` | FastAPI (Agent 10) | Target repo owner |
-| `GITHUB_REPO_NAME` | FastAPI (Agent 10) | Always `onara-sites` |
-| `RESEND_API_KEY` | Next.js | Email delivery |
-
-Full variable reference: `wiki/architecture/env-vars.md`
+- `Onara_Code/pipeline/onara_pipeline/job_queue.py`
+- `Onara_Code/pipeline/onara_pipeline/durable_jobs.py`
+- `Onara_Code/pipeline/onara_pipeline/v2/`
+- `Onara_Code/pipeline/browser_audit.mjs`
+- `Onara_Code/supabase/migrations/022_pipeline_v2_durable_jobs.sql`
+- `wiki/ai_agents/workflows.md`
+- `wiki/features/build-flow.md`

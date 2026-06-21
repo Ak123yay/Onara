@@ -1,4 +1,7 @@
 import asyncio
+from contextlib import asynccontextmanager
+
+import httpx
 
 from onara_pipeline.ai_client.errors import (
     AIClientError,
@@ -15,7 +18,12 @@ from onara_pipeline.ai_client.types import AIRequest, AIResponse
 from onara_pipeline.config import Settings
 
 RATE_LIMIT_RETRY_DELAY_SECONDS = 15.0
-FALLBACK_ERRORS = (AIConfigurationError, AIRateLimitError, AIServiceUnavailableError)
+FALLBACK_ERRORS = (
+    AIConfigurationError,
+    AIProviderError,
+    AIRateLimitError,
+    AIServiceUnavailableError,
+)
 
 
 class AIClient:
@@ -27,12 +35,20 @@ class AIClient:
         nim: NIMClient,
         ollama: OllamaClient,
         retry_base_delay: float,
+        copilot_concurrency: int = 1,
+        nim_concurrency: int = 2,
+        ollama_concurrency: int = 1,
     ) -> None:
         self.copilot = copilot
         self.max_retries = max_retries
         self.nim = nim
         self.ollama = ollama
         self.retry_base_delay = retry_base_delay
+        self._provider_limits = {
+            "copilot": asyncio.Semaphore(copilot_concurrency),
+            "nim": asyncio.Semaphore(nim_concurrency),
+            "ollama": asyncio.Semaphore(ollama_concurrency),
+        }
 
     async def generate_text(self, *, request: AIRequest, route: ModelRoute) -> AIResponse:
         fallback_reasons: list[str] = []
@@ -67,7 +83,8 @@ class AIClient:
 
         for attempt in range(self.max_retries + 1):
             try:
-                return await self._provider(provider).generate(model=model, request=request)
+                async with self._provider_limits[provider]:
+                    return await self._provider(provider).generate(model=model, request=request)
             except AIConfigurationError:
                 raise
             except AIRateLimitError as exc:
@@ -94,7 +111,11 @@ class AIClient:
         raise AIProviderError(f"Unsupported model provider: {provider}")
 
 
-def build_ai_client(settings: Settings) -> AIClient:
+def build_ai_client(
+    settings: Settings,
+    *,
+    http_client: httpx.AsyncClient | None = None,
+) -> AIClient:
     return AIClient(
         copilot=CopilotSDKClient(
             base_directory=settings.copilot_base_directory,
@@ -105,11 +126,22 @@ def build_ai_client(settings: Settings) -> AIClient:
         nim=NIMClient(
             api_key=settings.nvidia_nim_api_key,
             base_url=settings.nvidia_nim_base_url,
+            http_client=http_client,
             timeout=settings.ai_request_timeout,
         ),
         ollama=OllamaClient(
             base_url=settings.ollama_base_url,
+            http_client=http_client,
             timeout=settings.ai_request_timeout,
         ),
         retry_base_delay=settings.ai_retry_base_delay,
+        copilot_concurrency=settings.ai_copilot_concurrency,
+        nim_concurrency=settings.ai_nim_concurrency,
+        ollama_concurrency=settings.ai_ollama_concurrency,
     )
+
+
+@asynccontextmanager
+async def ai_client_for_job(settings: Settings):
+    async with httpx.AsyncClient(timeout=settings.ai_request_timeout) as http_client:
+        yield build_ai_client(settings, http_client=http_client)

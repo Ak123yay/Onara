@@ -1,11 +1,14 @@
 import asyncio
+import hashlib
 import json
+import socket
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Any, Literal
 from uuid import UUID, uuid4
 
 from onara_pipeline.config import Settings
+from onara_pipeline.durable_jobs import DurableJobStoreError
 from onara_pipeline.schemas import GenerateRequest, QueueStats
 
 JobStatus = Literal["queued", "running", "completed", "failed"]
@@ -22,6 +25,11 @@ class PipelineJob:
     business_data: dict
     style_preferences: dict
     request_signature: str
+    pipeline_version: str = "v1"
+    stage: str = "queued"
+    eta_seconds: int | None = None
+    attempt: int = 0
+    event_sequence: int = 0
     agents_completed: int = 0
     agents_total: int = 10
     blackboard: dict[str, Any] = field(default_factory=dict)
@@ -47,8 +55,23 @@ class JobQueue:
         self._queued_job_ids: list[str] = []
         self._project_to_job_id: dict[str, str] = {}
         self._worker_tasks: set[asyncio.Task[None]] = set()
+        self._settings: Settings | None = None
+        self._durable_store = None
+        self._worker_id = f"{socket.gethostname()}:{uuid4().hex[:8]}"
 
-    async def enqueue(self, request: GenerateRequest) -> EnqueueResult:
+    async def enqueue(self, request: GenerateRequest, settings: Settings) -> EnqueueResult:
+        signature = request_signature(request)
+        if settings.pipeline_v2_enabled:
+            existing_row = await self._store(settings).find_active(
+                request_signature=signature,
+                user_id=request.user_id,
+            )
+            if existing_row:
+                return EnqueueResult(
+                    job=await self._hydrate_durable_job(existing_row, settings),
+                    deduped=True,
+                )
+
         async with self._lock:
             project_key = _project_key_for_request(request)
             project_id = _project_id_for_request(request)
@@ -59,7 +82,7 @@ class JobQueue:
 
                 if (
                     existing_job.status in {"queued", "running"}
-                    and existing_job.request_signature == request_signature(request)
+                    and existing_job.request_signature == signature
                 ):
                     existing_job.updated_at = datetime.now(timezone.utc)
                     return EnqueueResult(job=existing_job, deduped=True)
@@ -74,15 +97,44 @@ class JobQueue:
                 user_plan=request.user_plan,
                 business_data=request.business_data,
                 style_preferences=request.style_preferences,
-                request_signature=request_signature(request),
+                request_signature=signature,
+                agents_total=7 if settings.pipeline_v2_enabled else 10,
+                pipeline_version="v2" if settings.pipeline_v2_enabled else "v1",
             )
 
             self._jobs[job_id] = job
             self._queued_job_ids.append(job_id)
             self._project_to_job_id[project_key] = job_id
-            return EnqueueResult(job=job, deduped=False)
+
+        if settings.pipeline_v2_enabled:
+            try:
+                await self._store(settings).enqueue(job)
+            except Exception:
+                try:
+                    existing_row = await self._store(settings).find_active(
+                        request_signature=signature,
+                        user_id=request.user_id,
+                    )
+                except Exception:
+                    existing_row = None
+                async with self._lock:
+                    self._jobs.pop(job_id, None)
+                    if job_id in self._queued_job_ids:
+                        self._queued_job_ids.remove(job_id)
+                    if self._project_to_job_id.get(project_key) == job_id:
+                        self._project_to_job_id.pop(project_key, None)
+                if existing_row:
+                    return EnqueueResult(
+                        job=await self._hydrate_durable_job(existing_row, settings),
+                        deduped=True,
+                    )
+                raise
+        return EnqueueResult(job=job, deduped=False)
 
     async def start_workers(self, settings: Settings) -> None:
+        self._settings = settings
+        if settings.pipeline_v2_enabled:
+            await self._recover_durable_jobs(settings)
         async with self._lock:
             self._worker_tasks = {task for task in self._worker_tasks if not task.done()}
             target_workers = max(1, settings.pipeline_max_concurrency)
@@ -92,9 +144,16 @@ class JobQueue:
                 task.add_done_callback(self._consume_worker_exception)
                 self._worker_tasks.add(task)
 
-    async def get(self, job_id: str) -> PipelineJob | None:
+    async def get(self, job_id: str, settings: Settings | None = None) -> PipelineJob | None:
         async with self._lock:
-            return self._jobs.get(job_id)
+            job = self._jobs.get(job_id)
+        if job or not settings or not settings.pipeline_v2_enabled:
+            return job
+
+        row = await self._store(settings).get(job_id)
+        if not row:
+            return None
+        return await self._hydrate_durable_job(row, settings)
 
     async def position(self, job_id: str) -> int | None:
         async with self._lock:
@@ -110,10 +169,13 @@ class JobQueue:
 
     async def _worker_loop(self, settings: Settings) -> None:
         while True:
-            job = await self._claim_next_job()
+            job = await self._claim_next_job(settings)
             if not job:
                 return
 
+            heartbeat_task = None
+            if job.pipeline_version == "v2":
+                heartbeat_task = asyncio.create_task(self._heartbeat_loop(job, settings))
             try:
                 await asyncio.wait_for(
                     self._run_job(job, settings),
@@ -127,6 +189,13 @@ class JobQueue:
                 )
             except Exception as exc:
                 await self._handle_job_failure(job, settings, exc)
+            finally:
+                if heartbeat_task:
+                    heartbeat_task.cancel()
+                    try:
+                        await heartbeat_task
+                    except asyncio.CancelledError:
+                        pass
 
     async def _run_job(self, job: PipelineJob, settings: Settings) -> None:
         from onara_pipeline.agents import run_phase_18, run_phase_19, run_phase_20, run_phase_21
@@ -146,49 +215,60 @@ class JobQueue:
             status="generating",
         )
         await self._enrich_business_photos(job, settings, progress)
-        await self._run_supervised_phase(
-            job=job,
-            progress=progress,
-            runner=lambda: run_phase_18(job, settings, progress),
-            settings=settings,
-            stage="after_phase_18",
-        )
-        await self.record_progress(
-            job.job_id,
-            "phase_completed",
-            None,
-            "Phase 18 completed. Agents 1-3 outputs are ready.",
-            {"phase": "phase_18"},
-        )
-        await self._run_supervised_phase(
-            job=job,
-            progress=progress,
-            runner=lambda: run_phase_19(job, settings, progress),
-            settings=settings,
-            stage="after_phase_19",
-        )
-        await self.record_progress(
-            job.job_id,
-            "phase_completed",
-            None,
-            "Phase 19 completed. Agents 4-5 outputs are ready.",
-            {"phase": "phase_19"},
-        )
-        await self._run_supervised_phase(
-            job=job,
-            progress=progress,
-            runner=lambda: run_phase_20(job, settings, progress),
-            settings=settings,
-            stage="after_phase_20",
-        )
-        await self.record_progress(
-            job.job_id,
-            "phase_completed",
-            None,
-            "Phase 20 completed. Agent 6 draft is ready for debugging.",
-            {"phase": "phase_20"},
-        )
-        await run_phase_21(job, settings, progress)
+        if job.pipeline_version == "v2":
+            from onara_pipeline.v2 import run_pipeline_v2
+
+            await run_pipeline_v2(
+                job,
+                settings,
+                progress,
+                lambda candidate: self._persist_candidate(job, candidate, settings),
+            )
+        else:
+            await self._run_supervised_phase(
+                job=job,
+                progress=progress,
+                runner=lambda: run_phase_18(job, settings, progress),
+                settings=settings,
+                stage="after_phase_18",
+            )
+            await self.record_progress(
+                job.job_id,
+                "phase_completed",
+                None,
+                "Phase 18 completed. Agents 1-3 outputs are ready.",
+                {"phase": "phase_18"},
+            )
+            await self._run_supervised_phase(
+                job=job,
+                progress=progress,
+                runner=lambda: run_phase_19(job, settings, progress),
+                settings=settings,
+                stage="after_phase_19",
+            )
+            await self.record_progress(
+                job.job_id,
+                "phase_completed",
+                None,
+                "Phase 19 completed. Agents 4-5 outputs are ready.",
+                {"phase": "phase_19"},
+            )
+            await self._run_supervised_phase(
+                job=job,
+                progress=progress,
+                runner=lambda: run_phase_20(job, settings, progress),
+                settings=settings,
+                stage="after_phase_20",
+            )
+            await self.record_progress(
+                job.job_id,
+                "phase_completed",
+                None,
+                "Phase 20 completed. Agent 6 draft is ready for debugging.",
+                {"phase": "phase_20"},
+            )
+            await run_phase_21(job, settings, progress)
+
         await self._prepare_deployment_artifact(job, settings, progress)
         await self._update_project_record_status(
             job,
@@ -196,12 +276,39 @@ class JobQueue:
             current_agent="deploying",
             status="deploying",
         )
-        await self._commit_deployment_files_to_github(job, settings, progress)
+        if job.pipeline_version == "v2":
+            await self.record_progress(
+                job.job_id,
+                "stage_started",
+                "publishing",
+                "Publishing the tested website.",
+                {"eta_seconds": 15, "stage": "publishing"},
+            )
         await self._deploy_to_cloudflare_pages(job, settings, progress)
         await self._store_project_record_in_supabase(job, settings, progress)
-        training_consent = await self._load_training_data_consent(job, settings, progress)
-        await self._save_curated_rag_patterns(job, settings, progress, training_consent=training_consent)
-        await self._store_training_example(job, settings, progress, training_consent=training_consent)
+        await self._commit_deployment_files_to_github(job, settings, progress)
+        if job.pipeline_version == "v2":
+            await self.record_progress(
+                job.job_id,
+                "stage_completed",
+                "publishing",
+                "Your website is live.",
+                {"eta_seconds": 0, "stage": "publishing"},
+            )
+        await self._mark_completed(job.job_id)
+
+        try:
+            training_consent = await self._load_training_data_consent(job, settings, progress)
+            await self._save_curated_rag_patterns(job, settings, progress, training_consent=training_consent)
+            await self._store_training_example(job, settings, progress, training_consent=training_consent)
+        except Exception as exc:
+            await self.record_progress(
+                job.job_id,
+                "learning_warning",
+                None,
+                "The live site is safe; the optional learning record could not be saved.",
+                {"error": str(exc)[:500], "phase": "training_data"},
+            )
         await self.record_progress(
             job.job_id,
             "phase_completed",
@@ -209,7 +316,6 @@ class JobQueue:
             "Phase 22 deployment pipeline completed.",
             {"phase": "phase_22"},
         )
-        await self._mark_completed(job.job_id)
 
     async def _handle_job_failure(self, job: PipelineJob, settings: Settings, exc: Exception) -> None:
         active_agent = _agent_phase_for_error(job)
@@ -468,6 +574,8 @@ class JobQueue:
                 "Supabase project record store failed; deployment artifacts remain available.",
                 {"phase": "phase_22_supabase", "supabase_project": payload},
             )
+            if job.pipeline_version == "v2":
+                raise
 
     async def _update_project_record_status(
         self,
@@ -763,23 +871,69 @@ class JobQueue:
 
             raise BlackboardSupervisorError(f"Unsupported Blackboard Supervisor action: {decision.action}")
 
-    async def _claim_next_job(self) -> PipelineJob | None:
-        async with self._lock:
-            if not self._queued_job_ids:
-                return None
+    async def _claim_next_job(self, settings: Settings) -> PipelineJob | None:
+        while True:
+            async with self._lock:
+                if not self._queued_job_ids:
+                    return None
 
-            job_id = self._queued_job_ids.pop(0)
-            job = self._jobs[job_id]
-            job.status = "running"
-            job.updated_at = datetime.now(timezone.utc)
-            job.progress_log.append(
-                {
-                    "event": "pipeline_started",
-                    "message": "Phase 18-21 worker started.",
-                    "timestamp": job.updated_at.isoformat(),
-                }
-            )
+                job_id = self._queued_job_ids.pop(0)
+                job = self._jobs[job_id]
+
+            if job.pipeline_version == "v2":
+                try:
+                    claim = await self._store(settings).claim(
+                        job_id=job.job_id,
+                        worker_id=self._effective_worker_id(settings),
+                    )
+                except DurableJobStoreError:
+                    await self._requeue_durable_job(job.job_id)
+                    await asyncio.sleep(2)
+                    continue
+                if not claim:
+                    try:
+                        row = await self._store(settings).get(job.job_id)
+                    except DurableJobStoreError:
+                        await self._requeue_durable_job(job.job_id)
+                        await asyncio.sleep(2)
+                        continue
+                    if row and str(row.get("status") or "") in {"queued", "running"}:
+                        await self._requeue_durable_job(job.job_id)
+                        await asyncio.sleep(_lease_retry_delay(row.get("lease_expires_at")))
+                    elif row:
+                        async with self._lock:
+                            job.status = (
+                                "completed"
+                                if str(row.get("status")) in {"done", "completed"}
+                                else "failed"
+                            )
+                            job.stage = str(row.get("stage") or job.stage)
+                            job.error_message = _optional_string(row.get("error_message"))
+                    continue
+                job.attempt = int(claim.row.get("attempt") or job.attempt + 1)
+                job.stage = str(claim.row.get("stage") or "normalizing")
+
+            async with self._lock:
+                job.status = "running"
+                job.updated_at = datetime.now(timezone.utc)
+                job.progress_log.append(
+                    {
+                        "event": "pipeline_started",
+                        "message": (
+                            "Pipeline V2 durable worker started."
+                            if job.pipeline_version == "v2"
+                            else "Phase 18-21 worker started."
+                        ),
+                        "stage": job.stage,
+                        "timestamp": job.updated_at.isoformat(),
+                    }
+                )
             return job
+
+    async def _requeue_durable_job(self, job_id: str) -> None:
+        async with self._lock:
+            if job_id in self._jobs and job_id not in self._queued_job_ids:
+                self._queued_job_ids.append(job_id)
 
     async def _enrich_business_photos(self, job: PipelineJob, settings: Settings, progress: Any) -> None:
         from onara_pipeline.agents.photos import enrich_business_photos
@@ -811,15 +965,16 @@ class JobQueue:
         message: str,
         extra: dict[str, Any] | None = None,
     ) -> None:
+        durable_payload: dict[str, Any] | None = None
         async with self._lock:
             job = self._jobs.get(job_id)
             if not job:
                 return
 
             now = datetime.now(timezone.utc)
-            if event == "agent_started":
+            if event in {"agent_started", "stage_started"}:
                 job.current_agent = agent_id
-            elif event == "agent_completed":
+            elif event in {"agent_completed", "stage_completed"}:
                 job.current_agent = None
                 if agent_id and agent_id not in job.completed_agent_ids:
                     job.completed_agent_ids.add(agent_id)
@@ -834,13 +989,47 @@ class JobQueue:
             }
             if extra:
                 entry.update(extra)
+                if isinstance(extra.get("stage"), str):
+                    job.stage = str(extra["stage"])
+                if isinstance(extra.get("eta_seconds"), int):
+                    job.eta_seconds = max(0, int(extra["eta_seconds"]))
+                if isinstance(extra.get("candidate"), dict):
+                    _merge_candidate_summary(job, extra["candidate"])
             job.progress_log.append(entry)
+            job.event_sequence += 1
+            durable_payload = {
+                "agent_id": agent_id,
+                "event": event,
+                "job_id": job_id,
+                "message": message,
+                "payload": _durable_event_payload(extra or {}),
+                "sequence": job.event_sequence,
+                "stage": job.stage,
+            }
+
+        if job.pipeline_version == "v2" and self._settings and durable_payload:
+            store = self._store(self._settings)
+            await store.append_event(**durable_payload)
+            await store.update(
+                job_id,
+                fields={
+                    "agents_completed": job.agents_completed,
+                    "agents_total": job.agents_total,
+                    "eta_seconds": job.eta_seconds,
+                    "phase": _legacy_phase_for_stage(job.stage),
+                    "stage": job.stage,
+                    "stage_state": _stage_state_snapshot(job),
+                },
+            )
 
     async def _mark_completed(self, job_id: str) -> None:
         async with self._lock:
             job = self._jobs[job_id]
             now = datetime.now(timezone.utc)
             job.status = "completed"
+            job.stage = "completed"
+            job.eta_seconds = 0
+            job.agents_completed = job.agents_total
             job.current_agent = None
             job.updated_at = now
             job.progress_log.append(
@@ -850,6 +1039,26 @@ class JobQueue:
                     "phase": "phase_22_cloudflare",
                     "timestamp": now.isoformat(),
                 }
+            )
+        if job.pipeline_version == "v2" and self._settings:
+            await self._store(self._settings).update(
+                job_id,
+                fields={
+                    "agents_completed": job.agents_total,
+                    "completed_at": now.isoformat(),
+                    "duration_ms": _generation_ms(job),
+                    "eta_seconds": 0,
+                    "lease_expires_at": None,
+                    "lease_owner": None,
+                    "result_summary": {
+                        "fallback_used": bool(job.blackboard.get("fallback_used")),
+                        "public_url": job.blackboard.get("public_url"),
+                        "quality_badges": job.blackboard.get("quality_badges", []),
+                        "selected_candidate_id": job.blackboard.get("selected_candidate_id"),
+                    },
+                    "stage": "completed",
+                    "status": "completed",
+                },
             )
 
     async def _mark_failed(self, job_id: str, exc: Exception) -> None:
@@ -868,6 +1077,194 @@ class JobQueue:
                     "timestamp": now.isoformat(),
                 }
             )
+        if job.pipeline_version == "v2" and self._settings:
+            await self._store(self._settings).update(
+                job_id,
+                fields={
+                    "error_agent": _legacy_phase_for_stage(job.stage),
+                    "error_message": str(exc)[:4000],
+                    "lease_expires_at": None,
+                    "lease_owner": None,
+                    "stage": "failed",
+                    "status": "failed",
+                },
+            )
+
+    def _store(self, settings: Settings):
+        from onara_pipeline.durable_jobs import DurableJobStore
+
+        if self._durable_store is None or self._durable_store.settings is not settings:
+            self._durable_store = DurableJobStore(settings)
+        self._durable_store.require_enabled()
+        return self._durable_store
+
+    async def _recover_durable_jobs(self, settings: Settings) -> None:
+        rows = await self._store(settings).recoverable()
+        for row in rows:
+            if int(row.get("attempt") or 0) >= settings.pipeline_v2_max_attempts:
+                await self._store(settings).update(
+                    str(row["id"]),
+                    fields={
+                        "error_message": "Pipeline V2 exhausted its durable retry attempts",
+                        "stage": "failed",
+                        "status": "failed",
+                    },
+                )
+                continue
+            await self._hydrate_durable_job(row, settings, enqueue=True)
+
+    async def _hydrate_durable_job(
+        self,
+        row: dict[str, Any],
+        settings: Settings,
+        *,
+        enqueue: bool = False,
+    ) -> PipelineJob:
+        job_id = str(row.get("id") or "")
+        async with self._lock:
+            existing = self._jobs.get(job_id)
+            if existing:
+                if enqueue and existing.status in {"queued", "running"} and job_id not in self._queued_job_ids:
+                    self._queued_job_ids.append(job_id)
+                return existing
+
+        payload = row.get("request_payload") if isinstance(row.get("request_payload"), dict) else {}
+        events = await self._store(settings).events(job_id)
+        candidate_rows = await self._store(settings).candidates(job_id)
+        progress_log = []
+        completed_agent_ids: set[str] = set()
+        event_sequence = 0
+        for event in events:
+            extra = event.get("payload") if isinstance(event.get("payload"), dict) else {}
+            event_sequence = max(event_sequence, int(event.get("sequence") or 0))
+            if event.get("event") in {"agent_completed", "stage_completed"} and event.get("agent_id"):
+                completed_agent_ids.add(str(event["agent_id"]))
+            progress_log.append(
+                {
+                    "agent_id": event.get("agent_id"),
+                    "event": event.get("event"),
+                    "message": event.get("message"),
+                    "timestamp": event.get("created_at"),
+                    **extra,
+                }
+            )
+        status = str(row.get("status") or "queued")
+        normalized_status: JobStatus = "completed" if status in {"done", "completed"} else status  # type: ignore[assignment]
+        job = PipelineJob(
+            agent_6_model=_optional_string(payload.get("agent_6_model")),
+            agents_completed=int(row.get("agents_completed") or 0),
+            agents_total=int(row.get("agents_total") or 7),
+            attempt=int(row.get("attempt") or 0),
+            business_data=payload.get("business_data") if isinstance(payload.get("business_data"), dict) else {},
+            created_at=_parse_datetime(row.get("created_at") or row.get("queued_at")),
+            error_message=_optional_string(row.get("error_message")),
+            eta_seconds=_optional_int(row.get("eta_seconds")),
+            event_sequence=event_sequence,
+            is_trial=bool(payload.get("is_trial")),
+            job_id=job_id,
+            pipeline_version="v2",
+            progress_log=progress_log,
+            project_id=str(row.get("project_id") or payload.get("project_id") or ""),
+            request_signature=str(row.get("request_signature") or ""),
+            stage=str(row.get("stage") or "queued"),
+            status=normalized_status,
+            style_preferences=payload.get("style_preferences")
+            if isinstance(payload.get("style_preferences"), dict)
+            else {},
+            updated_at=_parse_datetime(row.get("updated_at")),
+            user_id=str(row.get("user_id") or payload.get("user_id") or ""),
+            user_plan=str(payload.get("user_plan") or "free"),
+        )
+        job.completed_agent_ids = completed_agent_ids
+        stage_state = row.get("stage_state") if isinstance(row.get("stage_state"), dict) else {}
+        checkpoint = stage_state.get("blackboard") if isinstance(stage_state.get("blackboard"), dict) else {}
+        job.blackboard.update(checkpoint)
+        job.blackboard["recovered_candidate_rows"] = candidate_rows
+        job.blackboard["candidate_summaries"] = [
+            {
+                "candidateKey": row.get("candidate_key"),
+                "deterministicScore": row.get("deterministic_score"),
+                "fallbackUsed": row.get("fallback_used"),
+                "finalScore": row.get("final_score"),
+                "hardBlockers": row.get("hard_blockers") or [],
+                "model": row.get("model"),
+                "provider": row.get("provider"),
+                "recipe": row.get("recipe"),
+                "selected": row.get("status") == "selected",
+                "visualScore": row.get("visual_score"),
+                "warnings": row.get("warnings") or [],
+            }
+            for row in candidate_rows
+        ]
+        result_summary = row.get("result_summary") if isinstance(row.get("result_summary"), dict) else {}
+        job.blackboard.update(
+            {
+                "fallback_used": result_summary.get("fallback_used"),
+                "public_url": result_summary.get("public_url"),
+                "quality_badges": result_summary.get("quality_badges", []),
+                "selected_candidate_id": result_summary.get("selected_candidate_id"),
+            }
+        )
+        async with self._lock:
+            self._jobs[job.job_id] = job
+            self._project_to_job_id[job.project_id] = job.job_id
+            if enqueue and job.status in {"queued", "running"} and job.job_id not in self._queued_job_ids:
+                self._queued_job_ids.append(job.job_id)
+        return job
+
+    async def _heartbeat_loop(self, job: PipelineJob, settings: Settings) -> None:
+        interval = max(5, settings.pipeline_v2_lease_seconds // 4)
+        while True:
+            await asyncio.sleep(interval)
+            try:
+                alive = await self._store(settings).heartbeat(
+                    job_id=job.job_id,
+                    worker_id=self._effective_worker_id(settings),
+                )
+            except Exception:
+                continue
+            if not alive:
+                return
+
+    async def _persist_candidate(self, job: PipelineJob, candidate: Any, settings: Settings) -> None:
+        if job.pipeline_version != "v2":
+            return
+        browser = candidate.browser.model_dump(
+            exclude={"mobile_thumbnail_data_url", "thumbnail_data_url"}
+        )
+        status = (
+            "selected"
+            if candidate.selected
+            else "rejected"
+            if candidate.hard_blockers
+            else "eligible"
+            if candidate.final_score >= settings.pipeline_v2_min_score
+            else "validating"
+        )
+        await self._store(settings).upsert_candidate(
+            candidate_key=candidate.key,
+            job_id=job.job_id,
+            payload={
+                "artifact_html": candidate.html,
+                "deterministic_score": candidate.deterministic_score,
+                "error_message": "; ".join(candidate.hard_blockers[:6]) or None,
+                "fallback_used": candidate.fallback_used or candidate.used_fallback_template,
+                "final_score": candidate.final_score,
+                "fingerprint": candidate.fingerprint,
+                "hard_blockers": candidate.hard_blockers,
+                "model": candidate.model,
+                "provider": candidate.provider,
+                "recipe": candidate.recipe,
+                "render_report": browser,
+                "screenshot_hash": candidate.browser.screenshot_hash,
+                "status": status,
+                "visual_score": candidate.visual_score,
+                "warnings": candidate.warnings,
+            },
+        )
+
+    def _effective_worker_id(self, settings: Settings) -> str:
+        return settings.pipeline_v2_worker_id or self._worker_id
 
     @staticmethod
     def _consume_worker_exception(task: asyncio.Task[None]) -> None:
@@ -1003,7 +1400,7 @@ def _truncate_snapshot_value(value: Any) -> Any:
 
 def request_signature(request: GenerateRequest) -> str:
     """Identify jobs that are truly identical for queue dedupe."""
-    return json.dumps(
+    canonical = json.dumps(
         {
             "agent_6_model": request.agent_6_model,
             "business_data": request.business_data,
@@ -1015,6 +1412,7 @@ def request_signature(request: GenerateRequest) -> str:
         separators=(",", ":"),
         sort_keys=True,
     )
+    return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
 
 def _project_key_for_request(request: GenerateRequest) -> str:
@@ -1038,3 +1436,109 @@ def _generation_ms(job: PipelineJob) -> int:
 
 def _public_job_url(app_url: str, job_id: str) -> str:
     return f"{app_url.rstrip('/')}/{job_id}"
+
+
+def _parse_datetime(value: Any) -> datetime:
+    if isinstance(value, datetime):
+        return value
+    if isinstance(value, str) and value:
+        try:
+            return datetime.fromisoformat(value.replace("Z", "+00:00"))
+        except ValueError:
+            pass
+    return datetime.now(timezone.utc)
+
+
+def _lease_retry_delay(value: Any) -> float:
+    remaining = (_parse_datetime(value) - datetime.now(timezone.utc)).total_seconds()
+    return max(0.25, min(5.0, remaining if remaining > 0 else 0.25))
+
+
+def _optional_string(value: Any) -> str | None:
+    if value in (None, ""):
+        return None
+    return str(value)
+
+
+def _optional_int(value: Any) -> int | None:
+    try:
+        return int(value) if value not in (None, "") else None
+    except (TypeError, ValueError):
+        return None
+
+
+def _legacy_phase_for_stage(stage: str) -> str:
+    return {
+        "queued": "analyst",
+        "normalizing": "analyst",
+        "understanding_business": "analyst",
+        "writing_content": "content_writer",
+        "designing_concepts": "planner",
+        "building_candidates": "code_generator",
+        "testing_candidates": "qa_agent",
+        "polishing": "mobile_agent",
+        "publishing": "deploying",
+        "completed": "deploying",
+        "failed": "deploying",
+    }.get(stage, "analyst")
+
+
+def _stage_state_snapshot(job: PipelineJob) -> dict[str, Any]:
+    checkpoint_keys = (
+        "analyst_output",
+        "content_output",
+        "style_output",
+        "planner_output",
+        "prompt_output",
+        "prompt_b_output",
+        "selected_candidate_id",
+        "quality_badges",
+    )
+    checkpoint = {
+        key: job.blackboard[key]
+        for key in checkpoint_keys
+        if key in job.blackboard
+    }
+    return {
+        "blackboard": checkpoint,
+        "completed_stage_ids": sorted(job.completed_agent_ids),
+        "current_stage": job.stage,
+        "eta_seconds": job.eta_seconds,
+        "quality_badges": job.blackboard.get("quality_badges", []),
+        "selected_candidate_id": job.blackboard.get("selected_candidate_id"),
+    }
+
+
+def _durable_event_payload(payload: dict[str, Any]) -> dict[str, Any]:
+    """Persist recovery metadata without storing large screenshot data URLs."""
+    sanitized = dict(payload)
+    candidate = sanitized.get("candidate")
+    if isinstance(candidate, dict) and "thumbnailDataUrl" in candidate:
+        sanitized["candidate"] = {
+            key: value
+            for key, value in candidate.items()
+            if key != "thumbnailDataUrl"
+        }
+    return sanitized
+
+
+def _merge_candidate_summary(job: PipelineJob, candidate: dict[str, Any]) -> None:
+    candidate_key = candidate.get("candidateKey")
+    if not candidate_key:
+        return
+    summaries = job.blackboard.get("candidate_summaries")
+    current = [item for item in summaries if isinstance(item, dict)] if isinstance(summaries, list) else []
+    merged = []
+    replaced = False
+    for item in current:
+        if item.get("candidateKey") == candidate_key:
+            merged.append({**item, **candidate})
+            replaced = True
+        else:
+            merged.append(item)
+    if not replaced:
+        merged.append(candidate)
+    job.blackboard["candidate_summaries"] = sorted(
+        merged,
+        key=lambda item: str(item.get("candidateKey") or ""),
+    )

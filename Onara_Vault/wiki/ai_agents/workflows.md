@@ -1,121 +1,129 @@
-# Agent Workflows — Onara Pipeline
+# Generation Workflows - Onara Pipeline
 
-_Pipeline sequencing, Blackboard pattern, parallel execution, SSE streaming, retry logic. Source: raw/03_agent_prompts.md + raw/Onara_Business_Plan_v12.md._
+_The model, deterministic, browser, and deployment work behind Pipeline V2._
 
----
+## Core Principle
 
-## Execution Model
+Models create content and complete website candidates. Deterministic code owns contracts,
+fact safety, prompt assembly, browser gates, patch application, final SEO/mobile safeguards,
+job state, and deployment.
 
-The pipeline uses a **Blackboard pattern** — a shared Python dict passed between agents. The Supervisor validates output between every step. No LangChain/LangGraph (see ADR-001).
+This avoids two unreliable patterns from V1:
 
----
+- Asking another model to translate good upstream work into a code prompt.
+- Repeatedly rewriting the full HTML document after QA finds a local issue.
 
-## Pipeline Sequence
+## V2 Sequence
 
-```
-Job received by FastAPI
-    │
-    ▼
-[QUEUE MANAGER] — dedup by project_id, assign position
-    │
-    ▼
-[AGENT 1 — Analyst]          z-ai/glm-5.1 (NIM)
-    │ → blackboard.analyst_output
-    ▼
-┌──── PARALLEL ────┐
-│                  │
-[AGENT 2]       [AGENT 3]
-Content Writer  Style Agent
-qwen3.5:9b        qwen3.5:9b
-    │                │
-    └───────┬─────────┘
-            ▼
-[AGENT 4 — Planner]          z-ai/glm-5.1 (NIM)
-    │ → blackboard.planner_output
-    ▼
-[AGENT 5 — Prompt Engineer]  z-ai/glm-5.1 (NIM)
-    │ → blackboard.prompt_output
-    ▼
-[AGENT 6 — Code Generator]   z-ai/glm-5.1 / Claude (Pro)
-    │ → blackboard.raw_code
-    ▼
-[AGENT 7 — Debugger]         z-ai/glm-5.1 (NIM)
-    │ → blackboard.debugged_code
-    ▼
-[AGENT 8 — SEO Agent]        qwen3.5:9b (Ollama)
-    │ → blackboard.seo_code
-    ▼
-[AGENT 9 — QA Agent]         z-ai/glm-5.1 (NIM)
-    │ FAIL → retry from Agent 6 (max 2)
-    │ PASS → blackboard.qa_result
-    ▼
-[AGENT 10 — Mobile Agent]    qwen3.5:9b (Ollama)
-    │ → blackboard.final_html
-    ▼
-[DEPLOYMENT]
-  1. Cloudflare Pages Direct Upload → {id}.pages.dev
-  2. GitHub commit → onara-sites/{projectId}/index.html
-  3. Supabase storage backup
-  4. Update project: status='live', public_url
-  5. Resend email: "Your site is live"
+```text
+Durable claim + heartbeat
+  |
+  +-- Analyst
+  |
+  +-- Content Writer -----+
+  |                       +-- parallel
+  +-- Style Agent --------+
+  |
+  +-- Planner
+  +-- deterministic prompt compiler
+  |
+  +-- Candidate A --------+
+  |                       +-- parallel model routes
+  +-- Candidate B --------+
+  |
+  +-- Playwright/Axe/Lighthouse audit for each
+  +-- two independent visual reviews for each
+  |
+  +-- select strongest eligible candidate
+  +-- optional one bounded component patch
+  |
+  +-- deterministic Debugger -> SEO -> Mobile -> QA
+  +-- final browser release audit
+  |
+  +-- Cloudflare -> Supabase -> GitHub
 ```
 
----
+## Typed Contracts
 
-## Parallelism
+V2 uses Pydantic contracts in `onara_pipeline/v2/contracts.py`:
 
-Agents 2 and 3 run concurrently — independent inputs, both write to blackboard before Agent 4 starts. All other agents are strictly sequential.
+- `BusinessBrief`: normalized business identity, contact, services, hours, and proof.
+- `FactEntry`: each usable fact plus its source (`google`, `manual`, `account`, `derived`).
+- `AssetEntry`: exact photo URL, alt text, source, and attribution.
+- `GenerationSpec`: immutable facts/assets/preferences plus two visual recipes.
+- `CandidateArtifact`: HTML, route, browser report, scores, blockers, and selection state.
+- `PatchSet`: document hash, component source hashes, replacements, and CSS append.
 
----
+Business input is explicitly labeled untrusted content in the compiled prompt. It is data, not
+an instruction channel.
 
-## Retry Logic
+## Model Use
 
-| Attempt | Action |
-|---------|--------|
-| 1st failure | Retry same agent, same prompt |
-| 2nd failure | Retry with fallback model |
-| 3rd failure | Job marked `failed`; `error_agent` set; `pipeline_failed` SSE event |
+- Analyst, Content Writer, Style Agent, and Planner keep their existing validated outputs.
+- Content Writer and Style Agent run concurrently.
+- Candidate A uses the user/plan-selected Agent 6 route.
+- Candidate B uses a distinct benchmarked NIM route.
+- Each candidate can fall back through its own route.
+- Two visual reviews use the NIM vision model and reversed rubric order.
+- Provider semaphores prevent accidental local Ollama overload.
+- One shared HTTP client is reused for the whole job.
 
-Failed retries do not deduct a user revision. QA failures retry from Agent 6 only — not from Agent 1.
+If both candidate model routes fail, the deterministic fallback template remains an emergency
+path. It is labeled in job state and must still pass the same browser release gates.
 
----
+## Prompt Compiler
 
-## SSE Progress Stream
+`v2/prompt_compiler.py` combines:
 
-Client opens `GET /api/stream/:job_id` immediately after receiving `job_id`.
+- Verified business brief and fact ledger.
+- Exact deploy-safe photo assets.
+- Validated content, style tokens, and planner blueprint.
+- Onara generation/theme contracts.
+- One controlled visual recipe.
+- Structural, responsive, accessibility, contact, and security rules.
 
-```
-event: agent_started
-data: {"agent": "analyst", "started_at": "..."}
+Prompt output is capped at 40,000 characters. Candidate A and B always use different recipes.
 
-event: agent_completed
-data: {"agent": "analyst", "duration_ms": 3200, "agents_completed": 1}
+## Browser and Visual Evaluation
 
-event: pipeline_done
-data: {"job_id": "...", "preview_url": "...", "public_url": "...", "total_ms": 54000}
+`browser_audit.mjs` hosts each candidate on an isolated localhost server and checks:
 
-event: pipeline_failed
-data: {"job_id": "...", "failed_agent": "code_generator", "error": "Timeout"}
+- 1440x1000 desktop.
+- 390x844 mobile.
+- 320x800 reflow.
+- Console/page errors and failed requests.
+- Document/header/hero/CTA structure.
+- Images, labels, control sizes, overflow, scripts, forms, and URLs.
+- WCAG A/AA findings through `@axe-core/playwright`.
+- Lighthouse performance, accessibility, best-practices, SEO, LCP, CLS, and TBT.
 
-event: heartbeat
-data: {"timestamp": "..."}
-```
+The evaluator never tells a visual reviewer which model produced the candidate and never asks
+it to compare A against B. This reduces ordering and model-identity bias.
 
-Heartbeat every 30s prevents proxy timeouts. Reconnect: 2s wait → reconnect → server sends current state. Max 5 reconnects; then fall back to polling `/api/status/:job_id` every 5s.
+## Durable Recovery
 
----
+Every customer stage emits an ordered event to `pipeline_job_events`. Candidate HTML and score
+metadata live in `pipeline_candidates`. Safe stage outputs live in `pipeline_jobs.stage_state`.
 
-## Queue
+The queue uses a lease:
 
-In-memory, deduplication by `project_id`. Max concurrency via `PIPELINE_MAX_CONCURRENCY` (default: 1 for local Ollama development; raise only after server load testing). v1.5: BullMQ + Redis when avg wait > 5 minutes.
+- `claim_pipeline_job` locks one row with `FOR UPDATE SKIP LOCKED`.
+- The worker renews the lease every quarter of the lease duration.
+- Another worker can recover a running job after lease expiry.
+- Active request signatures deduplicate repeated submits.
+- Recovery is capped by `PIPELINE_V2_MAX_ATTEMPTS`.
 
----
+## Customer Progress Contract
 
-## Memory Management
+The UI exposes seven product stages rather than internal model names:
 
-Large intermediate outputs set to `None` after consumption:
-- `raw_code` → `None` after Agent 7 consumes
-- `debugged_code` → `None` after Agent 8 consumes
-- `seo_code` → `None` after Agent 9 consumes
+1. Understanding your business
+2. Writing your content
+3. Designing two concepts
+4. Building your websites
+5. Testing desktop and mobile
+6. Polishing the strongest version
+7. Publishing your site
 
-Only `final_html` retained for deployment.
+It also receives server ETA, concept readiness/score events, selected candidate, fallback state,
+and release badges. The last valid preview remains visible through reconnects.

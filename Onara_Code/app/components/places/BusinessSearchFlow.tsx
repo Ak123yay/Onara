@@ -138,7 +138,7 @@ const defaultStylePreferences: StylePreferences = {
   layout: "phone-first",
   notes: "",
   palette: "emergency",
-  sections: ["reviews", "license", "service-area"],
+  sections: ["service-area", "faq"],
   tone: "professional",
 };
 
@@ -418,9 +418,20 @@ export function BusinessSearchFlow({ initialQuery, isTrial, userEmail, userName,
       </section>
 
       <section className="build-workspace">
-        <StepIndicator current={currentStep} />
+        <div className="build-studio-layout">
+          <aside className="build-step-rail">
+            <div>
+              <p className="mono">Build studio</p>
+              <StepIndicator current={currentStep} />
+            </div>
+            <div className="build-step-promise">
+              <Sparkles aria-hidden="true" size={15} />
+              <span>Onara builds and tests two distinct concepts before choosing the stronger site.</span>
+            </div>
+          </aside>
 
-        {!selectedBusiness ? (
+          <div className="build-studio-main">
+          {!selectedBusiness ? (
           <div className="build-panel fadein-up">
             <p className="eyebrow">Step 1 - Find your business</p>
             <h1 className="serif">
@@ -542,6 +553,10 @@ export function BusinessSearchFlow({ initialQuery, isTrial, userEmail, userName,
                 onConfirm={(business) => {
                   setSelectedBusiness(business);
                   setConfirmedBusiness(business);
+                  setStylePreferences({
+                    ...stylePreferences,
+                    sections: smartSectionsForBusiness(business),
+                  });
                   setGenerationPackage(null);
                 }}
               />
@@ -576,6 +591,14 @@ export function BusinessSearchFlow({ initialQuery, isTrial, userEmail, userName,
             )}
           </>
         )}
+          </div>
+
+          <BuildLiveBrief
+            business={confirmedBusiness || selectedBusiness}
+            currentStep={currentStep}
+            preferences={stylePreferences}
+          />
+        </div>
       </section>
     </main>
   );
@@ -602,6 +625,109 @@ function StepIndicator({ current }: { current: number }) {
       ))}
     </div>
   );
+}
+
+function BuildLiveBrief({
+  business,
+  currentStep,
+  preferences,
+}: {
+  business: PlaceSearchResult | null;
+  currentStep: number;
+  preferences: StylePreferences;
+}) {
+  const photoCount = business ? business.photos.length + (business.manual_photo ? 1 : 0) : 0;
+  const facts = business
+    ? [
+        business.category || "Category needed",
+        business.service_area || business.address || "Service area needed",
+        business.phone || "Phone needed",
+      ]
+    : ["Business facts appear here", "Photos and reviews are checked", "Unsupported sections stay off"];
+
+  return (
+    <aside className="build-live-brief">
+      <div className="build-live-brief-head">
+        <p className="mono">Live brief</p>
+        <span>{currentStep === 3 ? "Ready" : `Step ${currentStep + 1} of 4`}</span>
+      </div>
+      <div className="build-live-identity">
+        <BusinessMonogram name={business?.name || "Onara"} />
+        <div>
+          <strong>{business?.name || "Choose a business"}</strong>
+          <span>{business?.manual_entry ? "Manual business profile" : "Google Business profile"}</span>
+        </div>
+      </div>
+      <div className="build-live-facts">
+        {facts.map((fact, index) => (
+          <span key={`${fact}-${index}`}>
+            <Check aria-hidden="true" size={11} />
+            {fact}
+          </span>
+        ))}
+      </div>
+      <dl className="build-live-metrics">
+        <div>
+          <dt>Photos</dt>
+          <dd>{photoCount}</dd>
+        </div>
+        <div>
+          <dt>Reviews</dt>
+          <dd>{business?.review_count || 0}</dd>
+        </div>
+        <div>
+          <dt>Direction</dt>
+          <dd>{preferences.layout.replace("-", " ")}</dd>
+        </div>
+      </dl>
+      <div className="build-live-sections">
+        <p className="mono">Supported sections</p>
+        <div>
+          {(business ? smartSectionsForBusiness(business) : ["service-area", "faq"]).map((section) => (
+            <span key={section}>{section.replace("-", " ")}</span>
+          ))}
+        </div>
+      </div>
+    </aside>
+  );
+}
+
+function sectionIsSupported(business: PlaceSearchResult, section: SectionChoice) {
+  if (section === "reviews") {
+    return Boolean(business.rating && business.review_count);
+  }
+  if (section === "gallery") {
+    return business.photos.length > 0 || Boolean(business.manual_photo);
+  }
+  if (section === "service-area") {
+    return Boolean(business.service_area || business.address);
+  }
+  if (section === "faq") {
+    return true;
+  }
+  return false;
+}
+
+function smartSectionsForBusiness(business: PlaceSearchResult): SectionChoice[] {
+  return sectionOptions
+    .map((section) => section.id)
+    .filter((section) => sectionIsSupported(business, section));
+}
+
+function unsupportedSectionReason(section: SectionChoice) {
+  if (section === "reviews") {
+    return "Google did not return a rating and review count for this business.";
+  }
+  if (section === "gallery") {
+    return "Add at least one business photo before enabling a gallery.";
+  }
+  if (section === "license") {
+    return "License details were not supplied, so Onara will not invent them.";
+  }
+  if (section === "financing") {
+    return "Financing details were not supplied, so Onara will not advertise them.";
+  }
+  return "This section needs more verified business data.";
 }
 
 function ManualBusinessEntry({
@@ -715,6 +841,8 @@ function StylePreferenceStep({
   onChange: (preferences: StylePreferences) => void;
   onContinue: () => void;
 }) {
+  const [showAdvanced, setShowAdvanced] = useState(false);
+
   function updatePreference<Key extends keyof StylePreferences>(
     key: Key,
     value: StylePreferences[Key],
@@ -757,6 +885,10 @@ function StylePreferenceStep({
   }
 
   function toggleSection(section: SectionChoice) {
+    if (!sectionIsSupported(business, section)) {
+      return;
+    }
+
     const exists = preferences.sections.includes(section);
     const nextSections = exists
       ? preferences.sections.filter((item) => item !== section)
@@ -770,13 +902,47 @@ function StylePreferenceStep({
       <div className="style-heading">
         <p className="eyebrow">Step 3 - Style</p>
         <h1 className="serif">
-          Choose the first <span className="serif-italic">direction</span>.
+          Start with a <span className="serif-italic">smart direction</span>.
         </h1>
         <p>
-          These choices guide the generated contractor website. They can be changed later with revisions.
+          Onara can choose a strong contractor layout from the verified business data, or you can
+          open the advanced controls.
         </p>
       </div>
 
+      {!showAdvanced ? (
+        <section className="style-smart-direction card">
+          <div className="style-smart-mark">
+            <Sparkles aria-hidden="true" size={21} />
+          </div>
+          <div>
+            <p className="mono">Recommended</p>
+            <h2 className="serif">Smart Direction</h2>
+            <p>
+              Uses a {preferences.layout.replace("-", " ")} layout, {preferences.tone} copy,
+              and only the proof sections supported by this business profile.
+            </p>
+            <div className="style-smart-facts">
+              <span>{business.photos.length || (business.manual_photo ? 1 : 0)} usable photos</span>
+              <span>{business.review_count || 0} Google reviews</span>
+              <span>Two concepts tested</span>
+            </div>
+          </div>
+          <div className="style-smart-actions">
+            <button className="btn btn-soft" type="button" onClick={onBack}>
+              <ArrowLeft size={14} aria-hidden="true" />
+              Back
+            </button>
+            <button className="btn btn-soft" type="button" onClick={() => setShowAdvanced(true)}>
+              Advanced settings
+            </button>
+            <button className="btn btn-accent" type="button" onClick={onContinue}>
+              Use Smart Direction
+              <ArrowRight size={14} aria-hidden="true" />
+            </button>
+          </div>
+        </section>
+      ) : (
       <div className="style-layout style-builder-grid">
         <div className="style-controls style-control-stack">
           <section className="style-simple-card style-palette-builder">
@@ -877,16 +1043,24 @@ function StylePreferenceStep({
             <div className="style-section-toggle-grid">
               {sectionOptions.map((section) => {
                 const active = preferences.sections.includes(section.id);
+                const supported = sectionIsSupported(business, section.id);
 
                 return (
                   <button
                     aria-pressed={active}
-                    className={`style-section-toggle ${active ? "style-section-toggle-active" : ""}`}
+                    className={[
+                      "style-section-toggle",
+                      active ? "style-section-toggle-active" : "",
+                      supported ? "" : "style-section-toggle-disabled",
+                    ].join(" ")}
+                    disabled={!supported}
                     key={section.id}
                     onClick={() => toggleSection(section.id)}
+                    title={supported ? section.description : unsupportedSectionReason(section.id)}
                     type="button"
                   >
                     <span>{section.label}</span>
+                    {!supported ? <small>Unavailable</small> : null}
                   </button>
                 );
               })}
@@ -918,6 +1092,9 @@ function StylePreferenceStep({
               <ArrowLeft size={14} aria-hidden="true" />
               Back
             </button>
+            <button className="btn btn-soft" type="button" onClick={() => setShowAdvanced(false)}>
+              Use smart defaults
+            </button>
             <button className="btn btn-accent" type="button" onClick={onContinue}>
               Continue
               <ArrowRight size={14} aria-hidden="true" />
@@ -925,6 +1102,7 @@ function StylePreferenceStep({
           </div>
         </div>
       </div>
+      )}
     </div>
   );
 }

@@ -29,7 +29,7 @@ _This file is the single source of truth for all work. Claude updates this after
 
 ## 🔥 Active
 
-Current actionable phase: **Phase 24 — Stripe Billing**.
+Current actionable phase: **Phase 29 - Distribution**.
 
 Note: Mini PC FastAPI runs under PM2. The named Cloudflare Tunnel serves `https://pipeline.onara.tech`.
 
@@ -234,6 +234,8 @@ Execution rule:
 - [x] AI blackboard reviewer: optional advisory model pass over blackboard outputs that suggests warnings/reruns, while deterministic supervisor remains the final pass/fail authority
 - [x] Curated RAG learning loop: save only QA-approved generated components/patterns back into ChromaDB so future builds improve without storing bad or duplicate sites
 - [x] Training data pipeline: add user consent fields and `training_examples` storage for QA-approved, redacted generation examples that can feed RAG now and future model fine-tuning later
+- [x] Pipeline V2: durable Supabase leases/checkpoints, parallel code candidates, browser + visual evaluation, bounded component repair, and feature-flag rollback
+- [x] Build Studio UI rework: persistent step rail, live business brief, Smart Direction defaults, supported-section gating, concept cards, server ETA, and release-readiness badges
 
 ### Phase 28 — Pre-Launch
 
@@ -243,7 +245,7 @@ Execution rule:
 - [x] Add `support@onara.tech` across the website and app surfaces (footer, account/help areas, auth emails, billing/contact copy)
 - [x] Support email AI responder: keep forwarding `support@onara.tech` to Aarush, but add an inbound email worker/webhook that uses an NVIDIA NIM model to send the first support reply, log the thread, and escalate billing/security/account issues to human review
 - [x] Training-data consent copy, opt-out/delete handling, and privacy-policy disclosure for using approved generated sites/edits/feedback to improve Onara models
-- [ ] Error monitoring (Sentry or equivalent)
+- [ ] Error monitoring (Sentry or equivalent) _(deferred by user; add later)_
 - [x] Security review: RLS audit, API key rotation checklist, vulnerability audit _(report: wiki/operations/security-review-2026-06-19.md; manual provider-dashboard key rotation still required before launch)_
 - [x] Publish Google OAuth app (remove testing mode)
 

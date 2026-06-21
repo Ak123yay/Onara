@@ -7,9 +7,16 @@ from onara_pipeline.ai_client.types import AIRequest, AIResponse
 class OllamaClient:
     provider = "ollama"
 
-    def __init__(self, *, base_url: str, timeout: float) -> None:
+    def __init__(
+        self,
+        *,
+        base_url: str,
+        timeout: float,
+        http_client: httpx.AsyncClient | None = None,
+    ) -> None:
         self.base_url = base_url.rstrip("/")
         self.timeout = timeout
+        self.http_client = http_client
 
     async def generate(self, *, model: str, request: AIRequest) -> AIResponse:
         payload = {
@@ -24,8 +31,15 @@ class OllamaClient:
         payload["options"] = options
 
         try:
-            async with httpx.AsyncClient(timeout=self.timeout) as client:
-                response = await client.post(f"{self.base_url}/api/chat", json=payload)
+            if self.http_client is not None:
+                response = await self.http_client.post(
+                    f"{self.base_url}/api/chat",
+                    json=payload,
+                    timeout=self.timeout,
+                )
+            else:
+                async with httpx.AsyncClient(timeout=self.timeout) as client:
+                    response = await client.post(f"{self.base_url}/api/chat", json=payload)
         except httpx.HTTPError as exc:
             raise AIServiceUnavailableError(f"Ollama request failed: {exc}") from exc
 
@@ -63,8 +77,14 @@ class OllamaClient:
 
     async def is_available(self) -> bool:
         try:
-            async with httpx.AsyncClient(timeout=min(self.timeout, 2.0)) as client:
-                response = await client.get(f"{self.base_url}/api/tags")
+            if self.http_client is not None:
+                response = await self.http_client.get(
+                    f"{self.base_url}/api/tags",
+                    timeout=min(self.timeout, 2.0),
+                )
+            else:
+                async with httpx.AsyncClient(timeout=min(self.timeout, 2.0)) as client:
+                    response = await client.get(f"{self.base_url}/api/tags")
             return response.status_code == 200
         except httpx.HTTPError:
             return False

@@ -12,10 +12,18 @@ from onara_pipeline.ai_client.types import AIRequest, AIResponse
 class NIMClient:
     provider = "nim"
 
-    def __init__(self, *, api_key: str | None, base_url: str, timeout: float) -> None:
+    def __init__(
+        self,
+        *,
+        api_key: str | None,
+        base_url: str,
+        timeout: float,
+        http_client: httpx.AsyncClient | None = None,
+    ) -> None:
         self.api_key = api_key
         self.base_url = base_url.rstrip("/")
         self.timeout = timeout
+        self.http_client = http_client
 
     async def generate(self, *, model: str, request: AIRequest) -> AIResponse:
         if not self.api_key:
@@ -29,15 +37,26 @@ class NIMClient:
         }
 
         try:
-            async with httpx.AsyncClient(timeout=self.timeout) as client:
-                response = await client.post(
+            if self.http_client is not None:
+                response = await self.http_client.post(
                     f"{self.base_url}/chat/completions",
                     headers={
                         "Authorization": f"Bearer {self.api_key}",
                         "Content-Type": "application/json",
                     },
                     json=payload,
+                    timeout=self.timeout,
                 )
+            else:
+                async with httpx.AsyncClient(timeout=self.timeout) as client:
+                    response = await client.post(
+                        f"{self.base_url}/chat/completions",
+                        headers={
+                            "Authorization": f"Bearer {self.api_key}",
+                            "Content-Type": "application/json",
+                        },
+                        json=payload,
+                    )
         except httpx.HTTPError as exc:
             raise AIServiceUnavailableError(f"NIM request failed: {exc}") from exc
 

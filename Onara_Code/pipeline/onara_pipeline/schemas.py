@@ -136,7 +136,16 @@ class JobStatusResponse(BaseModel):
     ai_blackboard_review: dict[str, Any] | None = None
     ai_blackboard_warnings: list[str] = Field(default_factory=list)
     blackboard_keys: list[str]
+    candidates: list[dict[str, Any]] = Field(default_factory=list)
+    diagnostic_code: str | None = None
+    eta_seconds: int | None = None
+    fallback_used: bool = False
     job_id: str
+    last_valid_preview_url: str | None = None
+    pipeline_version: str = "v1"
+    quality_badges: list[str] = Field(default_factory=list)
+    selected_candidate_id: str | None = None
+    stage: str | None = None
     status: str
     current_agent: str | None
     agents_completed: int
@@ -232,6 +241,8 @@ class JobStatusResponse(BaseModel):
         photo_count = len(photo_assets) if isinstance(photo_assets, list) else 0
         photo_resolution_status = _optional_str(job.business_data.get("photo_resolution_status"))
         public_url = _optional_str(job.blackboard.get("public_url"))
+        candidates = job.blackboard.get("candidate_summaries")
+        quality_badges = job.blackboard.get("quality_badges")
 
         if isinstance(mobile_output, dict):
             raw_checks = mobile_output.get("checks")
@@ -321,7 +332,20 @@ class JobStatusResponse(BaseModel):
             ai_blackboard_review=ai_blackboard_review if isinstance(ai_blackboard_review, dict) else None,
             ai_blackboard_warnings=ai_blackboard_warnings,
             blackboard_keys=list(job.blackboard.keys()),
+            candidates=[item for item in candidates if isinstance(item, dict)]
+            if isinstance(candidates, list)
+            else [],
+            diagnostic_code=_optional_str(job.blackboard.get("diagnostic_code")),
+            eta_seconds=job.eta_seconds,
+            fallback_used=bool(job.blackboard.get("fallback_used")),
             job_id=job.job_id,
+            last_valid_preview_url=public_url,
+            pipeline_version=job.pipeline_version,
+            quality_badges=[str(item) for item in quality_badges]
+            if isinstance(quality_badges, list)
+            else [],
+            selected_candidate_id=_optional_str(job.blackboard.get("selected_candidate_id")),
+            stage=job.stage,
             status=job.status,
             current_agent=job.current_agent,
             agents_completed=job.agents_completed,

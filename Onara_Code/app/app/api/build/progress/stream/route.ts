@@ -15,18 +15,27 @@ type PipelineProgressEntry = {
   event?: string;
   message?: string;
   timestamp?: string;
+  candidate?: Record<string, unknown>;
+  eta_seconds?: number;
+  quality_badges?: string[];
+  stage?: string;
 };
 
 type PipelineStatusResponse = {
   agents_completed: number;
   agents_total: number;
+  candidates?: Array<Record<string, unknown>>;
   current_agent: string | null;
+  eta_seconds?: number | null;
   error_message?: string | null;
+  fallback_used?: boolean;
   job_id: string;
   preview_html?: string | null;
   progress_log: PipelineProgressEntry[];
   public_url?: string | null;
+  quality_badges?: string[];
   queue_position?: number | null;
+  selected_candidate_id?: string | null;
   site_id?: string | null;
   status: "queued" | "running" | "completed" | "failed";
 };
@@ -51,13 +60,20 @@ const PIPELINE_AGENT_TO_STEP_INDEX: Record<string, number> = {
   agent_01_analyst: 0,
   agent_02_content: 1,
   agent_03_style: 2,
-  agent_04_planner: 3,
-  agent_05_prompt_engineer: 4,
-  agent_06_codegen: 5,
-  agent_07_debugger: 6,
-  agent_08_seo: 7,
-  agent_09_qa: 8,
-  agent_10_mobile: 9,
+  agent_04_planner: 2,
+  agent_05_prompt_engineer: 2,
+  agent_06_codegen: 3,
+  agent_07_debugger: 5,
+  agent_08_seo: 5,
+  agent_09_qa: 4,
+  agent_10_mobile: 5,
+  building_candidates: 3,
+  designing_concepts: 2,
+  polishing: 5,
+  publishing: 6,
+  testing_candidates: 4,
+  understanding_business: 0,
+  writing_content: 1,
 };
 
 const POLL_INTERVAL_MS = 900;
@@ -79,13 +95,13 @@ export async function GET(request: Request) {
   const businessName = searchParams.get("businessName") || "Your Contractor Site";
 
   if (!isMockJob(jobId) && pipelineConfigured()) {
-    return pipelineStream(jobId, businessName, projectId);
+    return pipelineStream(jobId, projectId);
   }
 
   return mockStream(jobId, businessName);
 }
 
-function pipelineStream(jobId: string, businessName: string, projectId: string | null) {
+function pipelineStream(jobId: string, projectId: string | null) {
   const encoder = new TextEncoder();
   let closed = false;
   let emittedProgressCount = 0;
@@ -120,11 +136,6 @@ function pipelineStream(jobId: string, businessName: string, projectId: string |
             const projectStatus = projectId ? await fetchProjectResumeStatus(projectId) : null;
             if (projectStatus) {
               if (projectStatus.status === "live") {
-                send("preview", {
-                  html: previewHtmlForStep(AGENT_STEPS.length, projectStatus.business_name || businessName),
-                  jobId,
-                  stepIndex: AGENT_STEPS.length,
-                });
                 send("complete", {
                   elapsedSeconds: Math.max(1, Math.round((Date.now() - startedAt) / 1000)),
                   jobId,
@@ -186,7 +197,7 @@ function pipelineStream(jobId: string, businessName: string, projectId: string |
           }
 
           for (const entry of status.progress_log.slice(emittedProgressCount)) {
-            emitProgressEntry(send, status, entry, businessName);
+            emitProgressEntry(send, status, entry);
           }
           emittedProgressCount = status.progress_log.length;
 
@@ -200,8 +211,8 @@ function pipelineStream(jobId: string, businessName: string, projectId: string |
           }
 
           if (status.status === "completed") {
-            const html = status.preview_html || previewHtmlForStep(AGENT_STEPS.length, businessName);
-            if (html !== lastPreviewHtml) {
+            const html = status.preview_html;
+            if (html && html !== lastPreviewHtml) {
               send("preview", {
                 html,
                 jobId,
@@ -210,12 +221,17 @@ function pipelineStream(jobId: string, businessName: string, projectId: string |
             }
 
             send("complete", {
+              candidates: status.candidates ?? [],
               elapsedSeconds: Math.max(1, Math.round((Date.now() - startedAt) / 1000)),
+              etaSeconds: 0,
+              fallbackUsed: Boolean(status.fallback_used),
               jobId,
               message: "Website draft ready. Review the preview before publishing.",
               previewUrl: "/dashboard/build/progress",
               progress: 100,
               publicUrl: status.public_url || publicJobUrl(status.job_id),
+              qualityBadges: status.quality_badges ?? [],
+              selectedCandidateId: status.selected_candidate_id ?? null,
               siteId: status.site_id || `draft-${jobId.slice(0, 8)}`,
             });
             break;
@@ -325,7 +341,7 @@ function mockStream(jobId: string, businessName: string) {
             stepIndex: index,
           });
 
-          if (agent.id === "debug") {
+          if (agent.id === "testing") {
             await sleep(Math.round(MOCK_STEP_MS * 0.42));
             send("agent_retry", {
               agent,
@@ -336,7 +352,7 @@ function mockStream(jobId: string, businessName: string) {
             });
           }
 
-          await sleep(agent.id === "debug" ? Math.round(MOCK_STEP_MS * 0.68) : MOCK_STEP_MS);
+          await sleep(agent.id === "testing" ? Math.round(MOCK_STEP_MS * 0.68) : MOCK_STEP_MS);
 
           send("agent_complete", {
             agent,
@@ -388,29 +404,32 @@ function emitProgressEntry(
   send: (event: string, data: Record<string, unknown>) => void,
   status: PipelineStatusResponse,
   entry: PipelineProgressEntry,
-  businessName: string,
 ) {
   const stepIndex = stepIndexForAgent(entry.agent_id);
   const agent = AGENT_STEPS[stepIndex];
 
-  if (entry.event === "agent_started") {
+  if (entry.event === "agent_started" || entry.event === "stage_started") {
     send("step", {
       agent,
+      etaSeconds: entry.eta_seconds ?? status.eta_seconds ?? null,
       jobId: status.job_id,
       message: entry.message || agent.task,
       progress: progressForPipeline(status, stepIndex),
       stepIndex,
     });
-    send("preview", {
-      html: status.preview_html || previewHtmlForStep(stepIndex, businessName),
-      jobId: status.job_id,
-      stepIndex,
-    });
+    if (status.preview_html) {
+      send("preview", {
+        html: status.preview_html,
+        jobId: status.job_id,
+        stepIndex,
+      });
+    }
   }
 
-  if (entry.event === "agent_completed") {
+  if (entry.event === "agent_completed" || entry.event === "stage_completed") {
     send("agent_complete", {
       agent,
+      etaSeconds: entry.eta_seconds ?? status.eta_seconds ?? null,
       jobId: status.job_id,
       progress: progressAfterStep(stepIndex),
       stepIndex,
@@ -428,6 +447,15 @@ function emitProgressEntry(
     send("notice", {
       jobId: status.job_id,
       message: entry.message || "AI build note completed.",
+    });
+  }
+
+  if (entry.event === "candidate_ready" || entry.event === "candidate_scored") {
+    send(entry.event, {
+      candidate: entry.candidate ?? {},
+      etaSeconds: entry.eta_seconds ?? status.eta_seconds ?? null,
+      jobId: status.job_id,
+      message: entry.message,
     });
   }
 }
@@ -485,8 +513,16 @@ function progressForPipeline(status: PipelineStatusResponse, stepIndex: number) 
     return 0;
   }
 
+  if (status.agents_total > 0) {
+    const activeOffset = status.current_agent ? 0.35 : 0;
+    return Math.max(
+      1,
+      Math.min(99, Math.round(((status.agents_completed + activeOffset) / status.agents_total) * 100)),
+    );
+  }
+
   const visibleStep = Math.max(0, Math.min(stepIndex, AGENT_STEPS.length - 1));
-  return Math.max(1, Math.min(99, Math.round(((visibleStep + 0.18) / AGENT_STEPS.length) * 100)));
+  return Math.max(1, Math.min(99, Math.round((visibleStep / AGENT_STEPS.length) * 100)));
 }
 
 function progressAfterStep(stepIndex: number) {

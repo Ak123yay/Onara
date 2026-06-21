@@ -9,7 +9,7 @@ class AIMessage(BaseModel):
     model_config = ConfigDict(str_strip_whitespace=True)
 
     role: AIMessageRole
-    content: str = Field(min_length=1)
+    content: str | list[dict[str, Any]]
 
 
 class AIRequest(BaseModel):

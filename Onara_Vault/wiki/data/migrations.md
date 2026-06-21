@@ -173,3 +173,26 @@ SELECT jobname, schedule FROM cron.job;
 SELECT trigger_name FROM information_schema.triggers
 WHERE event_object_schema = 'auth' AND event_object_table = 'users';
 ```
+
+## Pipeline V2 Migration
+
+Migration `022_pipeline_v2_durable_jobs.sql` must be applied before setting
+`PIPELINE_V2_ENABLED=true`.
+
+It adds:
+
+- Durable lease/checkpoint columns to `pipeline_jobs`.
+- `pipeline_job_events` for ordered SSE/poll recovery.
+- `pipeline_candidates` for candidate HTML, scores, blockers, and audit reports.
+- Service-role-only queue claim and heartbeat RPCs.
+
+Verify:
+
+```sql
+select pipeline_version, stage, status, count(*)
+from public.pipeline_jobs
+group by pipeline_version, stage, status;
+
+select to_regclass('public.pipeline_job_events'),
+       to_regclass('public.pipeline_candidates');
+```

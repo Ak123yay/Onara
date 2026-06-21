@@ -465,6 +465,25 @@ def fallback_codegen(
     <h2>{_escape(content.contact.headline)}</h2>
     <p>{_escape(content.contact.subtext)}</p>
     <a class="primary-cta" href="{cta_href}">{_escape(analyst.primaryCta)}</a>
+    <form class="contact-form">
+      <label>
+        <span>Name</span>
+        <input autocomplete="name" name="name" placeholder="Your name" type="text">
+      </label>
+      <label>
+        <span>Email</span>
+        <input autocomplete="email" name="email" placeholder="you@example.com" type="email">
+      </label>
+      <label>
+        <span>Phone</span>
+        <input autocomplete="tel" name="phone" placeholder="Your phone number" type="tel">
+      </label>
+      <label>
+        <span>How can we help?</span>
+        <textarea name="message" placeholder="Tell us about the service you need" rows="4"></textarea>
+      </label>
+      <button class="primary-cta" type="submit">Request an estimate</button>
+    </form>
   </div>
 </section>""",
         "components/site_footer.html": f"""<footer class="site-footer" data-component="site_footer">
@@ -833,6 +852,45 @@ def fallback_codegen(
         gap: 16px;
         padding: clamp(30px, 5vw, 58px);
       }}
+      .contact-form {{
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 14px;
+        margin-top: 6px;
+      }}
+      .contact-form label {{
+        display: grid;
+        gap: 6px;
+        color: var(--ink-2);
+        font-size: 0.76rem;
+        font-weight: 650;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }}
+      .contact-form label:last-of-type,
+      .contact-form button {{
+        grid-column: 1 / -1;
+      }}
+      .contact-form input,
+      .contact-form textarea {{
+        width: 100%;
+        min-height: 44px;
+        border: 1px solid var(--rule);
+        border-radius: 2px;
+        background: #fff;
+        color: var(--ink);
+        font: 500 0.96rem/1.4 var(--ui);
+        padding: 12px 13px;
+      }}
+      .contact-form textarea {{
+        min-height: 112px;
+        resize: vertical;
+      }}
+      .contact-form input:focus-visible,
+      .contact-form textarea:focus-visible {{
+        outline: 3px solid color-mix(in srgb, var(--choice-accent) 30%, transparent);
+        outline-offset: 1px;
+      }}
       .site-footer {{
         border-top: 1px solid var(--rule);
         color: var(--ink-3);
@@ -954,6 +1012,10 @@ def fallback_codegen(
         nav {{ justify-content: space-between; }}
         .header-cta, .primary-cta {{ width: 100%; }}
         .hero, .trust {{ grid-template-columns: 1fr; }}
+        .contact-form {{ grid-template-columns: 1fr; }}
+        .contact-form label,
+        .contact-form label:last-of-type,
+        .contact-form button {{ grid-column: 1; }}
         .hours-card,
         .proof-strip {{ grid-template-columns: 1fr; }}
         .hours-list,

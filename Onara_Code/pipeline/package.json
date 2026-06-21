@@ -1,0 +1,15 @@
+{
+  "name": "onara-pipeline-browser-audit",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "install-browser": "playwright install chromium",
+    "audit": "node browser_audit.mjs"
+  },
+  "dependencies": {
+    "@axe-core/playwright": "^4.10.2",
+    "chrome-launcher": "^1.0.0",
+    "lighthouse": "^12.8.2",
+    "playwright": "^1.52.0"
+  }
+}
