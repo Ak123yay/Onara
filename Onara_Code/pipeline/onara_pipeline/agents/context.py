@@ -1,6 +1,8 @@
 from dataclasses import dataclass
 from typing import Any
 
+PHOTO_TOKEN_PREFIX = "{{ONARA_PHOTO_"
+
 
 @dataclass(frozen=True, slots=True)
 class BusinessPhoto:
@@ -151,12 +153,35 @@ def photo_assets_for_prompt(context: BusinessContext, *, limit: int = 4) -> list
                 "attribution_display": photo.attribution_display,
                 "attribution_uri": photo.attribution_uri,
                 "source": photo.source,
-                "src": photo.src,
+                "src": _photo_prompt_src(photo, index),
             }.items()
             if value
         }
-        for photo in context.photos[:limit]
+        for index, photo in enumerate(context.photos[:limit], start=1)
     ]
+
+
+def materialize_photo_tokens(value: str, context: BusinessContext, *, limit: int = 4) -> str:
+    for index, photo in enumerate(context.photos[:limit], start=1):
+        value = value.replace(_photo_token(index), photo.src)
+    return value
+
+
+def tokenize_photo_sources(value: str, context: BusinessContext, *, limit: int = 4) -> str:
+    for index, photo in enumerate(context.photos[:limit], start=1):
+        if photo.src.startswith("data:image/"):
+            value = value.replace(photo.src, _photo_token(index))
+    return value
+
+
+def _photo_prompt_src(photo: BusinessPhoto, index: int) -> str:
+    if photo.src.startswith("data:image/"):
+        return _photo_token(index)
+    return photo.src
+
+
+def _photo_token(index: int) -> str:
+    return f"{PHOTO_TOKEN_PREFIX}{index}}}}}"
 
 
 def _services_from_business(business_data: dict[str, Any]) -> list[str]:

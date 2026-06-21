@@ -152,8 +152,9 @@ def _validate_core_component_integrity(output: CodegenOutput) -> None:
         if f"components/{component_id}.spec.txt" in component_files:
             raise SupervisorValidationError(f"Codegen output missing core component markup: {component_id}")
 
-    header_position = _first_component_position(lower, ("site_header", "header"))
-    hero_position = _first_component_position(lower, ("hero",))
+    body_html = _body_markup(lower)
+    header_position = _first_component_position(body_html, ("site_header", "header"))
+    hero_position = _first_component_position(body_html, ("hero",))
     if header_position < 0:
         raise SupervisorValidationError("Codegen output missing site header component")
     if hero_position < 0:
@@ -161,22 +162,27 @@ def _validate_core_component_integrity(output: CodegenOutput) -> None:
     if header_position > hero_position:
         raise SupervisorValidationError("Codegen output must render the site header before the hero")
 
-    body_match = re.search(r"<body\b[^>]*>", lower)
-    first_component = re.search(r"data-component=[\"']([^\"']+)[\"']", lower[body_match.end() :] if body_match else lower)
+    first_component = re.search(r"data-component\s*=\s*[\"']([^\"']+)[\"']", body_html)
     if first_component and first_component.group(1).replace("-", "_") not in {"site_header", "header"}:
         raise SupervisorValidationError("Codegen output must start visible components with the site header")
 
 
-def _first_component_position(lower_html: str, component_ids: tuple[str, ...]) -> int:
+def _body_markup(lower_html: str) -> str:
+    body_match = re.search(r"<body\b[^>]*>(?P<body>.*?)</body>", lower_html, flags=re.DOTALL)
+    return body_match.group("body") if body_match else ""
+
+
+def _first_component_position(body_html: str, component_ids: tuple[str, ...]) -> int:
     positions: list[int] = []
     for component_id in component_ids:
-        variants = {component_id, component_id.replace("_", "-")}
+        variants = (component_id, component_id.replace("_", "-"))
         for variant in variants:
-            for quote in ("\"", "'"):
-                marker = f"data-component={quote}{variant}{quote}"
-                position = lower_html.find(marker)
-                if position >= 0:
-                    positions.append(position)
+            match = re.search(
+                rf"data-component\s*=\s*[\"']{re.escape(variant)}[\"']",
+                body_html,
+            )
+            if match:
+                positions.append(match.start())
     return min(positions) if positions else -1
 
 

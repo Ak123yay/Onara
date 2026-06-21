@@ -2,7 +2,11 @@ import re
 
 from pydantic import ValidationError
 
-from onara_pipeline.agents.context import build_business_context
+from onara_pipeline.agents.context import (
+    build_business_context,
+    materialize_photo_tokens,
+    tokenize_photo_sources,
+)
 from onara_pipeline.agents.contracts import (
     AnalystOutput,
     CodegenOutput,
@@ -113,7 +117,7 @@ async def run_codegen(
                 temperature=0.18,
             ),
         )
-        html = extract_index_html(response.content)
+        html = materialize_photo_tokens(extract_index_html(response.content), context)
         output = CodegenOutput(
             component_files=split_component_files(html, planner),
             fallback_used=response.fallback_used,
@@ -261,7 +265,7 @@ async def _repair_codegen_with_model(
             temperature=0.12,
         ),
     )
-    html = extract_index_html(response.content)
+    html = materialize_photo_tokens(extract_index_html(response.content), context)
     return CodegenOutput(
         component_files=split_component_files(html, planner),
         fallback_used=original.fallback_used or response.fallback_used,
@@ -306,7 +310,7 @@ Business:
 - City/region: {context.city or context.address or "not supplied"}
 
 Rejected HTML:
-{original.html}
+{tokenize_photo_sources(original.html, context)}
 
 Return only:
 {{FILE_MARKER_START}}
