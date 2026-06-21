@@ -1087,6 +1087,23 @@ Important remaining security/ops item:
 
 ## Monitoring and Operations
 
+### Graceful degradation
+
+Onara degrades by capability instead of turning one provider outage into a blank or frozen
+app.
+
+- Google Places failure opens manual business entry.
+- Missing Places photos use an Onara placeholder.
+- Pipeline, Cloudflare, GitHub, billing, revision, and account requests use bounded timeouts.
+- Dashboard, account, route, and root failures render recoverable Onara error pages.
+- Billing, authorization, destructive actions, and deployment approval always fail closed.
+- Pipeline V2 can use a strict static release gate when browser tooling is unavailable.
+- `GET /api/health` reports service readiness without returning secrets.
+
+The static pipeline fallback still requires complete HTML, a header, hero, primary CTA,
+contact form, labels, safe links/forms, and deployable images. It never claims that desktop or
+mobile browser testing ran when it did not.
+
 Implemented operations work:
 
 - PM2 for pipeline server.

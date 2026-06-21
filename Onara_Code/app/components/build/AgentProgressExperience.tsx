@@ -20,6 +20,7 @@ import {
   type AgentStatus,
   type AgentStep,
 } from "@/lib/build/agent-progress";
+import { fetchWithTimeout } from "@/lib/resilience";
 
 type StoredGenerationPackage = {
   business?: {
@@ -70,10 +71,12 @@ type ConnectionMode = "connecting" | "sse" | "polling" | "complete" | "error";
 
 type CandidateSummary = {
   candidateKey?: string;
+  degradedReason?: string | null;
   deterministicScore?: number;
   fallbackUsed?: boolean;
   finalScore?: number;
   hardBlockers?: string[];
+  qualityMode?: "full" | "static";
   recipe?: string;
   selected?: boolean;
   thumbnailDataUrl?: string | null;
@@ -293,7 +296,7 @@ export function AgentProgressExperience() {
     async function pollStatus() {
       const elapsedMs = Date.now() - streamStartedAt;
       const statusUrl = `/api/build/progress/status?jobId=${encodeURIComponent(jobId)}&businessName=${businessParam}&elapsedMs=${elapsedMs}${projectParam}`;
-      const response = await fetch(statusUrl, { cache: "no-store" });
+      const response = await fetchWithTimeout(statusUrl, { cache: "no-store" }, 10_000);
 
       if (!response.ok) {
         throw new Error("Progress status unavailable.");
@@ -772,6 +775,8 @@ function CandidateCard({
       <div className="agent-concept-thumb">
         {candidate.thumbnailDataUrl ? (
           <img alt={`Generated concept ${label}`} src={candidate.thumbnailDataUrl} />
+        ) : candidate.qualityMode === "static" ? (
+          <span>Static safety audit</span>
         ) : (
           <span>Rendering concept {label}</span>
         )}
@@ -779,7 +784,13 @@ function CandidateCard({
       <div className="agent-concept-copy">
         <span className="mono">Concept {label}</span>
         <strong>{candidate.recipe || "Custom direction"}</strong>
-        <small>{score === null ? "Testing" : `${score}/100 quality score`}</small>
+        <small>
+          {score === null
+            ? "Testing"
+            : candidate.qualityMode === "static"
+              ? `${score}/100 static quality score`
+              : `${score}/100 quality score`}
+        </small>
       </div>
       {selected ? <span className="agent-concept-selected">Selected</span> : null}
     </article>

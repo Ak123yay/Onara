@@ -4,6 +4,7 @@ import {
   MOCK_STEP_MS,
   previewHtmlForStep,
 } from "@/lib/build/agent-progress";
+import { fetchWithTimeout } from "@/lib/resilience";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
@@ -151,7 +152,9 @@ function pipelineStream(jobId: string, projectId: string | null) {
               if (projectStatus.status === "failed" || projectStatus.status === "suspended") {
                 send("error", {
                   jobId,
-                  message: projectStatus.error_message || "The saved build needs attention.",
+                  message: projectStatus.error_message
+                    ? publicBuildError(projectStatus.error_message)
+                    : "The saved build needs attention.",
                 });
                 break;
               }
@@ -240,7 +243,9 @@ function pipelineStream(jobId: string, projectId: string | null) {
           if (status.status === "failed") {
             send("error", {
               jobId,
-              message: status.error_message || "The build pipeline failed.",
+              message: status.error_message
+                ? publicBuildError(status.error_message)
+                : "The build pipeline failed.",
             });
             break;
           }
@@ -439,7 +444,7 @@ function emitProgressEntry(
   if (entry.event === "pipeline_failed") {
     send("error", {
       jobId: status.job_id,
-      message: entry.message || "The build pipeline failed.",
+      message: entry.message ? publicBuildError(entry.message) : "The build pipeline failed.",
     });
   }
 
@@ -476,13 +481,17 @@ async function fetchPipelineStatus(jobId: string): Promise<PipelineStatusRespons
   const timeout = setTimeout(() => controller.abort(), PIPELINE_FETCH_TIMEOUT_MS);
 
   try {
-    const response = await fetch(`${pipelineServerUrl}/pipeline/status/${encodeURIComponent(jobId)}`, {
-      cache: "no-store",
-      headers: {
-        "X-Pipeline-Secret": pipelineSecret,
+    const response = await fetchWithTimeout(
+      `${pipelineServerUrl}/pipeline/status/${encodeURIComponent(jobId)}`,
+      {
+        cache: "no-store",
+        headers: {
+          "X-Pipeline-Secret": pipelineSecret,
+        },
+        signal: controller.signal,
       },
-      signal: controller.signal,
-    });
+      8_000,
+    );
     const body = await response.json().catch(() => null);
 
     if (!response.ok) {
@@ -549,6 +558,26 @@ function errorMessageFromBody(body: unknown) {
   }
 
   return null;
+}
+
+function publicBuildError(message: string) {
+  const normalized = message.toLowerCase();
+
+  if (normalized.includes("browser audit failed") || normalized.includes("browser audit timed out")) {
+    return "The final website quality check could not run. Update the pipeline server, then try the build again.";
+  }
+
+  if (normalized.includes("no generated candidate passed release gates")) {
+    return "Neither website concept passed the final quality checks. Try another build.";
+  }
+
+  if (normalized.includes("pipeline job timed out")) {
+    return "The build took too long and stopped safely. Try the build again.";
+  }
+
+  return message.length > 360
+    ? "The build stopped during its final checks. Review the pipeline logs, then try another build."
+    : message;
 }
 
 function isMockJob(jobId: string) {

@@ -183,6 +183,7 @@
   },
   "active": "de4a1b08c70ed4a5",
   "lastOpenFiles": [
+    "wiki/architecture/graceful-degradation.md",
     "wiki/operations/security-review-2026-06-19.md",
     "wiki/ai_agents/training-data.md",
     "wiki/architecture/production-hardening.md",
@@ -210,7 +211,6 @@
     "wiki/research/gbp-search-process.md",
     "wiki/research/_index.md",
     "CONTEXT_INDEX.md",
-    "CONTEXT_LOCK.md",
     "wiki/_master-index.md.tmp.122081.432a98d15d1a",
     "wiki/_master-index.md.tmp.122081.09e860bcaa50",
     "wiki/architecture/rate-limiting.md.tmp.122081.823a6fca9762",

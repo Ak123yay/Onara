@@ -1,5 +1,6 @@
 import { createSign } from "node:crypto";
 import { NextResponse } from "next/server";
+import { fetchWithTimeout, publicServiceError } from "@/lib/resilience";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
@@ -158,7 +159,9 @@ export async function GET(
       status: 200,
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Could not prepare code download.";
+    const message = error instanceof Error && error.name !== "AbortError"
+      ? error.message
+      : publicServiceError("github");
     return NextResponse.json({ error: "code_download_failed", message }, { status: 502 });
   }
 }
@@ -297,15 +300,19 @@ async function githubRequest(
   path: string,
   options: { method?: string; token: string },
 ): Promise<Record<string, unknown>> {
-  const response = await fetch(`${config.apiUrl}${path}`, {
-    cache: "no-store",
-    headers: {
-      Accept: "application/vnd.github+json",
-      Authorization: `Bearer ${options.token}`,
-      "X-GitHub-Api-Version": GITHUB_API_VERSION,
+  const response = await fetchWithTimeout(
+    `${config.apiUrl}${path}`,
+    {
+      cache: "no-store",
+      headers: {
+        Accept: "application/vnd.github+json",
+        Authorization: `Bearer ${options.token}`,
+        "X-GitHub-Api-Version": GITHUB_API_VERSION,
+      },
+      method: options.method ?? "GET",
     },
-    method: options.method ?? "GET",
-  });
+    20_000,
+  );
   const text = await response.text();
 
   if (!response.ok) {

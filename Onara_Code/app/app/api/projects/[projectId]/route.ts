@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { fetchWithTimeout, publicServiceError } from "@/lib/resilience";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
@@ -127,12 +128,16 @@ async function activeBuildDeleteCheck(project: ProjectForDelete): Promise<Pipeli
   }
 
   try {
-    const response = await fetch(`${pipelineServerUrl}/pipeline/status/${encodeURIComponent(project.pipeline_job_id)}`, {
-      cache: "no-store",
-      headers: {
-        "X-Pipeline-Secret": pipelineSecret,
+    const response = await fetchWithTimeout(
+      `${pipelineServerUrl}/pipeline/status/${encodeURIComponent(project.pipeline_job_id)}`,
+      {
+        cache: "no-store",
+        headers: {
+          "X-Pipeline-Secret": pipelineSecret,
+        },
       },
-    });
+      8_000,
+    );
 
     if (response.status === 404) {
       return { deletable: true, reason: "pipeline_not_found" };
@@ -184,7 +189,7 @@ async function deleteCloudflareProject(project: ProjectForDelete): Promise<Cloud
 
   let response: Response;
   try {
-    response = await fetch(
+    response = await fetchWithTimeout(
       `https://api.cloudflare.com/client/v4/accounts/${encodeURIComponent(accountId)}/pages/projects/${encodeURIComponent(projectName)}`,
       {
         cache: "no-store",
@@ -194,10 +199,11 @@ async function deleteCloudflareProject(project: ProjectForDelete): Promise<Cloud
         },
         method: "DELETE",
       },
+      15_000,
     );
   } catch {
     return {
-      error: "Cloudflare cleanup request failed before reaching Cloudflare.",
+      error: publicServiceError("cloudflare"),
       projectName,
       status: "failed",
     };

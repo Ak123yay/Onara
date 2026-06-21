@@ -61,6 +61,30 @@ _Step verification checklists, Agent 9 QA gate, and pre-launch manual QA. Source
 - [ ] GitHub commit appears in `onara-sites`
 - [ ] Supabase project: `status='live'`, `public_url` set
 
+### Pipeline V2
+- [ ] Migration `022_pipeline_v2_durable_jobs.sql` applies successfully
+- [ ] Browser dependencies install with `npm install` and `npm run install-browser`
+- [ ] Two distinct candidates generate concurrently
+- [ ] Desktop, mobile, 320px reflow, Axe, and Lighthouse reports complete
+- [ ] Candidate with any hard blocker cannot deploy
+- [ ] One valid candidate can succeed when the alternate model route fails
+- [ ] PM2 restart recovers a queued/running durable job after its lease is available
+- [ ] Duplicate active request returns the existing job instead of creating another
+- [ ] `PIPELINE_V2_ENABLED=false` returns new builds to Pipeline V1
+- [ ] Browser audit infrastructure failure runs the strict static gate when `PIPELINE_V2_STATIC_AUDIT_FALLBACK=true`
+- [ ] Static mode blocks unsafe scripts, incomplete documents, missing CTA/contact form, and invalid image sources
+- [ ] Static mode never displays desktop-tested or mobile-tested badges
+
+### Graceful Degradation
+- [ ] `GET /api/health` exposes readiness booleans without secret values
+- [ ] Places outage opens manual business entry and preserves typed details
+- [ ] Places photo outage renders the Onara SVG placeholder
+- [ ] Pipeline start timeout releases the reserved project and allows retry
+- [ ] Dashboard/account route errors render the shared recovery surface
+- [ ] Checkout timeout leaves plan and payment state unchanged
+- [ ] Cloudflare/GitHub timeouts preserve the Supabase project record
+- [ ] Delete, cancellation, revision, and rollback actions fail closed when confirmation is unavailable
+
 ### Phase 24 — Stripe
 - [ ] Checkout creates subscription (Stripe test mode)
 - [ ] `customer.subscription.deleted` → `plan='free'`, `show_url=FALSE`

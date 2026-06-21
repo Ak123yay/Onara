@@ -4,6 +4,7 @@ import { Check, Copy, Globe2, RefreshCw } from "lucide-react";
 import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { CustomDomainStatus } from "@/lib/custom-domain";
+import { fetchWithTimeout, requestErrorMessage } from "@/lib/resilience";
 
 type DomainValidation = {
   cname_target?: unknown;
@@ -74,11 +75,15 @@ export function CustomDomainControl({
     setState((current) => ({ ...current, error: null }));
 
     try {
-      const response = await fetch(`/api/projects/${projectId}/custom-domain/checkout`, {
-        body: JSON.stringify({ domain }),
-        headers: { "content-type": "application/json" },
-        method: "POST",
-      });
+      const response = await fetchWithTimeout(
+        `/api/projects/${projectId}/custom-domain/checkout`,
+        {
+          body: JSON.stringify({ domain }),
+          headers: { "content-type": "application/json" },
+          method: "POST",
+        },
+        20_000,
+      );
       const payload = (await response.json().catch(() => ({}))) as CheckoutResponse;
 
       if (!response.ok || !payload.url) {
@@ -89,7 +94,10 @@ export function CustomDomainControl({
     } catch (error) {
       setState((current) => ({
         ...current,
-        error: error instanceof Error ? error.message : "Custom-domain checkout could not be started.",
+        error: requestErrorMessage(
+          error,
+          "Custom-domain checkout took too long. No charge or domain change was made.",
+        ),
       }));
       setIsLoading(false);
     }
@@ -101,9 +109,11 @@ export function CustomDomainControl({
     }
 
     try {
-      const response = await fetch(`/api/projects/${projectId}/custom-domain`, {
-        cache: "no-store",
-      });
+      const response = await fetchWithTimeout(
+        `/api/projects/${projectId}/custom-domain`,
+        { cache: "no-store" },
+        15_000,
+      );
       const payload = (await response.json().catch(() => ({}))) as Partial<DomainState> & { message?: string };
 
       if (!response.ok) {
@@ -127,7 +137,10 @@ export function CustomDomainControl({
     } catch (error) {
       setState((current) => ({
         ...current,
-        error: error instanceof Error ? error.message : "Domain status could not be checked.",
+        error: requestErrorMessage(
+          error,
+          "Domain status could not be checked. The current domain setup was left unchanged.",
+        ),
       }));
     } finally {
       if (showLoading) {

@@ -236,6 +236,7 @@ Execution rule:
 - [x] Training data pipeline: add user consent fields and `training_examples` storage for QA-approved, redacted generation examples that can feed RAG now and future model fine-tuning later
 - [x] Pipeline V2: durable Supabase leases/checkpoints, parallel code candidates, browser + visual evaluation, bounded component repair, and feature-flag rollback
 - [x] Build Studio UI rework: persistent step rail, live business brief, Smart Direction defaults, supported-section gating, concept cards, server ETA, and release-readiness badges
+- [x] App-wide graceful degradation: recoverable error boundaries, manual Places fallback, safe photo placeholders, user-safe API errors, and Pipeline V2 static release gate when browser tooling is unavailable
 
 ### Phase 28 — Pre-Launch
 

@@ -50,6 +50,8 @@ class GenerationSpec(V2Contract):
 
 class BrowserReport(V2Contract):
     available: bool = False
+    mode: Literal["full", "static"] = "full"
+    degraded_reason: str | None = None
     accessibility_violations: int = 0
     console_errors: list[str] = Field(default_factory=list)
     failed_requests: list[str] = Field(default_factory=list)

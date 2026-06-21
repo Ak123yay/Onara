@@ -3,6 +3,7 @@
 import { Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
+import { fetchWithTimeout } from "@/lib/resilience";
 
 type DeleteSiteButtonProps = {
   businessName: string;
@@ -41,9 +42,11 @@ export function DeleteSiteButton({
 
     setIsDeleting(true);
     try {
-      const response = await fetch(`/api/projects/${encodeURIComponent(projectId)}`, {
-        method: "DELETE",
-      });
+      const response = await fetchWithTimeout(
+        `/api/projects/${encodeURIComponent(projectId)}`,
+        { method: "DELETE" },
+        25_000,
+      );
       const payload = (await response.json().catch(() => ({}))) as DeleteSiteResponse;
 
       if (!response.ok) {
@@ -54,6 +57,8 @@ export function DeleteSiteButton({
       startTransition(() => {
         router.refresh();
       });
+    } catch {
+      window.alert("Onara could not confirm deletion. The site and project were left unchanged.");
     } finally {
       setIsDeleting(false);
     }

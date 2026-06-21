@@ -20,7 +20,12 @@ export async function getDashboardUserOrRedirect(nextPath: string): Promise<Dash
   const supabase = await createClient();
   const {
     data: { user },
+    error: authError,
   } = await supabase.auth.getUser();
+
+  if (authError) {
+    throw new Error("Account session service is temporarily unavailable.");
+  }
 
   if (!user) {
     redirect(`/auth/login?next=${encodeURIComponent(nextPath)}`);

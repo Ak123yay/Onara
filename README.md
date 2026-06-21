@@ -212,6 +212,10 @@ npm run install-browser
 python -m unittest discover -s tests -p "test_*.py"
 ```
 
+If npm reports moderate vulnerabilities, inspect them with `npm audit`. Do not use
+`npm audit fix --force` blindly because it can install incompatible browser-testing
+versions.
+
 Set this in `Onara_Code/pipeline/.env`:
 
 ```dotenv
@@ -257,6 +261,21 @@ Do not commit real secrets.
 - The FastAPI pipeline runs outside Vercel because builds can take a while.
 - UptimeRobot checks `https://pipeline.onara.tech/health`.
 - Customer sites deploy to Cloudflare Pages.
+
+## Graceful degradation
+
+Onara keeps core work usable when an optional service fails:
+
+- Google Places failure opens manual business entry.
+- Google photo failure uses an Onara placeholder.
+- Pipeline and revision starts time out with retryable messages while preserving form input.
+- Pipeline V2 uses a strict static safety gate when browser tooling is unavailable.
+- Stripe failures never change payment or plan state.
+- Lead forms store the lead before attempting email delivery.
+- Dashboard, account, and root routes use recoverable error boundaries instead of blank pages.
+
+`GET /api/health` reports whether Supabase, the pipeline, Stripe, and Google Places are
+configured without exposing secret values.
 
 ## Verification checklist
 

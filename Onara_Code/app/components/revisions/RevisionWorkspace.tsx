@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { fetchWithTimeout } from "@/lib/resilience";
 
 type RevisionStatus = "pending" | "running" | "done" | "failed";
 
@@ -220,17 +221,21 @@ export function RevisionWorkspace({
 
     let response: Response;
     try {
-      response = await fetch("/api/revisions/start", {
-        body: JSON.stringify({
-          componentSelection: selectedComponents,
-          message: instruction,
-          projectId: project.id,
-        }),
-        headers: {
-          "Content-Type": "application/json",
+      response = await fetchWithTimeout(
+        "/api/revisions/start",
+        {
+          body: JSON.stringify({
+            componentSelection: selectedComponents,
+            message: instruction,
+            projectId: project.id,
+          }),
+          headers: {
+            "Content-Type": "application/json",
+          },
+          method: "POST",
         },
-        method: "POST",
-      });
+        20_000,
+      );
     } catch {
       const nextError = "Revision could not start because the server is unreachable.";
       setError(nextError);
@@ -271,9 +276,11 @@ export function RevisionWorkspace({
 
     let response: Response;
     try {
-      response = await fetch(`/api/revisions/${encodeURIComponent(revisionId)}/rollback`, {
-        method: "POST",
-      });
+      response = await fetchWithTimeout(
+        `/api/revisions/${encodeURIComponent(revisionId)}/rollback`,
+        { method: "POST" },
+        20_000,
+      );
     } catch {
       const nextError = "Rollback could not start because the server is unreachable.";
       setError(nextError);

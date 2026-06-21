@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import base64
 import json
+import re
 import tempfile
 from pathlib import Path
 from typing import Any
@@ -20,9 +21,10 @@ async def audit_candidate_html(
     pipeline_root = Path(__file__).resolve().parents[2]
     script_path = pipeline_root / "browser_audit.mjs"
     if not script_path.exists():
-        return BrowserReport(
-            available=False,
-            hard_blockers=["Browser audit script is missing"],
+        return _unavailable_browser_report(
+            html,
+            reason="Browser audit script is missing",
+            settings=settings,
         )
 
     with tempfile.TemporaryDirectory(prefix=f"onara-{candidate_key}-") as directory:
@@ -48,27 +50,37 @@ async def audit_candidate_html(
                 timeout=settings.pipeline_v2_browser_audit_timeout,
             )
         except FileNotFoundError:
-            return BrowserReport(
-                available=False,
-                hard_blockers=["Node.js is not installed for browser validation"],
+            return _unavailable_browser_report(
+                html,
+                reason="Node.js is not installed for browser validation",
+                settings=settings,
             )
         except TimeoutError:
             if "process" in locals():
                 process.kill()
                 await process.communicate()
-            return BrowserReport(
-                available=False,
-                hard_blockers=["Browser audit timed out"],
+            return _unavailable_browser_report(
+                html,
+                reason="Browser audit timed out",
+                settings=settings,
             )
 
         if process.returncode != 0 or not report_path.exists():
             detail = (stderr or stdout).decode("utf-8", errors="replace")[:600]
-            return BrowserReport(
-                available=False,
-                hard_blockers=[f"Browser audit failed: {detail or 'unknown error'}"],
+            return _unavailable_browser_report(
+                html,
+                reason=f"Browser audit failed: {detail or 'unknown error'}",
+                settings=settings,
             )
 
-        payload = json.loads(report_path.read_text(encoding="utf-8"))
+        try:
+            payload = json.loads(report_path.read_text(encoding="utf-8"))
+        except (OSError, ValueError) as exc:
+            return _unavailable_browser_report(
+                html,
+                reason=f"Browser audit report could not be read: {exc}",
+                settings=settings,
+            )
         screenshots = payload.pop("screenshots", {})
         thumbnail_data_url = _data_url(screenshots.get("desktop"))
         mobile_thumbnail_data_url = _data_url(screenshots.get("mobile"))
@@ -84,6 +96,7 @@ async def audit_candidate_html(
         return BrowserReport(
             accessibility_violations=int(payload.get("accessibility_violations") or 0),
             available=bool(payload.get("available")),
+            mode="full",
             checks=payload.get("checks") if isinstance(payload.get("checks"), dict) else {},
             console_errors=[str(item) for item in payload.get("console_errors", [])],
             failed_requests=[str(item) for item in payload.get("failed_requests", [])],
@@ -94,6 +107,158 @@ async def audit_candidate_html(
             thumbnail_data_url=thumbnail_data_url,
             warnings=_unique(warnings),
         )
+
+
+def _unavailable_browser_report(
+    html: str,
+    *,
+    reason: str,
+    settings: Settings,
+) -> BrowserReport:
+    if not settings.pipeline_v2_static_audit_fallback:
+        return BrowserReport(
+            available=False,
+            degraded_reason=reason,
+            hard_blockers=[reason],
+            mode="static",
+        )
+
+    checks, hard_blockers = _static_audit(html)
+    return BrowserReport(
+        available=False,
+        checks=checks,
+        degraded_reason=reason,
+        hard_blockers=hard_blockers,
+        mode="static",
+        warnings=[
+            "Full browser, accessibility, responsive, and Lighthouse checks were unavailable.",
+            "A strict static safety gate and deterministic final QA were used instead.",
+        ],
+    )
+
+
+def _static_audit(html: str) -> tuple[dict[str, bool], list[str]]:
+    lower = html.lower()
+    required = ("<!doctype html", "<html", "<head", "</head>", "<body", "</body>", "</html>")
+    html_structure = all(marker in lower for marker in required)
+    has_header = bool(
+        re.search(r"<header\b", lower)
+        or re.search(r"data-component\s*=\s*['\"](?:site_header|header)['\"]", lower)
+    )
+    has_hero = bool(
+        re.search(r"data-component\s*=\s*['\"]hero['\"]", lower)
+        or re.search(r"<section\b[^>]*(?:id|class)\s*=\s*['\"][^'\"]*\bhero\b", lower)
+    )
+    cta_contents = re.findall(
+        r"<(?:a|button)\b[^>]*>(.*?)</(?:a|button)>",
+        lower,
+        flags=re.DOTALL,
+    )
+    has_primary_cta = any(
+        re.search(
+            r"\b(?:call|contact|estimate|quote|book|schedule|emergency|get started|start now)\b",
+            re.sub(r"<[^>]+>", " ", content),
+        )
+        for content in cta_contents
+    )
+
+    form_matches = re.findall(r"<form\b[^>]*>(.*?)</form>", lower, flags=re.DOTALL)
+    has_contact_form = False
+    controls_labeled = False
+    if form_matches:
+        contact_form = next(
+            (
+                form
+                for form in form_matches
+                if len(re.findall(r"<(?:input|select|textarea)\b", form)) >= 2
+                and re.search(r"contact|estimate|quote|message|service|phone|email", form)
+            ),
+            None,
+        )
+        has_contact_form = contact_form is not None
+        if contact_form:
+            controls = [
+                control
+                for control in re.findall(
+                    r"<(?:input|select|textarea)\b[^>]*>",
+                    contact_form,
+                    flags=re.DOTALL,
+                )
+                if not re.search(r"type\s*=\s*['\"]hidden['\"]", control)
+            ]
+            aria_labeled = sum(
+                1
+                for control in controls
+                if re.search(r"aria-(?:label|labelledby)\s*=", control)
+            )
+            label_count = len(re.findall(r"<label\b", contact_form))
+            controls_labeled = bool(controls) and label_count + aria_labeled >= len(controls)
+
+    unsafe_script = bool(
+        re.search(
+            r"<script\b(?![^>]*type\s*=\s*['\"]application/ld\+json['\"])",
+            lower,
+        )
+    )
+    unsafe_handlers = bool(re.search(r"\son[a-z]+\s*=", lower))
+    unsafe_embeds = bool(re.search(r"<(?:iframe|object|embed)\b", lower))
+    unsafe_urls = "javascript:" in lower
+    unsafe_refresh = bool(re.search(r"<meta\b[^>]*http-equiv\s*=\s*['\"]refresh['\"]", lower))
+    unsafe_form_action = any(
+        not _safe_form_action(action)
+        for action in re.findall(r"<form\b[^>]*action\s*=\s*['\"]([^'\"]+)['\"]", lower)
+    )
+    safe_output = not any(
+        (unsafe_script, unsafe_handlers, unsafe_embeds, unsafe_urls, unsafe_refresh, unsafe_form_action)
+    )
+
+    image_sources = re.findall(r"<img\b[^>]*src\s*=\s*['\"]([^'\"]*)['\"]", lower)
+    safe_images = all(
+        source
+        and "localhost" not in source
+        and not source.startswith("places/")
+        and "/api/places/photo" not in source
+        for source in image_sources
+    )
+
+    checks = {
+        "contact_form": has_contact_form,
+        "controls_labeled": controls_labeled,
+        "header": has_header,
+        "hero": has_hero,
+        "html_structure": html_structure,
+        "image_sources": safe_images,
+        "primary_cta": has_primary_cta,
+        "safe_output": safe_output,
+    }
+    blockers = []
+    if not html_structure:
+        blockers.append("Static audit found incomplete HTML document structure")
+    if not has_header:
+        blockers.append("Static audit found no site header")
+    if not has_hero:
+        blockers.append("Static audit found no hero section")
+    if not has_primary_cta:
+        blockers.append("Static audit found no primary conversion CTA")
+    if not has_contact_form:
+        blockers.append("Static audit found no usable contact form")
+    if has_contact_form and not controls_labeled:
+        blockers.append("Static audit found unlabeled contact form controls")
+    if not safe_output:
+        blockers.append("Static audit found unsafe executable or navigation behavior")
+    if not safe_images:
+        blockers.append("Static audit found empty or non-deployable image sources")
+    return checks, blockers
+
+
+def _safe_form_action(action: str) -> bool:
+    value = action.strip().lower()
+    if not value or value.startswith(("#", "/")):
+        return True
+    return bool(
+        re.match(r"https://[a-z0-9-]+\.supabase\.co/functions/v1/lead-email(?:[/?#]|$)", value)
+        or re.match(r"https://(?:www\.)?onara\.tech(?:[/?#]|$)", value)
+    )
 
 
 def _apply_lighthouse_thresholds(

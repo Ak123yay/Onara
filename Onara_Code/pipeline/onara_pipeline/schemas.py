@@ -138,12 +138,14 @@ class JobStatusResponse(BaseModel):
     blackboard_keys: list[str]
     candidates: list[dict[str, Any]] = Field(default_factory=list)
     diagnostic_code: str | None = None
+    degraded_services: list[str] = Field(default_factory=list)
     eta_seconds: int | None = None
     fallback_used: bool = False
     job_id: str
     last_valid_preview_url: str | None = None
     pipeline_version: str = "v1"
     quality_badges: list[str] = Field(default_factory=list)
+    quality_mode: str | None = None
     selected_candidate_id: str | None = None
     stage: str | None = None
     status: str
@@ -336,6 +338,11 @@ class JobStatusResponse(BaseModel):
             if isinstance(candidates, list)
             else [],
             diagnostic_code=_optional_str(job.blackboard.get("diagnostic_code")),
+            degraded_services=[
+                str(item)
+                for item in job.blackboard.get("degraded_services", [])
+                if isinstance(item, str)
+            ],
             eta_seconds=job.eta_seconds,
             fallback_used=bool(job.blackboard.get("fallback_used")),
             job_id=job.job_id,
@@ -344,6 +351,7 @@ class JobStatusResponse(BaseModel):
             quality_badges=[str(item) for item in quality_badges]
             if isinstance(quality_badges, list)
             else [],
+            quality_mode=_optional_str(job.blackboard.get("quality_mode")),
             selected_candidate_id=_optional_str(job.blackboard.get("selected_candidate_id")),
             stage=job.stage,
             status=job.status,

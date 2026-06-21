@@ -1,4 +1,9 @@
 import { NextResponse } from "next/server";
+import {
+  fetchWithTimeout,
+  publicServiceError,
+  serviceDegradation,
+} from "@/lib/resilience";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
@@ -174,36 +179,46 @@ export async function POST(
 
   let pipelineResponse: Response;
   try {
-    pipelineResponse = await fetch(`${pipelineServerUrl}/pipeline/revisions/start`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-Pipeline-Secret": pipelineSecret,
+    pipelineResponse = await fetchWithTimeout(
+      `${pipelineServerUrl}/pipeline/revisions/start`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Pipeline-Secret": pipelineSecret,
+        },
+        body: JSON.stringify({
+          business_data: businessDataFromProject(project),
+          cloudflare_project_name: project.cloudflare_project_name,
+          component_selection: componentSelection,
+          github_path: project.github_path,
+          instruction,
+          is_trial: Boolean(profile?.is_trial),
+          parent_revision_id: sourceRevision.id,
+          project_id: project.id,
+          public_url: project.public_url,
+          revision_id: rollbackRevision.id,
+          revision_kind: "rollback",
+          source_files: sourceFiles,
+          source_public_url: sourceRevision.before_public_url,
+          style_preferences: project.style_preferences ?? {},
+          user_id: user.id,
+          user_plan: planForPipeline(profile),
+        }),
+        cache: "no-store",
       },
-      body: JSON.stringify({
-        business_data: businessDataFromProject(project),
-        cloudflare_project_name: project.cloudflare_project_name,
-        component_selection: componentSelection,
-        github_path: project.github_path,
-        instruction,
-        is_trial: Boolean(profile?.is_trial),
-        parent_revision_id: sourceRevision.id,
-        project_id: project.id,
-        public_url: project.public_url,
-        revision_id: rollbackRevision.id,
-        revision_kind: "rollback",
-        source_files: sourceFiles,
-        source_public_url: sourceRevision.before_public_url,
-        style_preferences: project.style_preferences ?? {},
-        user_id: user.id,
-        user_plan: planForPipeline(profile),
-      }),
-      cache: "no-store",
-    });
+      15_000,
+    );
   } catch {
-    await markRevisionFailed(db, rollbackRevision.id, "FastAPI pipeline server is unreachable.", initialProgress);
+    const message = publicServiceError("pipeline");
+    await markRevisionFailed(db, rollbackRevision.id, message, initialProgress);
     return NextResponse.json(
-      { error: "pipeline_unavailable", message: "FastAPI pipeline server is unreachable." },
+      {
+        degraded: serviceDegradation("pipeline", message),
+        error: "pipeline_unavailable",
+        message,
+        retryable: true,
+      },
       { status: 503 },
     );
   }

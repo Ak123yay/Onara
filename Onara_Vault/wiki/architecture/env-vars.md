@@ -112,6 +112,7 @@ _Environment variable reference. `[NEXT]` = Next.js `.env.local` | `[FAST]` = Fa
 | `PIPELINE_JOB_TIMEOUT` | FAST | `600` — hard timeout per job in seconds |
 | `PIPELINE_V2_ENABLED` | FAST | `false` by default; enables durable dual-candidate V2 after migration/browser install |
 | `PIPELINE_V2_BROWSER_AUDIT_TIMEOUT` | FAST | Per-candidate Playwright/Axe/Lighthouse timeout; default `75` seconds |
+| `PIPELINE_V2_STATIC_AUDIT_FALLBACK` | FAST | `true` by default; strict static safety + deterministic QA when browser tooling is unavailable |
 | `PIPELINE_V2_CANDIDATE_TIMEOUT` | FAST | Per-model candidate generation timeout; default `150` seconds |
 | `PIPELINE_V2_LEASE_SECONDS` | FAST | Durable worker lease duration; default `60` seconds |
 | `PIPELINE_V2_MAX_ATTEMPTS` | FAST | Maximum durable recovery claims; default `3` |

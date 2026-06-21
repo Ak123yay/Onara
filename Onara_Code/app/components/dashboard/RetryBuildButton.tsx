@@ -3,6 +3,7 @@
 import { RefreshCw } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
+import { fetchWithTimeout } from "@/lib/resilience";
 
 type RetryBuildButtonProps = {
   projectId: string;
@@ -27,9 +28,11 @@ export function RetryBuildButton({ projectId }: RetryBuildButtonProps) {
 
     setIsRetrying(true);
     try {
-      const response = await fetch(`/api/projects/${encodeURIComponent(projectId)}/retry`, {
-        method: "POST",
-      });
+      const response = await fetchWithTimeout(
+        `/api/projects/${encodeURIComponent(projectId)}/retry`,
+        { method: "POST" },
+        20_000,
+      );
       const payload = (await response.json().catch(() => ({}))) as RetryResponse;
 
       if (!response.ok) {
@@ -48,6 +51,8 @@ export function RetryBuildButton({ projectId }: RetryBuildButtonProps) {
       startTransition(() => {
         router.refresh();
       });
+    } catch {
+      window.alert("Build retry could not reach Onara. Your existing project was not changed.");
     } finally {
       setIsRetrying(false);
     }

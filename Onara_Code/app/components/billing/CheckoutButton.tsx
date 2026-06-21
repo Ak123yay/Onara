@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { fetchWithTimeout, requestErrorMessage } from "@/lib/resilience";
 
 type CheckoutButtonProps = {
   children: React.ReactNode;
@@ -30,18 +31,22 @@ export function CheckoutButton({
     setIsLoading(true);
 
     try {
-      const response = await fetch("/api/billing/create-checkout-session", {
-        method: "POST",
-        headers: {
-          "content-type": "application/json",
+      const response = await fetchWithTimeout(
+        "/api/billing/create-checkout-session",
+        {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+          },
+          body: JSON.stringify({
+            cancelUrl: "/account/billing?checkout=cancelled",
+            interval,
+            plan,
+            successUrl: "/account/billing?checkout=success",
+          }),
         },
-        body: JSON.stringify({
-          cancelUrl: "/account/billing?checkout=cancelled",
-          interval,
-          plan,
-          successUrl: "/account/billing?checkout=success",
-        }),
-      });
+        20_000,
+      );
       const payload = (await response.json().catch(() => ({}))) as CheckoutResponse;
 
       if (!response.ok || !payload.url) {
@@ -50,7 +55,10 @@ export function CheckoutButton({
 
       window.location.assign(payload.url);
     } catch (checkoutError) {
-      setError(checkoutError instanceof Error ? checkoutError.message : "Checkout could not be started.");
+      setError(requestErrorMessage(
+        checkoutError,
+        "Secure checkout took too long. No payment or plan change was made.",
+      ));
       setIsLoading(false);
     }
   }

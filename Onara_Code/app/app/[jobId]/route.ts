@@ -1,3 +1,5 @@
+import { fetchWithTimeout } from "@/lib/resilience";
+
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
@@ -53,9 +55,16 @@ export async function GET(
     return new Response("Site is not deployed yet.", { status: 404 });
   }
 
-  const deployment = await fetch(deploymentUrl, {
-    cache: "no-store",
-  });
+  let deployment: Response;
+  try {
+    deployment = await fetchWithTimeout(
+      deploymentUrl,
+      { cache: "no-store" },
+      12_000,
+    );
+  } catch {
+    return new Response("Generated site is temporarily unavailable. Try again shortly.", { status: 503 });
+  }
 
   if (!deployment.ok) {
     return new Response("Generated site is temporarily unavailable.", { status: 502 });
@@ -87,12 +96,16 @@ async function fetchPipelineStatus(jobId: string): Promise<PipelineStatusRespons
   }
 
   try {
-    const response = await fetch(`${pipelineServerUrl}/pipeline/status/${encodeURIComponent(jobId)}`, {
-      cache: "no-store",
-      headers: {
-        "X-Pipeline-Secret": pipelineSecret,
+    const response = await fetchWithTimeout(
+      `${pipelineServerUrl}/pipeline/status/${encodeURIComponent(jobId)}`,
+      {
+        cache: "no-store",
+        headers: {
+          "X-Pipeline-Secret": pipelineSecret,
+        },
       },
-    });
+      8_000,
+    );
     const body = await response.json().catch(() => null);
 
     if (!response.ok) {
@@ -123,12 +136,16 @@ async function fetchPipelineRevisionStatus(
   pipelineSecret: string,
 ): Promise<PipelineStatusResponse | PipelineStatusError> {
   try {
-    const response = await fetch(`${pipelineServerUrl}/pipeline/revisions/status/${encodeURIComponent(jobId)}`, {
-      cache: "no-store",
-      headers: {
-        "X-Pipeline-Secret": pipelineSecret,
+    const response = await fetchWithTimeout(
+      `${pipelineServerUrl}/pipeline/revisions/status/${encodeURIComponent(jobId)}`,
+      {
+        cache: "no-store",
+        headers: {
+          "X-Pipeline-Secret": pipelineSecret,
+        },
       },
-    });
+      8_000,
+    );
     const body = await response.json().catch(() => null);
 
     if (!response.ok) {

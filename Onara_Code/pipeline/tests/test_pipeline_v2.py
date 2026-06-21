@@ -11,6 +11,7 @@ from onara_pipeline.v2.contracts import (
     ComponentPatch,
     PatchSet,
 )
+from onara_pipeline.v2.browser_quality import _static_audit
 from onara_pipeline.v2.evaluator import choose_candidate, deterministic_score
 from onara_pipeline.job_queue import _durable_event_payload, _lease_retry_delay, request_signature
 from onara_pipeline.schemas import GenerateRequest
@@ -131,6 +132,44 @@ class PipelineV2Tests(unittest.TestCase):
         )
 
         self.assertEqual(deterministic_score(report), 70)
+
+    def test_static_audit_allows_complete_safe_site(self) -> None:
+        html = """
+        <!doctype html><html><head></head><body>
+        <header data-component="site_header"><a href="tel:7035550100">Call now</a></header>
+        <main><section data-component="hero"><h1>Local plumbing</h1></section></main>
+        <form action="/lead">
+          <label>Name <input name="name"></label>
+          <label>Email <input name="email" type="email"></label>
+          <label>Message <textarea name="message"></textarea></label>
+          <button type="submit">Request an estimate</button>
+        </form>
+        </body></html>
+        """
+
+        checks, blockers = _static_audit(html)
+        report = BrowserReport(
+            available=False,
+            checks=checks,
+            mode="static",
+        )
+
+        self.assertEqual(blockers, [])
+        self.assertEqual(deterministic_score(report), 65)
+
+    def test_static_audit_blocks_unsafe_script(self) -> None:
+        html = """
+        <!doctype html><html><head></head><body>
+        <header></header><section data-component="hero"></section>
+        <a href="javascript:alert(1)">Call now</a>
+        <form><label>Email <input name="email"></label><label>Message <textarea></textarea></label></form>
+        <script>alert(1)</script>
+        </body></html>
+        """
+
+        _, blockers = _static_audit(html)
+
+        self.assertTrue(any("unsafe" in blocker.lower() for blocker in blockers))
 
     def test_candidate_gate_rejects_blocked_high_score(self) -> None:
         blocked = candidate(key="a", score=98, blockers=["Hero section is missing"])

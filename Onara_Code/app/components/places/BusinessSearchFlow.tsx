@@ -31,6 +31,7 @@ import {
   type Agent6ModelChoice,
   type UserPlan,
 } from "@/lib/build/agent6-models";
+import { fetchWithTimeout, requestErrorMessage, type ServiceDegradation } from "@/lib/resilience";
 
 type PlacePhoto = {
   name: string;
@@ -67,8 +68,10 @@ type PlaceSearchResult = {
 };
 
 type PlacesSearchResponse = {
+  degraded?: ServiceDegradation;
   results?: PlaceSearchResult[];
   error?: string;
+  manualEntryAvailable?: boolean;
   message?: string;
 };
 
@@ -331,13 +334,17 @@ export function BusinessSearchFlow({ initialQuery, isTrial, userEmail, userName,
     setGenerationPackage(null);
 
     try {
-      const response = await fetch("/api/places/search", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
+      const response = await fetchWithTimeout(
+        "/api/places/search",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ query: trimmedQuery }),
         },
-        body: JSON.stringify({ query: trimmedQuery }),
-      });
+        12_000,
+      );
       const payload = (await response.json()) as PlacesSearchResponse;
 
       if (!response.ok) {
@@ -345,8 +352,16 @@ export function BusinessSearchFlow({ initialQuery, isTrial, userEmail, userName,
       }
 
       setResults(payload.results ?? []);
+      if (payload.degraded) {
+        setError(payload.degraded.message);
+        setShowManualEntry(Boolean(payload.manualEntryAvailable));
+      }
     } catch (searchError) {
-      setError(searchError instanceof Error ? searchError.message : "Google Places search failed.");
+      setError(requestErrorMessage(
+        searchError,
+        "Google business search is unavailable. Enter the business manually to continue.",
+      ));
+      setShowManualEntry(true);
     } finally {
       setIsSearching(false);
     }
@@ -1379,18 +1394,22 @@ function GenerateStep({
         ...generationPackage,
         agent_6_model: agent6Model,
       };
-      const response = await fetch("/api/pipeline/generate", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
+      const response = await fetchWithTimeout(
+        "/api/pipeline/generate",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            agent_6_model: agent6Model,
+            business_data: selectedGenerationPackage.business,
+            generation_package: selectedGenerationPackage,
+            style_preferences: selectedGenerationPackage.style,
+          }),
         },
-        body: JSON.stringify({
-          agent_6_model: agent6Model,
-          business_data: selectedGenerationPackage.business,
-          generation_package: selectedGenerationPackage,
-          style_preferences: selectedGenerationPackage.style,
-        }),
-      });
+        20_000,
+      );
       const payload = (await response.json()) as GenerateApiResponse;
 
       if (!response.ok) {
@@ -1423,7 +1442,9 @@ function GenerateStep({
       const projectParam = projectId ? `&projectId=${encodeURIComponent(projectId)}` : "";
       router.push(`/dashboard/build/progress?jobId=${encodeURIComponent(jobId)}${projectParam}`);
     } catch {
-      setErrorMessage("The pipeline server is unreachable. Confirm FastAPI and the tunnel are running.");
+      setErrorMessage(
+        "Website generation is temporarily unavailable. Your business details are still here, so try again shortly.",
+      );
     } finally {
       setIsStarting(false);
     }

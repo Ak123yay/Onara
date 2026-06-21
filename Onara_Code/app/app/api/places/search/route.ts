@@ -1,4 +1,9 @@
 import { NextResponse } from "next/server";
+import {
+  fetchWithTimeout,
+  publicServiceError,
+  serviceDegradation,
+} from "@/lib/resilience";
 import { createClient } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
@@ -100,7 +105,7 @@ export async function POST(request: Request) {
 
   const apiKey = process.env.GOOGLE_PLACES_API_KEY;
   if (!apiKey) {
-    return NextResponse.json({ error: "missing_google_places_api_key" }, { status: 500 });
+    return degradedPlacesResponse();
   }
 
   const googleRequestBody: Record<string, unknown> = {
@@ -116,27 +121,29 @@ export async function POST(request: Request) {
     googleRequestBody.locationBias = body.locationBias;
   }
 
-  const googleResponse = await fetch(GOOGLE_TEXT_SEARCH_URL, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "X-Goog-Api-Key": apiKey,
-      "X-Goog-FieldMask": FIELD_MASK,
-    },
-    body: JSON.stringify(googleRequestBody),
-    cache: "no-store",
-  });
-
-  const payload = (await googleResponse.json()) as GoogleTextSearchResponse;
-  if (!googleResponse.ok) {
-    return NextResponse.json(
+  let googleResponse: Response;
+  try {
+    googleResponse = await fetchWithTimeout(
+      GOOGLE_TEXT_SEARCH_URL,
       {
-        error: "places_search_failed",
-        message: payload.error?.message ?? "Google Places search failed",
-        status: payload.error?.status,
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Goog-Api-Key": apiKey,
+          "X-Goog-FieldMask": FIELD_MASK,
+        },
+        body: JSON.stringify(googleRequestBody),
+        cache: "no-store",
       },
-      { status: googleResponse.status },
+      8_000,
     );
+  } catch {
+    return degradedPlacesResponse();
+  }
+
+  const payload = (await googleResponse.json().catch(() => ({}))) as GoogleTextSearchResponse;
+  if (!googleResponse.ok) {
+    return degradedPlacesResponse(payload.error?.status);
   }
 
   const results = (payload.places ?? []).map((place, index) => ({
@@ -164,6 +171,16 @@ export async function POST(request: Request) {
   }));
 
   return NextResponse.json({ results });
+}
+
+function degradedPlacesResponse(providerStatus?: string) {
+  const message = publicServiceError("google_places");
+  return NextResponse.json({
+    degraded: serviceDegradation("google_places", message),
+    manualEntryAvailable: true,
+    providerStatus,
+    results: [],
+  });
 }
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {

@@ -50,6 +50,7 @@ Onara_Code/app/
     build/                      → build flow components (BusinessConfirmCard, StylePicker)
     landing/                    → landing page sections (Hero, Pricing, SocialProof)
   lib/
+    resilience.ts              → shared timeouts, degraded-service payloads, safe public errors
     supabase/                   → Supabase client (browser + server)
     stripe/                     → Stripe client helpers
     auth/                       → session utilities, middleware helpers
@@ -64,6 +65,7 @@ Onara_Code/app/
 
 ```
 Onara_Code/app/app/api/
+  health/route.ts              → configuration readiness without exposing secret values
   auth/
     callback/route.ts           → Google OAuth callback handler
   places/
@@ -121,7 +123,7 @@ Onara_Code/pipeline/
     codegen.py                  → parallel candidate generation and emergency fallback
     evaluator.py                → deterministic + visual candidate scoring
     repair.py                   → one bounded hash-checked component patch
-    browser_quality.py          → Node browser-audit runner
+    browser_quality.py          → browser audit runner with a strict static fallback
     orchestrator.py             → Pipeline V2 stage workflow
   browser_audit.mjs             → Playwright, Axe, and Lighthouse release audit
   package.json                  → browser-audit Node dependencies

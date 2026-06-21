@@ -1051,9 +1051,11 @@ class JobQueue:
                     "lease_expires_at": None,
                     "lease_owner": None,
                     "result_summary": {
+                        "degraded_services": job.blackboard.get("degraded_services", []),
                         "fallback_used": bool(job.blackboard.get("fallback_used")),
                         "public_url": job.blackboard.get("public_url"),
                         "quality_badges": job.blackboard.get("quality_badges", []),
+                        "quality_mode": job.blackboard.get("quality_mode"),
                         "selected_candidate_id": job.blackboard.get("selected_candidate_id"),
                     },
                     "stage": "completed",
@@ -1183,12 +1185,22 @@ class JobQueue:
         job.blackboard["candidate_summaries"] = [
             {
                 "candidateKey": row.get("candidate_key"),
+                "degradedReason": (
+                    row.get("render_report", {}).get("degraded_reason")
+                    if isinstance(row.get("render_report"), dict)
+                    else None
+                ),
                 "deterministicScore": row.get("deterministic_score"),
                 "fallbackUsed": row.get("fallback_used"),
                 "finalScore": row.get("final_score"),
                 "hardBlockers": row.get("hard_blockers") or [],
                 "model": row.get("model"),
                 "provider": row.get("provider"),
+                "qualityMode": (
+                    row.get("render_report", {}).get("mode")
+                    if isinstance(row.get("render_report"), dict)
+                    else None
+                ),
                 "recipe": row.get("recipe"),
                 "selected": row.get("status") == "selected",
                 "visualScore": row.get("visual_score"),
@@ -1200,8 +1212,10 @@ class JobQueue:
         job.blackboard.update(
             {
                 "fallback_used": result_summary.get("fallback_used"),
+                "degraded_services": result_summary.get("degraded_services", []),
                 "public_url": result_summary.get("public_url"),
                 "quality_badges": result_summary.get("quality_badges", []),
+                "quality_mode": result_summary.get("quality_mode"),
                 "selected_candidate_id": result_summary.get("selected_candidate_id"),
             }
         )
@@ -1492,6 +1506,8 @@ def _stage_state_snapshot(job: PipelineJob) -> dict[str, Any]:
         "prompt_output",
         "prompt_b_output",
         "selected_candidate_id",
+        "quality_mode",
+        "degraded_services",
         "quality_badges",
     )
     checkpoint = {

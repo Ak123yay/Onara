@@ -60,6 +60,10 @@ class Settings(BaseSettings):
         le=180,
         alias="PIPELINE_V2_BROWSER_AUDIT_TIMEOUT",
     )
+    pipeline_v2_static_audit_fallback: bool = Field(
+        default=True,
+        alias="PIPELINE_V2_STATIC_AUDIT_FALLBACK",
+    )
     pipeline_v2_candidate_timeout: int = Field(
         default=150,
         ge=30,

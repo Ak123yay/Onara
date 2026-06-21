@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { fetchWithTimeout } from "@/lib/resilience";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
@@ -106,14 +107,16 @@ export async function GET(
       while (!request.signal.aborted) {
         let payload: PipelineRevisionStatus | null = null;
         try {
-          const response = await fetch(
+          const response = await fetchWithTimeout(
             `${pipelineServerUrl}/pipeline/revisions/status/${encodeURIComponent(revision.pipeline_job_id)}`,
             {
               cache: "no-store",
               headers: {
                 "X-Pipeline-Secret": pipelineSecret,
               },
+              signal: request.signal,
             },
+            8_000,
           );
 
           if (response.ok) {

@@ -3,9 +3,11 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { createHash } from "node:crypto";
 import { resolve } from "node:path";
 import AxeBuilder from "@axe-core/playwright";
-import * as chromeLauncher from "chrome-launcher";
+import * as chromeLauncherModule from "chrome-launcher";
 import lighthouse from "lighthouse";
 import { chromium } from "playwright";
+
+const launchChrome = chromeLauncherModule.launch ?? chromeLauncherModule.default?.launch;
 
 const [inputPath, outputDirectory, reportPath] = process.argv.slice(2);
 if (!inputPath || !outputDirectory || !reportPath) {
@@ -215,7 +217,10 @@ if (report.failed_requests.length) {
 
 let chrome;
 try {
-  chrome = await chromeLauncher.launch({
+  if (typeof launchChrome !== "function") {
+    throw new Error("chrome-launcher did not expose a launch function");
+  }
+  chrome = await launchChrome({
     chromePath: chromium.executablePath(),
     chromeFlags: ["--headless", "--no-sandbox", "--disable-gpu"],
   });
@@ -241,8 +246,14 @@ try {
   report.warnings.push(`Lighthouse unavailable: ${error instanceof Error ? error.message : String(error)}`);
 } finally {
   if (chrome) {
-    await chrome.kill();
-    await new Promise((resolve) => setTimeout(resolve, 1000));
+    try {
+      await chrome.kill();
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+    } catch (error) {
+      report.warnings.push(
+        `Lighthouse cleanup warning: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
   }
   await new Promise((resolvePromise) => server.close(resolvePromise));
 }

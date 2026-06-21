@@ -199,6 +199,10 @@ Also documents 5 new Blackboard fields, a v1/later priority table, and design re
   restart, verification, and rollback commands.
 - Updated broad documentation, developer setup/commands, operations runbook, and testing
   strategy so activation instructions are consistent.
+- Made the `chrome-launcher` ESM import compatible with its named exports and prevented a
+  Windows temporary-profile cleanup `EPERM` from discarding a finished browser audit.
+- Replaced raw pipeline stack traces in the Build Studio with concise user-facing errors and
+  added safe wrapping for long status content.
 
 ---
 
@@ -263,3 +267,39 @@ and did not render/test competing concepts before deployment.
 - Split the remaining toolchain task so `pnpm` is the only unchecked install item.
 
 **Why**: The original task bundled three tools together, but only `pnpm` is still missing.
+
+---
+
+### App-wide graceful degradation
+
+**Files affected**:
+- `Onara_Code/app/lib/resilience.ts`
+- `Onara_Code/app/app/error.tsx`
+- `Onara_Code/app/app/global-error.tsx`
+- `Onara_Code/app/app/dashboard/error.tsx`
+- `Onara_Code/app/app/account/error.tsx`
+- `Onara_Code/app/app/api/health/route.ts`
+- Places, pipeline, revision, billing, Cloudflare, GitHub, and dashboard request paths
+- `Onara_Code/pipeline/onara_pipeline/v2/browser_quality.py`
+- `Onara_Code/pipeline/onara_pipeline/v2/evaluator.py`
+- `Onara_Vault/wiki/architecture/graceful-degradation.md`
+
+**What changed**:
+- Added shared bounded fetches and safe public service errors across the Next.js app.
+- Added recoverable route, dashboard, account, root, and not-found UI boundaries.
+- Added manual Places entry and a stable photo placeholder when Google is unavailable.
+- Kept billing, authorization, destructive actions, and deployment approval fail-closed.
+- Added `/api/health` capability reporting without returning secret values.
+- Added a strict Pipeline V2 static release gate for browser-tooling outages.
+- Persisted degraded quality mode in pipeline checkpoints and exposed honest quality badges.
+
+**Verification**:
+- `pnpm.cmd type-check` passed.
+- `python -m unittest discover -s tests -p "test_*.py"` passed (17 tests).
+- `python -m compileall onara_pipeline main.py` passed.
+- `node --check browser_audit.mjs` passed.
+- `git diff --check` passed.
+- `pnpm.cmd build` remains blocked on this Windows machine by the existing `spawn EPERM`.
+
+**Why**: A temporary outage in one provider should reduce only the affected capability. It
+must not freeze the whole app, expose internal errors, lose user input, or bypass a safety gate.

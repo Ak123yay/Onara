@@ -302,12 +302,24 @@ async def run_pipeline_v2(
                 if key != "index.html"
             },
         }
-        job.blackboard["quality_badges"] = [
-            "Desktop tested",
-            "Mobile tested",
-            "Business facts verified",
-            "Contact form checked",
-        ]
+        job.blackboard["quality_badges"] = (
+            [
+                "Desktop tested",
+                "Mobile tested",
+                "Business facts verified",
+                "Contact form checked",
+            ]
+            if final_browser.mode == "full"
+            else [
+                "Static safety checked",
+                "Business facts verified",
+                "Contact form checked",
+            ]
+        )
+        job.blackboard["quality_mode"] = final_browser.mode
+        job.blackboard["degraded_services"] = (
+            ["browser_quality"] if final_browser.mode == "static" else []
+        )
         job.blackboard["fallback_used"] = selected.used_fallback_template
         job.blackboard["final_browser_report"] = final_browser.model_dump(
             exclude={"mobile_thumbnail_data_url", "thumbnail_data_url"}
@@ -319,6 +331,8 @@ async def run_pipeline_v2(
             {
                 "eta_seconds": 20,
                 "quality_badges": job.blackboard["quality_badges"],
+                "quality_mode": final_browser.mode,
+                "degraded_services": job.blackboard["degraded_services"],
                 "stage": "polishing",
             },
         )
@@ -382,11 +396,13 @@ def _candidate_summary(
     summary = {
         "candidateKey": candidate.key,
         "deterministicScore": candidate.deterministic_score,
+        "degradedReason": candidate.browser.degraded_reason,
         "fallbackUsed": candidate.fallback_used,
         "finalScore": candidate.final_score,
         "hardBlockers": candidate.hard_blockers,
         "model": candidate.model,
         "provider": candidate.provider,
+        "qualityMode": candidate.browser.mode,
         "recipe": candidate.recipe,
         "selected": candidate.selected,
         "visualScore": candidate.visual_score,

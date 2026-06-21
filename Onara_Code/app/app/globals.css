@@ -81,6 +81,59 @@
   --serif: var(--font-display);
 }
 
+.recoverable-error-shell {
+  display: grid;
+  min-height: 100dvh;
+  place-items: center;
+  padding: 28px;
+  background:
+    linear-gradient(135deg, rgb(201 111 56 / 0.08), transparent 38%),
+    var(--paper);
+}
+
+.recoverable-error-card {
+  width: min(100%, 620px);
+  border-radius: 4px;
+  padding: clamp(28px, 5vw, 52px);
+}
+
+.recoverable-error-card h1 {
+  margin: 14px 0 12px;
+  color: var(--ink);
+  font-size: clamp(40px, 7vw, 68px);
+  font-weight: 400;
+  letter-spacing: -0.055em;
+  line-height: 0.98;
+}
+
+.recoverable-error-card > p:not(.eyebrow) {
+  max-width: 500px;
+  margin: 0;
+  color: var(--ink-3);
+  font-size: 16px;
+  line-height: 1.65;
+}
+
+.recoverable-error-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 26px;
+}
+
+.recoverable-error-card small {
+  display: block;
+  margin-top: 24px;
+  color: var(--ink-3);
+  line-height: 1.5;
+}
+
+.recoverable-error-card small a {
+  color: var(--accent-ink);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
 * {
   box-sizing: border-box;
 }
@@ -3554,6 +3607,7 @@ textarea.confirm-manual-control {
   height: 100%;
   margin: 0 auto;
   max-width: 1440px;
+  min-width: 0;
   min-height: 0;
 }
 
@@ -3562,6 +3616,7 @@ textarea.confirm-manual-control {
   direction: rtl;
   display: grid;
   max-height: none;
+  min-width: 0;
   min-height: 0;
   overflow: auto;
   gap: 12px;
@@ -3606,6 +3661,8 @@ textarea.confirm-manual-control {
 }
 
 .agent-command-card.card {
+  max-width: 100%;
+  min-width: 0;
   overflow: visible;
   border-color: var(--rule);
   background: color-mix(in oklab, var(--paper) 96%, white);
@@ -3618,6 +3675,13 @@ textarea.confirm-manual-control {
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 16px;
   align-items: start;
+}
+
+.agent-command-card-top > *,
+.agent-command-card-copy,
+.agent-active-card,
+.agent-active-card-head > * {
+  min-width: 0;
 }
 
 .agent-command-card-top .eyebrow {
@@ -3877,6 +3941,11 @@ textarea.confirm-manual-control {
   color: var(--ink-2);
 }
 
+.agent-progress-save-note span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
 .agent-progress-notice-ai summary {
   display: flex;
   cursor: pointer;
@@ -3970,10 +4039,14 @@ textarea.confirm-manual-control {
 
 .agent-active-card span {
   display: block;
+  max-width: 100%;
   margin-top: 6px;
   color: var(--ink-3);
   font-size: 12.5px;
   line-height: 1.45;
+  overflow-wrap: anywhere;
+  white-space: normal;
+  word-break: break-word;
 }
 
 .agent-active-card .agent-active-state {

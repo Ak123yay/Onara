@@ -38,12 +38,17 @@ npm run install-browser
 python -m unittest discover -s tests -p "test_*.py"
 ```
 
+`npm install` may report moderate transitive vulnerabilities from the browser-testing
+toolchain. Run `npm audit` to inspect them. Do not run `npm audit fix --force` without
+reviewing the proposed major-version changes because that can break Playwright or Lighthouse.
+
 Set this in `Onara_Code/pipeline/.env`:
 
 ```dotenv
 PIPELINE_V2_ENABLED=true
 PIPELINE_JOB_TIMEOUT=600
 PIPELINE_V2_BROWSER_AUDIT_TIMEOUT=75
+PIPELINE_V2_STATIC_AUDIT_FALLBACK=true
 PIPELINE_V2_CANDIDATE_TIMEOUT=150
 PIPELINE_V2_LEASE_SECONDS=60
 PIPELINE_V2_MAX_ATTEMPTS=3
@@ -52,6 +57,11 @@ AI_NIM_CONCURRENCY=3
 AI_OLLAMA_CONCURRENCY=1
 AI_COPILOT_CONCURRENCY=1
 ```
+
+When `PIPELINE_V2_STATIC_AUDIT_FALLBACK=true`, missing browser tooling falls back to a
+strict static structure, contact-form, label, image-source, and security audit. Final
+deterministic SEO/mobile/QA checks still run. Set it to `false` to require full
+Playwright/Axe/Lighthouse validation for every release.
 
 Restart and verify:
 

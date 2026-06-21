@@ -58,9 +58,17 @@ async def _evaluate_candidate(
 
 
 def deterministic_score(browser) -> float:
+    checks = browser.checks
+    if browser.mode == "static":
+        structure = 20 if checks.get("html_structure") and checks.get("header") and checks.get("hero") else 0
+        cta = 15 if checks.get("primary_cta") else 0
+        contact_form = 10 if checks.get("contact_form") else 0
+        labels = 10 if checks.get("controls_labeled") else 0
+        security = 10 if checks.get("safe_output") else 0
+        images = 5 if checks.get("image_sources") else 0
+        return round(min(65, structure + cta + contact_form + labels + security + images), 2)
     if not browser.available:
         return 0
-    checks = browser.checks
     structure = 15 if checks.get("html_structure") and checks.get("header") and checks.get("hero") else 0
     facts_and_cta = 15 if checks.get("primary_cta") else 5
     responsive = 10 * (

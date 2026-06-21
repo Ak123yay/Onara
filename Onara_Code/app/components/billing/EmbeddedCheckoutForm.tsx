@@ -8,9 +8,10 @@ import {
 } from "@stripe/react-stripe-js/checkout";
 import { loadStripe } from "@stripe/stripe-js";
 import type { Stripe, StripeCheckoutElementsSdkOptions } from "@stripe/stripe-js";
-import { ArrowLeft, LockKeyhole } from "lucide-react";
+import { ArrowLeft, LockKeyhole, RefreshCw } from "lucide-react";
 import Link from "next/link";
 import { Component, type ComponentProps, type ErrorInfo, type ReactNode, useEffect, useState } from "react";
+import { fetchWithTimeout } from "@/lib/resilience";
 
 type BillingPlan = "starter" | "pro";
 type BillingInterval = "month" | "year";
@@ -183,17 +184,38 @@ export function EmbeddedCheckoutForm({ interval, plan, publishableKey }: Embedde
 }
 
 function CheckoutLoadError({ message }: { message: string }) {
+  const safeMessage = checkoutPublicMessage(message);
   return (
     <div className="embedded-checkout-state embedded-checkout-state-error card">
       <p className="eyebrow">Checkout unavailable</p>
       <h2 className="serif">Could not load Stripe</h2>
-      <p>{message}</p>
-      <Link className="btn btn-soft" href="/account/billing">
-        <ArrowLeft aria-hidden="true" size={14} />
-        Back to billing
-      </Link>
+      <p>{safeMessage}</p>
+      <div className="embedded-checkout-actions">
+        <button className="btn btn-accent" type="button" onClick={() => window.location.reload()}>
+          <RefreshCw aria-hidden="true" size={14} />
+          Try again
+        </button>
+        <Link className="btn btn-soft" href="/account/billing">
+          <ArrowLeft aria-hidden="true" size={14} />
+          Back to billing
+        </Link>
+      </div>
     </div>
   );
+}
+
+function checkoutPublicMessage(message: string) {
+  const normalized = message.toLowerCase();
+  if (
+    message.length > 300
+    || normalized.includes("abort")
+    || normalized.includes("client_secret")
+    || normalized.includes("stack")
+    || normalized.includes("stripe.js")
+  ) {
+    return "Secure checkout could not load. No payment or plan change was made. Try again shortly.";
+  }
+  return message;
 }
 
 function CheckoutPaymentForm({ interval, plan }: Pick<EmbeddedCheckoutFormProps, "interval" | "plan">) {
@@ -346,17 +368,21 @@ function checkoutClientSecret(plan: BillingPlan, interval: BillingInterval) {
   const returnUrl = new URL("/account/billing", window.location.origin);
   returnUrl.searchParams.set("checkout", "success");
 
-  const clientSecret = fetch("/api/billing/create-elements-checkout-session", {
-    method: "POST",
-    headers: {
-      "content-type": "application/json",
+  const clientSecret = fetchWithTimeout(
+    "/api/billing/create-elements-checkout-session",
+    {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        interval,
+        plan,
+        returnUrl: returnUrl.toString(),
+      }),
     },
-    body: JSON.stringify({
-      interval,
-      plan,
-      returnUrl: returnUrl.toString(),
-    }),
-  })
+    20_000,
+  )
     .then(async (response) => {
       const payload = (await response.json().catch(() => ({}))) as CheckoutSessionResponse;
 

@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
+import { fetchWithTimeout, requestErrorMessage } from "@/lib/resilience";
 
 type CancelSubscriptionResponse = {
   message?: string;
@@ -30,9 +31,11 @@ export function CancelSubscriptionButton() {
     setIsLoading(true);
 
     try {
-      const response = await fetch("/api/billing/cancel-subscription", {
-        method: "POST",
-      });
+      const response = await fetchWithTimeout(
+        "/api/billing/cancel-subscription",
+        { method: "POST" },
+        20_000,
+      );
       const payload = (await response.json().catch(() => ({}))) as CancelSubscriptionResponse;
 
       if (!response.ok || payload.ok === false) {
@@ -44,7 +47,10 @@ export function CancelSubscriptionButton() {
         router.refresh();
       });
     } catch (cancelError) {
-      setError(cancelError instanceof Error ? cancelError.message : "Subscription could not be canceled.");
+      setError(requestErrorMessage(
+        cancelError,
+        "Cancellation could not be confirmed. Your subscription was left unchanged.",
+      ));
     } finally {
       setIsLoading(false);
     }

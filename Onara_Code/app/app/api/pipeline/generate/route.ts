@@ -5,6 +5,11 @@ import {
   resolveAgent6ModelForPlan,
   type UserPlan,
 } from "@/lib/build/agent6-models";
+import {
+  fetchWithTimeout,
+  publicServiceError,
+  serviceDegradation,
+} from "@/lib/resilience";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
@@ -167,31 +172,41 @@ export async function POST(request: Request) {
 
   let pipelineResponse: Response;
   try {
-    pipelineResponse = await fetch(`${pipelineServerUrl}/pipeline/start`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-Pipeline-Secret": pipelineSecret,
+    pipelineResponse = await fetchWithTimeout(
+      `${pipelineServerUrl}/pipeline/start`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Pipeline-Secret": pipelineSecret,
+        },
+        body: JSON.stringify({
+          agent_6_model: agent6Selection.selectedModel,
+          business_data: businessData,
+          is_trial: Boolean(profile?.is_trial),
+          place_id: placeId,
+          project_id: projectIdForPipeline,
+          style_preferences: isPlainObject(stylePreferences) ? stylePreferences : {},
+          user_id: user.id,
+          user_plan: userPlan,
+        }),
+        cache: "no-store",
       },
-      body: JSON.stringify({
-        agent_6_model: agent6Selection.selectedModel,
-        business_data: businessData,
-        is_trial: Boolean(profile?.is_trial),
-        place_id: placeId,
-        project_id: projectIdForPipeline,
-        style_preferences: isPlainObject(stylePreferences) ? stylePreferences : {},
-        user_id: user.id,
-        user_plan: userPlan,
-      }),
-      cache: "no-store",
-    });
+      15_000,
+    );
   } catch {
     if (reservedProjectId) {
       await deleteReservedProject({ projectId: reservedProjectId, supabase: db, userId: user.id });
     }
 
+    const message = publicServiceError("pipeline");
     return NextResponse.json(
-      { error: "pipeline_unavailable", message: "FastAPI pipeline server is unreachable." },
+      {
+        degraded: serviceDegradation("pipeline", message),
+        error: "pipeline_unavailable",
+        message,
+        retryable: true,
+      },
       { status: 503 },
     );
   }

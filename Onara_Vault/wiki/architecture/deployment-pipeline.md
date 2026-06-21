@@ -75,6 +75,11 @@ The browser gate also checks:
 - Lighthouse performance >= 90 and accessibility/SEO/best-practices >= 95.
 - Lab LCP <= 2.5s, CLS <= 0.1, and TBT <= 200ms.
 
+If browser tooling is unavailable and `PIPELINE_V2_STATIC_AUDIT_FALLBACK=true`, V2 runs a
+strict static structure, form-label, image-source, and unsafe-output gate. Final
+deterministic SEO/mobile/QA checks still run and the normal score threshold still applies.
+The release is labeled `Static safety checked`, never desktop/mobile tested.
+
 ## Repair Policy
 
 V2 never asks a model to rewrite the entire page after evaluation. It permits one narrow
@@ -119,6 +124,7 @@ Set these in `pipeline/.env`:
 ```dotenv
 PIPELINE_V2_ENABLED=true
 PIPELINE_V2_BROWSER_AUDIT_TIMEOUT=75
+PIPELINE_V2_STATIC_AUDIT_FALLBACK=true
 PIPELINE_V2_CANDIDATE_TIMEOUT=150
 PIPELINE_V2_LEASE_SECONDS=60
 PIPELINE_V2_MAX_ATTEMPTS=3

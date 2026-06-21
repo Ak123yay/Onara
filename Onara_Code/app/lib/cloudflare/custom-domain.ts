@@ -1,4 +1,5 @@
 import type { CustomDomainStatus } from "@/lib/custom-domain";
+import { fetchWithTimeout } from "@/lib/resilience";
 
 type CloudflareDomainRecord = {
   name: string;
@@ -107,9 +108,10 @@ async function cloudflareRequest(
   const headers = new Headers(init.headers);
   headers.set("authorization", `Bearer ${apiToken}`);
 
-  const response = await fetch(
+  const response = await fetchWithTimeout(
     `${apiUrl}/accounts/${encodeURIComponent(accountId)}${path}`,
     { ...init, cache: "no-store", headers },
+    15_000,
   );
 
   if (allowNotFound && response.status === 404) {

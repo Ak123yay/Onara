@@ -11,6 +11,7 @@ _UptimeRobot alerts, PostHog analytics, Supabase health queries, and weekly metr
 | Monitor | URL | Interval | Alert |
 |---------|-----|----------|-------|
 | Next.js App | `https://onara.tech` | 5 min | Email + `UPTIME_ROBOT_WEBHOOK` |
+| Next.js Capability Health | `https://www.onara.tech/api/health` | 5 min | Email |
 | FastAPI Health | `{PIPELINE_SERVER_URL}/health` | 5 min | Email + webhook |
 | Cloudflare Pages Test | `https://onara-test.pages.dev` | 15 min | Email only |
 
@@ -21,6 +22,13 @@ _UptimeRobot alerts, PostHog analytics, Supabase health queries, and weekly metr
 **Alert thresholds**:
 - 1 failed check → warn (email)
 - 2 consecutive failed checks → page (webhook + email)
+
+`GET /api/health` reports whether Supabase, Stripe, Google Places, and the FastAPI
+pipeline are configured. It never returns secret values. Optional services can return
+`status: "degraded"` with HTTP 200; missing core Supabase app configuration returns HTTP 503.
+
+Do not treat a degraded optional service as a full app outage. Follow the service-specific
+fallback in `wiki/architecture/graceful-degradation.md`.
 
 ---
 
@@ -167,3 +175,4 @@ vercel logs --prod --since 1h | grep ERROR
 
 - `wiki/operations/runbook.md` — incident playbooks and resolution steps
 - `wiki/architecture/env-vars.md` — `UPTIME_ROBOT_WEBHOOK`, `NEXT_PUBLIC_POSTHOG_KEY`
+- `wiki/architecture/graceful-degradation.md` — fallback matrix and fail-closed rules

@@ -1,6 +1,6 @@
 # _master-index.md — Onara Wiki Master Index
 
-_Claude keeps this file updated after every compile. You review it; you do not edit it manually._ _Last compiled: 2026-06-21 (Pipeline V2 + Build Studio update)_
+_Claude keeps this file updated after every compile. You review it; you do not edit it manually._ _Last compiled: 2026-06-21 (app-wide graceful degradation update)_
 
 ---
 
@@ -24,6 +24,7 @@ _Claude keeps this file updated after every compile. You review it; you do not e
 | `wiki/architecture/system-design.md` | ✅ initialized | 3-layer stack, request flow, infrastructure overview |
 | `wiki/architecture/modules.md` | ✅ initialized | Module interaction map: frontend ↔ API ↔ pipeline ↔ Supabase |
 | `wiki/architecture/deployment-pipeline.md` | ✅ initialized | Durable V2 queue, dual candidates, browser gates, repair policy, deployment, and rollout |
+| `wiki/architecture/graceful-degradation.md` | ✅ initialized | Safe fallbacks for app routes, external services, and Pipeline V2 release checks |
 | `wiki/architecture/security.md` | ✅ initialized | Auth JWT, pipeline secret, RLS per table, Stripe HMAC, CORS |
 | `wiki/architecture/env-vars.md` | ✅ initialized | Environment variables by service with usage context |
 | `wiki/architecture/api-reference.md` | ✅ initialized | Full API contract: all endpoints, request/response shapes, error codes, SSE |

@@ -4,6 +4,7 @@ import {
   previewHtmlForStep,
   progressForElapsed,
 } from "@/lib/build/agent-progress";
+import { fetchWithTimeout } from "@/lib/resilience";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
@@ -18,12 +19,14 @@ type PipelineProgressEntry = {
 
 type PipelineCandidate = {
   candidateKey?: string;
+  degradedReason?: string | null;
   deterministicScore?: number;
   fallbackUsed?: boolean;
   finalScore?: number;
   hardBlockers?: string[];
   model?: string;
   provider?: string;
+  qualityMode?: "full" | "static";
   recipe?: string;
   selected?: boolean;
   thumbnailDataUrl?: string | null;
@@ -142,7 +145,9 @@ function mapProjectResumeStatus(project: ProjectResumeStatus, jobId: string) {
     failed: pipelineStatus === "failed",
     html: undefined,
     jobId: project.pipeline_job_id || jobId,
-    message: project.error_message || messageForProjectStatus(project.status, activeAgent?.task),
+    message: project.error_message
+      ? publicBuildError(project.error_message)
+      : messageForProjectStatus(project.status, activeAgent?.task),
     etaSeconds: null,
     progress: progressForProjectStatus(project.status, currentStepIndex),
     publicUrl: project.public_url || publicJobUrl(project.pipeline_job_id || jobId),
@@ -172,7 +177,9 @@ function mapPipelineStatus(status: PipelineStatusResponse) {
     failed: status.status === "failed",
     html: status.preview_html || undefined,
     jobId: status.job_id,
-    message: status.error_message || latestMessage || activeAgent?.task || "Build pipeline is running.",
+    message: status.error_message
+      ? publicBuildError(status.error_message)
+      : latestMessage || activeAgent?.task || "Build pipeline is running.",
     notice: latestBlackboardNotice(status),
     etaSeconds: status.eta_seconds ?? null,
     fallbackUsed: Boolean(status.fallback_used),
@@ -228,12 +235,16 @@ async function fetchPipelineStatus(jobId: string) {
   }
 
   try {
-    const response = await fetch(`${pipelineServerUrl}/pipeline/status/${encodeURIComponent(jobId)}`, {
-      cache: "no-store",
-      headers: {
-        "X-Pipeline-Secret": pipelineSecret,
+    const response = await fetchWithTimeout(
+      `${pipelineServerUrl}/pipeline/status/${encodeURIComponent(jobId)}`,
+      {
+        cache: "no-store",
+        headers: {
+          "X-Pipeline-Secret": pipelineSecret,
+        },
       },
-    });
+      8_000,
+    );
     const body = await response.json().catch(() => null);
 
     if (!response.ok) {
@@ -431,6 +442,26 @@ function errorMessageFromBody(body: unknown) {
   }
 
   return null;
+}
+
+function publicBuildError(message: string) {
+  const normalized = message.toLowerCase();
+
+  if (normalized.includes("browser audit failed") || normalized.includes("browser audit timed out")) {
+    return "The final website quality check could not run. Update the pipeline server, then try the build again.";
+  }
+
+  if (normalized.includes("no generated candidate passed release gates")) {
+    return "Neither website concept passed the final quality checks. Try another build.";
+  }
+
+  if (normalized.includes("pipeline job timed out")) {
+    return "The build took too long and stopped safely. Try the build again.";
+  }
+
+  return message.length > 360
+    ? "The build stopped during its final checks. Review the pipeline logs, then try another build."
+    : message;
 }
 
 function isMockJob(jobId: string) {

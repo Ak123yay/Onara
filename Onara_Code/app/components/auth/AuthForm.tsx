@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { ArrowRight } from "lucide-react";
 import { FormEvent, useState, useTransition } from "react";
 import { PasswordInput } from "@/components/auth/PasswordInput";
+import { fetchWithTimeout } from "@/lib/resilience";
 import { createClient } from "@/lib/supabase/client";
 
 type AuthFormProps = {
@@ -304,13 +305,17 @@ export function AuthForm({
 
 async function googleAccountLoginMessage(email: string) {
   try {
-    const response = await fetch("/api/auth/login-method", {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
+    const response = await fetchWithTimeout(
+      "/api/auth/login-method",
+      {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({ email }),
       },
-      body: JSON.stringify({ email }),
-    });
+      10_000,
+    );
     const payload = (await response.json().catch(() => ({}))) as LoginMethodResponse;
 
     if (response.ok && payload.loginMethod === "google") {
