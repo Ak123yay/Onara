@@ -1,9 +1,9 @@
 export const siteConfig = {
   description:
-    "Turn your Google Business Profile into a professional contractor website in 90 seconds. No designer, no code, no hassle. Free 14-day trial.",
+    "Onara is an AI website builder for contractors. Turn your Google Business Profile into a professional, mobile-ready website in about 90 seconds.",
   name: "Onara",
-  ogImageAlt: "Onara - AI website builder",
-  title: "Onara - AI Website Builder for Local Contractors",
+  ogImageAlt: "Onara website builder for contractors",
+  title: "Website Builder for Contractors | Onara",
 };
 
 export function getSiteUrl() {

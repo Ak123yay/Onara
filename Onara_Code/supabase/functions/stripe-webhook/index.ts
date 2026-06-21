@@ -30,6 +30,12 @@ type ProjectForSuspension = {
   public_url?: string | null;
 };
 
+type ProjectForCustomDomain = {
+  cloudflare_project_name?: string | null;
+  id: string;
+  public_url?: string | null;
+};
+
 type SuspensionReason = "canceled" | "payment_failed";
 
 const textEncoder = new TextEncoder();
@@ -121,6 +127,10 @@ async function processStripeEvent(
   switch (event.type) {
     case "checkout.session.completed":
       return handleCheckoutCompleted(event, supabase);
+    case "checkout.session.async_payment_succeeded":
+      return handleCheckoutCompleted(event, supabase);
+    case "checkout.session.async_payment_failed":
+      return handleCustomDomainPaymentFailed(event.data.object, supabase);
     case "customer.subscription.created":
     case "customer.subscription.updated":
       return handleSubscriptionChanged(event.data.object, supabase);
@@ -140,9 +150,18 @@ async function handleCheckoutCompleted(
   supabase: ReturnType<typeof createServiceClient>,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   const session = event.data.object;
+  const metadata = readMetadata(session);
+  if (asString(metadata.purchase_type) === "custom_domain") {
+    if (asString(session.payment_status) !== "paid") {
+      return { ok: true };
+    }
+
+    return handleCustomDomainCheckoutCompleted(session, supabase);
+  }
+
   const customerId = asString(session.customer);
   const subscriptionId = asString(session.subscription);
-  const userId = asString(session.client_reference_id) ?? asString(readMetadata(session).user_id);
+  const userId = asString(session.client_reference_id) ?? asString(metadata.user_id);
 
   if (!customerId || !subscriptionId || !userId) {
     return { ok: false, error: "checkout_session_missing_required_fields" };
@@ -152,6 +171,159 @@ async function handleCheckoutCompleted(
   subscription.customer = customerId;
 
   return upsertUserSubscription(subscription, supabase, userId);
+}
+
+async function handleCustomDomainCheckoutCompleted(
+  session: Record<string, unknown>,
+  supabase: ReturnType<typeof createServiceClient>,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const metadata = readMetadata(session);
+  const sessionId = asString(session.id);
+  const userId = asString(metadata.user_id) ?? asString(session.client_reference_id);
+  const projectId = asString(metadata.project_id);
+  const domain = normalizedDomain(asString(metadata.custom_domain));
+  const priceId = asString(metadata.price_id);
+  const configuredPriceId = Deno.env.get("STRIPE_CUSTOM_DOMAIN_PRICE_ID")?.trim();
+
+  if (!sessionId || !userId || !projectId || !domain) {
+    return { ok: false, error: "custom_domain_checkout_missing_metadata" };
+  }
+
+  if (!configuredPriceId || priceId !== configuredPriceId) {
+    return { ok: false, error: "custom_domain_checkout_price_mismatch" };
+  }
+
+  const { data: project, error: projectError } = await supabase
+    .from("projects")
+    .select("id, cloudflare_project_name, public_url")
+    .eq("id", projectId)
+    .eq("user_id", userId)
+    .eq("custom_domain", domain)
+    .eq("custom_domain_checkout_session_id", sessionId)
+    .maybeSingle();
+
+  if (projectError) {
+    return { ok: false, error: projectError.message };
+  }
+
+  if (!project) {
+    return { ok: false, error: "custom_domain_project_not_found" };
+  }
+
+  const now = new Date().toISOString();
+  const { error: provisioningError } = await supabase
+    .from("projects")
+    .update({
+      custom_domain_error: null,
+      custom_domain_purchased_at: now,
+      custom_domain_status: "provisioning",
+      updated_at: now,
+    })
+    .eq("id", projectId)
+    .eq("user_id", userId);
+
+  if (provisioningError) {
+    return { ok: false, error: provisioningError.message };
+  }
+
+  await linkStripeCustomerIfMissing(asString(session.customer), userId, supabase);
+
+  const projectRecord = project as ProjectForCustomDomain;
+  const projectName = cloudflareProjectName(projectRecord);
+  if (!projectName) {
+    await markCustomDomainError(projectId, userId, "Cloudflare project is unavailable.", supabase);
+    return { ok: true };
+  }
+
+  try {
+    const result = await ensureCloudflareCustomDomain(projectName, domain);
+    const status = customDomainStatus(result);
+    const updateValues: Record<string, unknown> = {
+      custom_domain_error: customDomainError(result),
+      custom_domain_status: status,
+      custom_domain_validation: customDomainValidation(result, projectName),
+      updated_at: new Date().toISOString(),
+    };
+
+    if (status === "active") {
+      updateValues.public_url = `https://${domain}`;
+    }
+
+    const { error: updateError } = await supabase
+      .from("projects")
+      .update(updateValues)
+      .eq("id", projectId)
+      .eq("user_id", userId);
+
+    return updateError ? { ok: false, error: updateError.message } : { ok: true };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Cloudflare domain setup failed.";
+    await markCustomDomainError(projectId, userId, message, supabase);
+    return { ok: true };
+  }
+}
+
+async function handleCustomDomainPaymentFailed(
+  session: Record<string, unknown>,
+  supabase: ReturnType<typeof createServiceClient>,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const metadata = readMetadata(session);
+  if (asString(metadata.purchase_type) !== "custom_domain") {
+    return { ok: true };
+  }
+
+  const sessionId = asString(session.id);
+  const userId = asString(metadata.user_id) ?? asString(session.client_reference_id);
+  const projectId = asString(metadata.project_id);
+  if (!sessionId || !userId || !projectId) {
+    return { ok: false, error: "custom_domain_failed_payment_missing_metadata" };
+  }
+
+  const { error } = await supabase
+    .from("projects")
+    .update({
+      custom_domain_error: "Payment did not complete. Reopen checkout to try again.",
+      custom_domain_status: "checkout_pending",
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", projectId)
+    .eq("user_id", userId)
+    .eq("custom_domain_checkout_session_id", sessionId);
+
+  return error ? { ok: false, error: error.message } : { ok: true };
+}
+
+async function linkStripeCustomerIfMissing(
+  customerId: string | undefined,
+  userId: string,
+  supabase: ReturnType<typeof createServiceClient>,
+): Promise<void> {
+  if (!customerId) {
+    return;
+  }
+
+  await supabase
+    .from("users")
+    .update({ stripe_customer_id: customerId })
+    .eq("id", userId)
+    .is("stripe_customer_id", null);
+}
+
+async function markCustomDomainError(
+  projectId: string,
+  userId: string,
+  message: string,
+  supabase: ReturnType<typeof createServiceClient>,
+): Promise<void> {
+  await supabase
+    .from("projects")
+    .update({
+      custom_domain_error: message,
+      custom_domain_status: "error",
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", projectId)
+    .eq("user_id", userId);
 }
 
 async function handleSubscriptionChanged(
@@ -311,6 +483,31 @@ async function ensureCloudflareProject(projectName: string): Promise<void> {
     headers: { "content-type": "application/json" },
     method: "POST",
   });
+}
+
+async function ensureCloudflareCustomDomain(
+  projectName: string,
+  domain: string,
+): Promise<Record<string, unknown>> {
+  const domainPath = `/pages/projects/${encodeURIComponent(projectName)}/domains/${encodeURIComponent(domain)}`;
+  const existing = await cloudflareRequest(
+    domainPath,
+    { method: "GET" },
+    { allowNotFound: true },
+  );
+
+  if (existing) {
+    return existing;
+  }
+
+  return await cloudflareRequest(
+    `/pages/projects/${encodeURIComponent(projectName)}/domains`,
+    {
+      body: JSON.stringify({ name: domain }),
+      headers: { "content-type": "application/json" },
+      method: "POST",
+    },
+  ) ?? {};
 }
 
 async function cloudflareRequest(
@@ -622,6 +819,50 @@ function cloudflareProjectName(project: ProjectForSuspension): string | null {
   return normalizedProjectName(project.cloudflare_project_name)
     ?? projectNameFromPagesUrl(project.public_url)
     ?? cloudflareProjectNameFromId(project.id);
+}
+
+function customDomainStatus(result: Record<string, unknown>): "pending_dns" | "active" | "error" {
+  const status = asString(result.status) ?? "pending";
+  if (status === "active") {
+    return "active";
+  }
+
+  if (customDomainError(result) || ["blocked", "deactivated", "error"].includes(status)) {
+    return "error";
+  }
+
+  return "pending_dns";
+}
+
+function customDomainError(result: Record<string, unknown>): string | null {
+  const validation = isPlainObject(result.validation_data) ? result.validation_data : {};
+  const verification = isPlainObject(result.verification_data) ? result.verification_data : {};
+  return asString(validation.error_message) ?? asString(verification.error_message) ?? null;
+}
+
+function customDomainValidation(result: Record<string, unknown>, projectName: string) {
+  const validation = isPlainObject(result.validation_data) ? result.validation_data : {};
+  const verification = isPlainObject(result.verification_data) ? result.verification_data : {};
+
+  return {
+    checked_at: new Date().toISOString(),
+    cloudflare_status: asString(result.status) ?? "pending",
+    cname_target: `${projectName}.pages.dev`,
+    validation_method: asString(validation.method),
+    validation_status: asString(validation.status),
+    verification_status: asString(verification.status),
+    txt_name: asString(validation.txt_name),
+    txt_value: asString(validation.txt_value),
+  };
+}
+
+function normalizedDomain(value: string | undefined): string | null {
+  const domain = value?.trim().toLowerCase().replace(/\.$/, "");
+  if (!domain || !/^(?=.{4,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/.test(domain)) {
+    return null;
+  }
+
+  return domain;
 }
 
 function cloudflareProjectNameFromId(projectId: string): string | null {

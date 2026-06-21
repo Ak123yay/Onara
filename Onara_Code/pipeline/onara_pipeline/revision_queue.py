@@ -4,6 +4,7 @@ import re
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Any, Literal
+from urllib.parse import urlparse
 from uuid import uuid4
 
 import httpx
@@ -307,7 +308,7 @@ class RevisionQueue:
             settings=settings,
         )
         job.cloudflare_deployment_url = deployment.deployment_url
-        job.result_public_url = deployment.deployment_url
+        job.result_public_url = _preserved_custom_domain_url(job.public_url) or deployment.deployment_url
 
         await consume_revision_credit(settings=settings, user_id=job.user_id)
         charged_at = datetime.now(timezone.utc).isoformat()
@@ -720,6 +721,25 @@ async def fetch_deployed_html(public_url: str | None, *, settings: Settings) -> 
     html = response.text
     extract_final_html(html)
     return html
+
+
+def _preserved_custom_domain_url(public_url: str | None) -> str | None:
+    if not public_url:
+        return None
+
+    try:
+        parsed = urlparse(public_url)
+    except ValueError:
+        return None
+
+    hostname = (parsed.hostname or "").lower()
+    if not hostname or hostname.endswith(".pages.dev") or hostname in {"onara.tech", "www.onara.tech"}:
+        return None
+
+    if parsed.scheme not in {"http", "https"}:
+        return None
+
+    return public_url
 
 
 def affected_component_snippets(files: dict[str, str], affected: list[str]) -> str:

@@ -151,7 +151,7 @@ const faqs = [
   },
   {
     q: "Can I use my own domain?",
-    a: "Custom domains are coming soon. For now, you get a professional Onara-hosted URL.",
+    a: "Yes. Connect a domain you already own to a generated site for a $5 one-time setup fee. Domain registration is separate.",
   },
   {
     q: "What happens after the trial ends?",
@@ -936,7 +936,7 @@ export function LandingPage() {
             className="mono inline-flex items-center gap-2 rounded-full border border-rule-2 bg-paper px-4 py-2"
             data-gsap-hero-item
           >
-            Early access for DC and Northern Virginia contractors
+            AI website builder for contractors
           </div>
 
           <h1
@@ -955,9 +955,10 @@ export function LandingPage() {
             className="mx-auto mt-7 max-w-2xl text-[17px] leading-8 text-ink-3"
             data-gsap-hero-item
           >
-            We pull your info from Google Maps - hours, photos, description, and
-            reviews - then turn it into a professional contractor site with phone
-            CTAs, service areas, trust badges, and clean local SEO.
+            Onara is a website builder for contractors that pulls your Google Maps
+            details - hours, photos, description, and reviews - then creates a
+            professional site with phone CTAs, service areas, trust badges, and
+            clean local SEO.
           </p>
 
           <form

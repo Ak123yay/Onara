@@ -202,6 +202,7 @@ Execution rule:
 - [x] Plan display + upgrade CTA
 - [x] Custom embedded Stripe Elements checkout
 - [x] Express Checkout wallet buttons (Apple Pay / Google Pay / Link)
+- [x] Custom domain integration ($5 one-time per generated site)
 - [x] Daily dashboard AI brief: summarize deployed sites and recommendations once per day when the user opens the dashboard
 - [x] Enforce active site limits before generation starts and in Supabase (Free/Starter 1, Pro/Trial 3)
 - [x] Allow users to delete finished/failed sites from the dashboard and free the site slot
@@ -268,7 +269,6 @@ Execution rule:
 - v2.5 Moat 1: Continuous Google Sync (auto-detect GBP changes)
 - v2.5 Moat 2: Visual Style DNA (vision model extracts colors from business photos)
 - v2.5 Moat 3: Instant SEO landing pages per location/niche
-- v3: Pro user code download/export from Onara dashboard
 - v3: Custom domain via Cloudflare API
 - v3: SEO scoring dashboard
 - v3: White-label for agencies

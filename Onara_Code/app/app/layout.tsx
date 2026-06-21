@@ -13,7 +13,9 @@ export const metadata: Metadata = {
   },
   keywords: [
     "AI website builder",
+    "website builder for contractors",
     "contractor website builder",
+    "AI website builder for contractors",
     "local business website builder",
     "Google Business Profile website",
     "plumber website builder",

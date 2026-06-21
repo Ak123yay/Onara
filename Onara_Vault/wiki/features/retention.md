@@ -76,11 +76,17 @@ Mechanisms that keep users engaged and their sites valuable over time. For v1, k
 
 ## Feature 5 — Custom Domain
 
-**Target version**: v3  
-**Feature flag**: `FEATURE_CUSTOM_DOMAIN`  
-**Plan**: Starter and above
+**Target version**: v1.1
+**Feature flag**: `FEATURE_CUSTOM_DOMAIN`
+**Price**: $5 one-time per generated site
 
 **What it does**: Allows users to connect their own domain (e.g., `mikesplumbing.com`) to their Cloudflare Pages site.
+
+**Payment flow**:
+1. User enters a domain from the site card in the dashboard.
+2. Onara creates a one-time Stripe Checkout Session for `STRIPE_CUSTOM_DOMAIN_PRICE_ID`.
+3. The signed Stripe webhook confirms payment and attaches the domain to the matching Cloudflare Pages project.
+4. The dashboard polls Cloudflare and shows the DNS action and verification status until the domain is active.
 
 **Implementation via Cloudflare API**:
 ```python
@@ -91,7 +97,7 @@ POST /accounts/{account_id}/pages/projects/{project_name}/domains
 }
 ```
 
-Cloudflare returns the DNS records the user needs to point at their domain registrar. The dashboard shows these records with copy-to-clipboard and a verification status indicator.
+For a subdomain, the user creates a CNAME to the existing `*.pages.dev` hostname. For an apex domain, the domain must use the Onara Cloudflare account's assigned nameservers. The dashboard shows the relevant instruction and Cloudflare verification status.
 
 **Complexity**: DNS propagation takes hours. Need a polling mechanism to check verification status and update the project record when the domain goes live.
 

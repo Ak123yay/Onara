@@ -27,6 +27,7 @@ _Stripe integration, plan tiers, trial flow, upgrade/downgrade logic, and webhoo
 | `STRIPE_STARTER_ANNUAL_PRICE_ID` | Starter $99/year price ID |
 | `STRIPE_PRO_PRICE_ID` | Pro $29/month price ID |
 | `STRIPE_FREE_PRICE_ID` | Free product/price ID if Stripe needs a dashboard placeholder |
+| `STRIPE_CUSTOM_DOMAIN_PRICE_ID` | Custom domain setup, $5 one-time price ID |
 
 All price IDs created in Stripe dashboard and stored in env — never hardcoded.
 
@@ -175,6 +176,18 @@ Eligible users download a `.zip` folder of the generated site files from the Git
 - `FEATURE_ANNUAL_PLAN=true` by default
 - Annual Starter price: $99/year
 - Use Stripe Checkout Sessions with `mode: 'subscription'`; do not pass `payment_method_types`
+
+---
+
+## Custom Domain Purchase
+
+- Price: $5 one-time per generated site
+- Use Stripe Checkout Sessions with `mode: 'payment'`
+- Store `purchase_type=custom_domain`, `project_id`, `user_id`, and the normalized domain in session metadata
+- Fulfill only from the signed Stripe webhook after `payment_status=paid`
+- Handle `checkout.session.completed`, `checkout.session.async_payment_succeeded`, and `checkout.session.async_payment_failed`
+- Attach the domain to the matching Cloudflare Pages project, then persist Cloudflare's DNS verification state on `projects`
+- Do not pass `payment_method_types`; Stripe dynamic payment methods remain enabled
 
 ---
 

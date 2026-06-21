@@ -75,6 +75,11 @@ Onara_Code/app/app/api/
   stripe/
     checkout/route.ts           → create Stripe checkout session
     webhook/route.ts            → Stripe webhook handler (subscription events)
+  projects/
+    [projectId]/
+      custom-domain/
+        route.ts
+        checkout/route.ts
   preview/
     [projectId]/route.ts        → serve generated site preview (plan-gated)
 ```
@@ -163,6 +168,7 @@ Onara_Code/config/
 | GOOGLE_OAUTH_CLIENT_SECRET    | Supabase config                   |
 | STRIPE_SECRET_KEY             | /api/stripe/*                     |
 | STRIPE_WEBHOOK_SECRET         | /api/stripe/webhook               |
+| STRIPE_CUSTOM_DOMAIN_PRICE_ID | custom-domain checkout + webhook  |
 | PIPELINE_SERVER_URL           | /api/pipeline/*                   |
 | GITHUB_APP_ID                 | Onara_Code/pipeline/deployment/github.py     |
 | GITHUB_APP_PRIVATE_KEY        | Onara_Code/pipeline/deployment/github.py     |

@@ -14,8 +14,10 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { CopyLinkButton } from "@/components/dashboard/CopyLinkButton";
+import { CustomDomainControl } from "@/components/dashboard/CustomDomainControl";
 import { DeleteSiteButton } from "@/components/dashboard/DeleteSiteButton";
 import { RetryBuildButton } from "@/components/dashboard/RetryBuildButton";
+import type { CustomDomainStatus } from "@/lib/custom-domain";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
@@ -36,6 +38,10 @@ type Project = {
   business_name: string;
   created_at: string;
   custom_domain: string | null;
+  custom_domain_error: string | null;
+  custom_domain_purchased_at: string | null;
+  custom_domain_status: CustomDomainStatus;
+  custom_domain_validation: Record<string, unknown> | null;
   error_message: string | null;
   generation_ms: number | null;
   google_rating: number | string | null;
@@ -576,10 +582,12 @@ function SiteThumb({ project }: { project: Project }) {
 
 function SiteCard({
   canDownloadCode,
+  canUseCustomDomains,
   project,
   showUrl,
 }: {
   canDownloadCode: boolean;
+  canUseCustomDomains: boolean;
   project: Project;
   showUrl: boolean;
 }) {
@@ -636,6 +644,17 @@ function SiteCard({
             <dd>{formatDate(project.last_deployed_at)}</dd>
           </div>
         </dl>
+
+        {canUseCustomDomains && project.status === "live" ? (
+          <CustomDomainControl
+            initialDomain={project.custom_domain}
+            initialError={project.custom_domain_error}
+            initialPurchased={Boolean(project.custom_domain_purchased_at)}
+            initialStatus={project.custom_domain_status}
+            initialValidation={project.custom_domain_validation}
+            projectId={project.id}
+          />
+        ) : null}
 
         {project.error_message ? (
           <p className="site-card-error">
@@ -749,7 +768,7 @@ export default async function DashboardPage() {
     db
       .from("projects")
       .select(
-        "id, business_name, business_address, business_category, status, pipeline_job_id, public_url, custom_domain, google_rating, google_review_count, generation_ms, error_message, created_at, updated_at, last_deployed_at",
+        "id, business_name, business_address, business_category, status, pipeline_job_id, public_url, custom_domain, custom_domain_status, custom_domain_purchased_at, custom_domain_error, custom_domain_validation, google_rating, google_review_count, generation_ms, error_message, created_at, updated_at, last_deployed_at",
       )
       .eq("user_id", user.id)
       .order("updated_at", { ascending: false })
@@ -768,6 +787,7 @@ export default async function DashboardPage() {
     .sort((a, b) => new Date(b).getTime() - new Date(a).getTime())[0];
   const showUrl = profile?.show_url ?? true;
   const canDownloadCode = featureEnabled("FEATURE_CODE_DOWNLOAD", true) && hasCodeDownloadAccess(profile);
+  const canUseCustomDomains = featureEnabled("FEATURE_CUSTOM_DOMAIN", true);
   const displayName = displayNameFor(profile, user);
   const firstName = displayName.split(" ")[0] || "there";
   const hasSites = projectList.length > 0;
@@ -878,6 +898,7 @@ export default async function DashboardPage() {
             {projectList.map((project) => (
               <SiteCard
                 canDownloadCode={canDownloadCode}
+                canUseCustomDomains={canUseCustomDomains}
                 key={project.id}
                 project={project}
                 showUrl={showUrl}

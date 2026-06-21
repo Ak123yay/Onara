@@ -6,9 +6,10 @@ _Full copy for onara.tech. Source: `raw/08_landing_page_copy.md`._
 
 ## SEO / Meta
 
-**Title**: `Onara — AI Website Builder for Local Contractors`  
-**Meta description**: `Turn your Google Business Profile into a professional contractor website in 90 seconds. No designer, no code, no hassle. Free 14-day trial.`  
-**OG image alt**: `Onara — AI website builder`
+**Title**: `Website Builder for Contractors | Onara`
+**Meta description**: `Onara is an AI website builder for contractors. Turn your Google Business Profile into a professional, mobile-ready website in about 90 seconds.`
+**Primary search phrase**: `website builder for contractors`
+**OG image alt**: `Onara website builder for contractors`
 
 ---
 
