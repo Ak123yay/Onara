@@ -53,6 +53,7 @@ class BrowserReport(V2Contract):
     mode: Literal["full", "static"] = "full"
     degraded_reason: str | None = None
     accessibility_violations: int = 0
+    accessibility_issues: list[dict[str, Any]] = Field(default_factory=list)
     console_errors: list[str] = Field(default_factory=list)
     failed_requests: list[str] = Field(default_factory=list)
     hard_blockers: list[str] = Field(default_factory=list)

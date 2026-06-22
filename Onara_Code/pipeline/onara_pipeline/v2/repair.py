@@ -10,6 +10,51 @@ from onara_pipeline.ai_client import AIClient, AIClientError, AIMessage, AIReque
 from onara_pipeline.ai_client.model_picker import ModelRoute
 from onara_pipeline.v2.contracts import CandidateArtifact, PatchSet
 
+RELEASE_HARDENING_MARKER = "Onara deterministic release hardening"
+RELEASE_HARDENING_CSS = f"""
+/* {RELEASE_HARDENING_MARKER} */
+a[href],
+button,
+input,
+select,
+textarea,
+[role="button"] {{
+  min-block-size: 24px;
+}}
+
+button,
+input,
+select,
+textarea,
+.primary-cta,
+.header-cta,
+.contact-cta,
+nav a,
+.site-header a {{
+  min-height: 44px;
+}}
+
+nav a,
+.site-header a,
+.primary-cta,
+.header-cta,
+.contact-cta {{
+  align-items: center;
+  display: inline-flex;
+}}
+
+:focus-visible {{
+  outline: 3px solid var(--choice-accent, var(--accent, #c76f35));
+  outline-offset: 3px;
+}}
+
+.hero-card span,
+.hero-card p,
+.hero-photo figcaption {{
+  color: #eee9df;
+}}
+""".strip()
+
 
 async def targeted_repair(
     candidate: CandidateArtifact,
@@ -77,6 +122,22 @@ JSON shape:
         return apply_patch_set(candidate.html, patch)
     except (AIClientError, ValidationError, ValueError):
         return None
+
+
+def deterministic_release_hardening(html: str) -> str:
+    if RELEASE_HARDENING_MARKER in html:
+        return html
+
+    index = html.lower().rfind("</style>")
+    if index < 0:
+        return html
+    return (
+        html[:index]
+        + "\n"
+        + RELEASE_HARDENING_CSS
+        + "\n"
+        + html[index:]
+    )
 
 
 def apply_patch_set(html: str, patch: PatchSet) -> str:

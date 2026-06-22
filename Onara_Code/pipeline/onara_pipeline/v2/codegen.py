@@ -109,32 +109,41 @@ async def generate_candidates(
     if len(candidates) >= 2:
         return sorted(candidates, key=lambda candidate: candidate.key)
     if candidates:
-        candidates[0].warnings.append(
-            "Alternate concept failed on both routes; evaluating the valid concept"
+        missing_key = "a" if candidates[0].key == "b" else "b"
+        fallback = _fallback_candidate(
+            analyst=analyst,
+            content=content,
+            job=job,
+            key=missing_key,
+            planner=planner,
+            recipe=recipe_a if missing_key == "a" else recipe_b,
+            style=style,
         )
-        return candidates
+        fallback.warnings.append(
+            "Alternate AI concept failed; deterministic fallback preserved two-concept evaluation"
+        )
+        candidates.append(fallback)
+        return sorted(candidates, key=lambda candidate: candidate.key)
 
-    fallback = fallback_codegen(
-        analyst=analyst,
-        content=content,
-        context=build_business_context(job.business_data, job.style_preferences),
-        planner=planner,
-        style=style,
-        style_preferences=job.style_preferences,
-    )
-    validate_codegen_output(fallback, allow_repairable_visual_issues=True)
     return [
-        CandidateArtifact(
-            fallback_used=True,
-            fingerprint=document_fingerprint(fallback.html),
-            html=fallback.html,
+        _fallback_candidate(
+            analyst=analyst,
+            content=content,
+            job=job,
             key="a",
-            model=fallback.model,
-            provider=fallback.provider,
+            planner=planner,
             recipe=recipe_a,
-            used_fallback_template=True,
-            warnings=["Both AI candidate routes failed; deterministic fallback generated"],
-        )
+            style=style,
+        ),
+        _fallback_candidate(
+            analyst=analyst,
+            content=content,
+            job=job,
+            key="b",
+            planner=planner,
+            recipe=recipe_b,
+            style=style,
+        ),
     ]
 
 
@@ -227,6 +236,52 @@ def document_fingerprint(html: str) -> str:
     normalized = re.sub(r"\s+", " ", html.lower()).strip()
     normalized = re.sub(r">[^<]{1,200}<", "><", normalized)
     return hashlib.sha256(normalized.encode("utf-8")).hexdigest()
+
+
+def _fallback_candidate(
+    *,
+    analyst: AnalystOutput,
+    content: ContentOutput,
+    job: PipelineJob,
+    key: str,
+    planner: PlannerOutput,
+    recipe: str,
+    style: StyleOutput,
+) -> CandidateArtifact:
+    preferences = dict(job.style_preferences)
+    preferences["layout"] = _fallback_layout(recipe, key)
+    fallback = fallback_codegen(
+        analyst=analyst,
+        content=content,
+        context=build_business_context(job.business_data, preferences),
+        planner=planner,
+        style=style,
+        style_preferences=preferences,
+    )
+    validate_codegen_output(fallback, allow_repairable_visual_issues=True)
+    return CandidateArtifact(
+        fallback_used=True,
+        fingerprint=document_fingerprint(fallback.html),
+        html=fallback.html,
+        key=key,
+        model=fallback.model,
+        provider=fallback.provider,
+        recipe=recipe,
+        used_fallback_template=True,
+        warnings=[
+            f"AI candidate {key.upper()} was unavailable; deterministic {recipe} concept generated"
+        ],
+    )
+
+
+def _fallback_layout(recipe: str, key: str) -> str:
+    if recipe in {"editorial-trust", "proof-led"}:
+        return "trust-led"
+    if recipe in {"service-led", "emergency-utility"}:
+        return "service-grid" if key == "b" else "phone-first"
+    if recipe == "photo-led":
+        return "split-hero"
+    return "split-hero" if key == "b" else "phone-first"
 
 
 def _without_model(route: ModelRoute, excluded_model: str) -> ModelRoute:

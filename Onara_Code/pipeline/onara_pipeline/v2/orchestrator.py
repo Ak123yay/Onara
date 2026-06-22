@@ -38,7 +38,7 @@ from onara_pipeline.v2.codegen import candidate_routes, generate_candidates
 from onara_pipeline.v2.contracts import BrowserReport, CandidateArtifact
 from onara_pipeline.v2.evaluator import choose_candidate, evaluate_candidates
 from onara_pipeline.v2.prompt_compiler import build_generation_spec, compile_prompt
-from onara_pipeline.v2.repair import targeted_repair
+from onara_pipeline.v2.repair import deterministic_release_hardening, targeted_repair
 
 ProgressCallback = Callable[[str, str | None, str, dict[str, Any] | None], Awaitable[None]]
 CandidateCallback = Callable[[CandidateArtifact], Awaitable[None]]
@@ -379,7 +379,7 @@ def _finish_selected_candidate(
     validate_qa_output(qa)
     if qa.status == "fail":
         raise SupervisorValidationError("Final deterministic QA failed: " + "; ".join(qa.blocking_issues))
-    return mobile.html
+    return deterministic_release_hardening(mobile.html)
 
 
 def _best_candidate(candidates: list[CandidateArtifact]) -> CandidateArtifact:

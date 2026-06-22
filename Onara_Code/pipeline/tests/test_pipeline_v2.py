@@ -15,8 +15,9 @@ from onara_pipeline.v2.browser_quality import _static_audit
 from onara_pipeline.v2.evaluator import choose_candidate, deterministic_score
 from onara_pipeline.job_queue import _durable_event_payload, _lease_retry_delay, request_signature
 from onara_pipeline.schemas import GenerateRequest
+from onara_pipeline.v2.codegen import _fallback_layout
 from onara_pipeline.v2.prompt_compiler import choose_recipes
-from onara_pipeline.v2.repair import apply_patch_set
+from onara_pipeline.v2.repair import apply_patch_set, deterministic_release_hardening
 
 
 def digest(value: str) -> str:
@@ -113,6 +114,20 @@ class PipelineV2Tests(unittest.TestCase):
 
         with self.assertRaisesRegex(ValueError, "document hash"):
             apply_patch_set(html, patch)
+
+    def test_release_hardening_adds_control_targets_once(self) -> None:
+        html = "<!doctype html><html><head><style>body{margin:0}</style></head><body></body></html>"
+
+        hardened = deterministic_release_hardening(html)
+        hardened_twice = deterministic_release_hardening(hardened)
+
+        self.assertIn("Onara deterministic release hardening", hardened)
+        self.assertIn("min-height: 44px", hardened)
+        self.assertEqual(hardened, hardened_twice)
+
+    def test_fallback_layouts_stay_distinct(self) -> None:
+        self.assertEqual(_fallback_layout("emergency-utility", "a"), "phone-first")
+        self.assertEqual(_fallback_layout("emergency-utility", "b"), "service-grid")
 
     def test_deterministic_score_caps_at_seventy(self) -> None:
         report = BrowserReport(

@@ -1,13 +1,12 @@
 import { createServer } from "node:http";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { spawn } from "node:child_process";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { createHash } from "node:crypto";
+import { tmpdir } from "node:os";
 import { resolve } from "node:path";
 import AxeBuilder from "@axe-core/playwright";
-import * as chromeLauncherModule from "chrome-launcher";
 import lighthouse from "lighthouse";
 import { chromium } from "playwright";
-
-const launchChrome = chromeLauncherModule.launch ?? chromeLauncherModule.default?.launch;
 
 const [inputPath, outputDirectory, reportPath] = process.argv.slice(2);
 if (!inputPath || !outputDirectory || !reportPath) {
@@ -44,6 +43,7 @@ const url = `http://127.0.0.1:${port}/`;
 const report = {
   available: true,
   accessibility_violations: 0,
+  accessibility_issues: [],
   checks: {},
   console_errors: [],
   failed_requests: [],
@@ -184,8 +184,17 @@ try {
         .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"])
         .analyze();
       report.accessibility_violations = accessibility.violations.length;
-      if (accessibility.violations.some((violation) => violation.impact === "critical" || violation.impact === "serious")) {
-        report.hard_blockers.push("Axe found serious or critical accessibility violations");
+      const seriousAccessibility = accessibility.violations.filter(
+        (violation) => violation.impact === "critical" || violation.impact === "serious",
+      );
+      report.accessibility_issues = seriousAccessibility.slice(0, 8).map((violation) => ({
+        help: violation.help,
+        id: violation.id,
+        impact: violation.impact,
+        selectors: violation.nodes.slice(0, 4).flatMap((node) => node.target.map(String)),
+      }));
+      for (const violation of report.accessibility_issues) {
+        report.hard_blockers.push(`Axe ${violation.impact}: ${violation.id} - ${violation.help}`);
       }
     }
 
@@ -215,20 +224,34 @@ if (report.failed_requests.length) {
   report.hard_blockers.push(`Browser reported ${report.failed_requests.length} failed request(s)`);
 }
 
-let chrome;
+let chromeProcess;
+let lighthouseProfile;
 try {
-  if (typeof launchChrome !== "function") {
-    throw new Error("chrome-launcher did not expose a launch function");
-  }
-  chrome = await launchChrome({
-    chromePath: chromium.executablePath(),
-    chromeFlags: ["--headless", "--no-sandbox", "--disable-gpu"],
+  const debuggingPort = await availablePort();
+  lighthouseProfile = await mkdtemp(resolve(tmpdir(), "onara-lighthouse-"));
+  chromeProcess = spawn(
+    chromium.executablePath(),
+    [
+      "--headless=new",
+      "--no-sandbox",
+      "--disable-gpu",
+      "--disable-dev-shm-usage",
+      `--remote-debugging-port=${debuggingPort}`,
+      `--user-data-dir=${lighthouseProfile}`,
+      "about:blank",
+    ],
+    { stdio: "ignore", windowsHide: true },
+  );
+  let chromeLaunchError;
+  chromeProcess.once("error", (error) => {
+    chromeLaunchError = error;
   });
+  await waitForChrome(debuggingPort, chromeProcess, () => chromeLaunchError);
   const result = await lighthouse(url, {
     logLevel: "silent",
     output: "json",
     onlyCategories: ["performance", "accessibility", "best-practices", "seo"],
-    port: chrome.port,
+    port: debuggingPort,
   });
   const lhr = result?.lhr;
   if (lhr) {
@@ -245,13 +268,30 @@ try {
 } catch (error) {
   report.warnings.push(`Lighthouse unavailable: ${error instanceof Error ? error.message : String(error)}`);
 } finally {
-  if (chrome) {
+  if (chromeProcess && !chromeProcess.killed) {
     try {
-      await chrome.kill();
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      chromeProcess.kill();
+      await Promise.race([
+        new Promise((resolvePromise) => chromeProcess.once("exit", resolvePromise)),
+        new Promise((resolvePromise) => setTimeout(resolvePromise, 1500)),
+      ]);
     } catch (error) {
       report.warnings.push(
         `Lighthouse cleanup warning: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
+  }
+  if (lighthouseProfile) {
+    try {
+      await rm(lighthouseProfile, {
+        force: true,
+        maxRetries: 8,
+        recursive: true,
+        retryDelay: 250,
+      });
+    } catch (error) {
+      report.warnings.push(
+        `Lighthouse profile cleanup delayed: ${error instanceof Error ? error.message : String(error)}`,
       );
     }
   }
@@ -269,4 +309,37 @@ function isOptionalFontRequest(value) {
   } catch {
     return false;
   }
+}
+
+async function availablePort() {
+  const portServer = createServer();
+  await new Promise((resolvePromise, rejectPromise) => {
+    portServer.once("error", rejectPromise);
+    portServer.listen(0, "127.0.0.1", resolvePromise);
+  });
+  const portAddress = portServer.address();
+  const port = typeof portAddress === "object" && portAddress ? portAddress.port : null;
+  await new Promise((resolvePromise) => portServer.close(resolvePromise));
+  if (!port) throw new Error("Could not reserve a Lighthouse debugging port");
+  return port;
+}
+
+async function waitForChrome(port, processHandle, launchError) {
+  const endpoint = `http://127.0.0.1:${port}/json/version`;
+  for (let attempt = 0; attempt < 50; attempt += 1) {
+    if (launchError()) {
+      throw launchError();
+    }
+    if (processHandle.exitCode !== null) {
+      throw new Error(`Chromium exited before Lighthouse connected (${processHandle.exitCode})`);
+    }
+    try {
+      const response = await fetch(endpoint);
+      if (response.ok) return;
+    } catch {
+      // Chromium has not opened the debugging port yet.
+    }
+    await new Promise((resolvePromise) => setTimeout(resolvePromise, 100));
+  }
+  throw new Error("Chromium did not open its Lighthouse debugging port");
 }

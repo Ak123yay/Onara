@@ -12,6 +12,7 @@ from onara_pipeline.ai_client.model_picker import ModelRoute
 from onara_pipeline.config import Settings
 from onara_pipeline.v2.browser_quality import audit_candidate_html
 from onara_pipeline.v2.contracts import CandidateArtifact, GenerationSpec, VisualReview
+from onara_pipeline.v2.repair import deterministic_release_hardening
 
 VISUAL_MODEL = "meta/llama-4-maverick-17b-128e-instruct"
 
@@ -40,6 +41,7 @@ async def _evaluate_candidate(
     settings: Settings,
     spec: GenerationSpec,
 ) -> None:
+    candidate.html = deterministic_release_hardening(candidate.html)
     browser = await audit_candidate_html(
         candidate.html,
         candidate_key=candidate.key,

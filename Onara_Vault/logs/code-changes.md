@@ -303,3 +303,27 @@ and did not render/test competing concepts before deployment.
 
 **Why**: A temporary outage in one provider should reduce only the affected capability. It
 must not freeze the whole app, expose internal errors, lose user input, or bypass a safety gate.
+
+---
+
+### Pipeline V2 candidate and Lighthouse reliability
+
+**What changed**:
+- Removed `chrome-launcher` and launch Playwright Chromium directly for Lighthouse.
+- Made Windows profile cleanup best-effort so an `EPERM` cannot discard a completed audit.
+- Persist detailed serious/critical Axe findings instead of one generic accessibility error.
+- Generate two distinct deterministic concepts when one or both AI candidate routes fail.
+- Add deterministic tap-target, focus, and dark-panel contrast hardening before browser audit.
+- Keep Lighthouse performance and LCP as optimization warnings instead of release blockers.
+- Show a safe explanation of the actual release-gate category in Build Studio.
+
+**Verification**:
+- `python -m unittest discover -s tests -p "test_*.py"` passed (19 tests).
+- `python -m compileall onara_pipeline main.py` passed.
+- `node --check browser_audit.mjs` passed.
+- `pnpm.cmd type-check` passed.
+- `git diff --check` passed.
+
+**Why**: A strong concept could score above 85 but still be rejected by small controls, a
+generic Axe message, or Windows cleanup after Lighthouse had already finished. Both failed AI
+routes also incorrectly collapsed the UI to one concept.

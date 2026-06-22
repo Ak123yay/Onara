@@ -63,6 +63,14 @@ strict static structure, contact-form, label, image-source, and security audit. 
 deterministic SEO/mobile/QA checks still run. Set it to `false` to require full
 Playwright/Axe/Lighthouse validation for every release.
 
+The Lighthouse runner launches Playwright's Chromium directly. Do not re-add
+`chrome-launcher`: its Windows temporary-profile cleanup can raise `EPERM` after a valid
+audit and incorrectly fail the build.
+
+If both AI candidate routes fail, V2 creates two distinct deterministic concepts using the
+planned recipes. Browser and deterministic release gates still decide whether either concept
+may publish.
+
 Restart and verify:
 
 ```powershell

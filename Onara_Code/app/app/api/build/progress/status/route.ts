@@ -452,7 +452,7 @@ function publicBuildError(message: string) {
   }
 
   if (normalized.includes("no generated candidate passed release gates")) {
-    return "Neither website concept passed the final quality checks. Try another build.";
+    return releaseGateMessage(message);
   }
 
   if (normalized.includes("pipeline job timed out")) {
@@ -462,6 +462,34 @@ function publicBuildError(message: string) {
   return message.length > 360
     ? "The build stopped during its final checks. Review the pipeline logs, then try another build."
     : message;
+}
+
+function releaseGateMessage(message: string) {
+  const reason = message.split("release gates:", 2)[1]?.trim().toLowerCase() ?? "";
+  const failures: string[] = [];
+
+  if (reason.includes("accessibility") || reason.includes("axe")) {
+    failures.push("accessibility");
+  }
+  if (reason.includes("controls below") || reason.includes("target")) {
+    failures.push("tap-target sizing");
+  }
+  if (reason.includes("overflow") || reason.includes("reflow")) {
+    failures.push("responsive layout");
+  }
+  if (reason.includes("image")) {
+    failures.push("image loading");
+  }
+  if (reason.includes("contact form") || reason.includes("form controls")) {
+    failures.push("contact form");
+  }
+  if (reason.includes("header") || reason.includes("hero") || reason.includes("html document")) {
+    failures.push("page structure");
+  }
+
+  return failures.length
+    ? `The strongest concept was stopped by ${[...new Set(failures)].join(" and ")} checks. Onara kept it unpublished so a broken site was not shipped.`
+    : "Neither website concept passed the final quality checks. Onara kept them unpublished.";
 }
 
 function isMockJob(jobId: string) {

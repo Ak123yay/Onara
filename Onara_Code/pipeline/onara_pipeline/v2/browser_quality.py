@@ -95,6 +95,9 @@ async def audit_candidate_html(
         )
         return BrowserReport(
             accessibility_violations=int(payload.get("accessibility_violations") or 0),
+            accessibility_issues=[
+                item for item in payload.get("accessibility_issues", []) if isinstance(item, dict)
+            ],
             available=bool(payload.get("available")),
             mode="full",
             checks=payload.get("checks") if isinstance(payload.get("checks"), dict) else {},
