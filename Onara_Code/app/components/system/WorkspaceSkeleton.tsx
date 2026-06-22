@@ -41,10 +41,15 @@ function DashboardSkeleton() {
       </section>
       <section className="workspace-skeleton-brief">
         <Block className="workspace-skeleton-icon" />
-        <div>
+        <div className="workspace-skeleton-brief-copy">
           <Block className="workspace-skeleton-kicker" />
           <Block className="workspace-skeleton-subtitle" />
           <Block className="workspace-skeleton-copy" />
+          <div className="workspace-skeleton-recommendations">
+            {Array.from({ length: 3 }, (_, index) => (
+              <Block key={index} />
+            ))}
+          </div>
         </div>
       </section>
       <section className="workspace-skeleton-sites">
@@ -59,11 +64,18 @@ function DashboardSkeleton() {
           <div className="workspace-skeleton-site-row" key={index}>
             <Block className="workspace-skeleton-site-thumb" />
             <div>
-              <Block className="workspace-skeleton-site-name" />
+              <div className="workspace-skeleton-site-heading">
+                <Block className="workspace-skeleton-site-name" />
+                <Block className="workspace-skeleton-site-badge" />
+              </div>
               <Block className="workspace-skeleton-site-url" />
+              <Block className="workspace-skeleton-link-panel" />
               <Block className="workspace-skeleton-site-meta" />
             </div>
-            <Block className="workspace-skeleton-row-action" />
+            <div className="workspace-skeleton-site-actions">
+              <Block />
+              <Block />
+            </div>
           </div>
         ))}
       </section>
@@ -96,13 +108,14 @@ function BuildSkeleton() {
               <Block className="workspace-skeleton-input" />
               <Block className="workspace-skeleton-button workspace-skeleton-search-button" />
             </div>
-            <div className="workspace-skeleton-result-card">
-              <Block className="workspace-skeleton-result-avatar" />
-              <div>
-                <Block className="workspace-skeleton-site-name" />
-                <Block className="workspace-skeleton-copy" />
-              </div>
+          <div className="workspace-skeleton-manual-callout">
+            <Block className="workspace-skeleton-icon" />
+            <div>
+              <Block className="workspace-skeleton-kicker" />
+              <Block className="workspace-skeleton-copy" />
             </div>
+            <Block className="workspace-skeleton-small-button" />
+          </div>
           </div>
           <aside className="build-live-brief workspace-skeleton-live-brief">
             <Block className="workspace-skeleton-kicker" />
@@ -128,6 +141,10 @@ function ProgressSkeleton() {
             <Block className="workspace-skeleton-title workspace-skeleton-progress-title" />
             <Block className="workspace-skeleton-copy" />
             <Block className="workspace-skeleton-progress-bar" />
+            <div className="workspace-skeleton-progress-footer">
+              <Block className="workspace-skeleton-caption" />
+              <Block className="workspace-skeleton-caption" />
+            </div>
             <div className="workspace-skeleton-progress-stats">
               {Array.from({ length: 3 }, (_, index) => (
                 <Block className="workspace-skeleton-stat" key={index} />
@@ -140,8 +157,19 @@ function ProgressSkeleton() {
             <Block className="workspace-skeleton-copy" />
           </div>
           <div className="workspace-skeleton-stage-list">
-            {Array.from({ length: 5 }, (_, index) => (
-              <Block className="workspace-skeleton-stage-row" key={index} />
+            <div className="workspace-skeleton-stage-heading">
+              <Block className="workspace-skeleton-kicker" />
+              <Block className="workspace-skeleton-caption" />
+            </div>
+            {Array.from({ length: 7 }, (_, index) => (
+              <div className="workspace-skeleton-stage-row" key={index}>
+                <Block className="workspace-skeleton-stage-index" />
+                <div>
+                  <Block className="workspace-skeleton-stage-title" />
+                  <Block className="workspace-skeleton-stage-copy" />
+                </div>
+                <Block className="workspace-skeleton-stage-status" />
+              </div>
             ))}
           </div>
         </aside>
@@ -152,12 +180,27 @@ function ProgressSkeleton() {
             <Block className="workspace-skeleton-badge" />
           </div>
           <div className="workspace-skeleton-preview-canvas">
-            <Block className="workspace-skeleton-preview-nav" />
-            <Block className="workspace-skeleton-preview-hero" />
-            <div className="workspace-skeleton-preview-cards">
-              {Array.from({ length: 3 }, (_, index) => (
-                <Block key={index} />
-              ))}
+            <div className="workspace-skeleton-preview-loading">
+              <Block className="workspace-skeleton-preview-mark" />
+              <Block className="workspace-skeleton-kicker" />
+              <Block className="workspace-skeleton-preview-heading" />
+              <Block className="workspace-skeleton-preview-copy" />
+              <div className="workspace-skeleton-preview-lines">
+                <Block />
+                <Block />
+                <Block />
+              </div>
+            </div>
+          </div>
+          <div className="workspace-skeleton-preview-footer">
+            <div>
+              <Block className="workspace-skeleton-kicker" />
+              <Block className="workspace-skeleton-site-name" />
+              <Block className="workspace-skeleton-copy" />
+            </div>
+            <div>
+              <Block className="workspace-skeleton-small-button" />
+              <Block className="workspace-skeleton-small-button" />
             </div>
           </div>
         </section>
@@ -169,7 +212,10 @@ function ProgressSkeleton() {
 function AccountSkeleton() {
   return (
     <div className="account-settings-page workspace-skeleton-page">
-      <HeaderSkeleton />
+      <div className="workspace-skeleton-dashboard-heading">
+        <HeaderSkeleton />
+        <Block className="workspace-skeleton-small-button" />
+      </div>
       <section className="workspace-skeleton-account-hero">
         <div className="workspace-skeleton-profile">
           <Block className="workspace-skeleton-account-avatar" />
@@ -194,6 +240,30 @@ function AccountSkeleton() {
           </div>
         ))}
       </section>
+      <section className="workspace-skeleton-training-card">
+        <div className="workspace-skeleton-training-main">
+          <Block className="workspace-skeleton-icon workspace-skeleton-square-icon" />
+          <div>
+            <Block className="workspace-skeleton-kicker" />
+            <Block className="workspace-skeleton-subtitle" />
+            <Block className="workspace-skeleton-copy workspace-skeleton-copy-wide" />
+            <Block className="workspace-skeleton-copy" />
+          </div>
+        </div>
+        <div className="workspace-skeleton-training-status">
+          {Array.from({ length: 2 }, (_, index) => (
+            <div key={index}>
+              <Block className="workspace-skeleton-kicker" />
+              <Block className="workspace-skeleton-fact-value" />
+              <Block className="workspace-skeleton-caption" />
+            </div>
+          ))}
+        </div>
+        <div className="workspace-skeleton-training-actions">
+          <Block className="workspace-skeleton-small-button" />
+          <Block className="workspace-skeleton-small-button" />
+        </div>
+      </section>
       <section className="workspace-skeleton-account-section">
         <Block className="workspace-skeleton-kicker" />
         <Block className="workspace-skeleton-subtitle" />
@@ -206,6 +276,7 @@ function AccountSkeleton() {
             </div>
           ))}
         </div>
+        <Block className="workspace-skeleton-account-footnote" />
       </section>
     </div>
   );
@@ -217,7 +288,7 @@ function BillingSkeleton() {
       <HeaderSkeleton />
       <Block className="workspace-skeleton-support-row" />
       <section className="workspace-skeleton-current-plan">
-        <Block className="workspace-skeleton-account-avatar" />
+        <Block className="workspace-skeleton-current-plan-icon" />
         <div>
           <Block className="workspace-skeleton-kicker" />
           <Block className="workspace-skeleton-subtitle" />
@@ -226,13 +297,23 @@ function BillingSkeleton() {
         <Block className="workspace-skeleton-badge" />
       </section>
       <section className="workspace-skeleton-billing-grid">
-        {Array.from({ length: 2 }, (_, index) => (
-          <div key={index}>
-            <Block className="workspace-skeleton-kicker" />
-            <Block className="workspace-skeleton-subtitle" />
-            <Block className="workspace-skeleton-copy" />
+        <div>
+          <Block className="workspace-skeleton-kicker" />
+          <div className="workspace-skeleton-billing-metrics">
+            {Array.from({ length: 3 }, (_, index) => (
+              <div key={index}>
+                <Block className="workspace-skeleton-kicker" />
+                <Block className="workspace-skeleton-fact-value" />
+              </div>
+            ))}
           </div>
-        ))}
+        </div>
+        <div>
+          <Block className="workspace-skeleton-kicker" />
+          <Block className="workspace-skeleton-subtitle" />
+          <Block className="workspace-skeleton-copy" />
+          <Block className="workspace-skeleton-progress-bar" />
+        </div>
       </section>
       <section className="workspace-skeleton-plan-section">
         <Block className="workspace-skeleton-kicker" />
@@ -244,6 +325,7 @@ function BillingSkeleton() {
               <Block className="workspace-skeleton-plan-price" />
               <Block className="workspace-skeleton-copy" />
               <Block className="workspace-skeleton-plan-list" />
+              {index === 0 ? <Block className="workspace-skeleton-plan-secondary-button" /> : null}
               <Block className="workspace-skeleton-button workspace-skeleton-plan-button" />
             </div>
           ))}
@@ -293,34 +375,77 @@ function HelpSkeleton() {
           <Block className="workspace-skeleton-kicker" />
           <Block className="workspace-skeleton-subtitle" />
           <Block className="workspace-skeleton-copy" />
+          <div className="workspace-skeleton-help-stats">
+            {Array.from({ length: 3 }, (_, index) => (
+              <Block key={index} />
+            ))}
+          </div>
         </div>
-        <div>
+        <div className="workspace-skeleton-help-checklist">
           <Block className="workspace-skeleton-kicker" />
-          <Block className="workspace-skeleton-subtitle" />
-          <Block className="workspace-skeleton-copy" />
-          <Block className="workspace-skeleton-button" />
-        </div>
-      </section>
-      <section className="workspace-skeleton-account-section">
-        <Block className="workspace-skeleton-kicker" />
-        <Block className="workspace-skeleton-subtitle" />
-        <div className="workspace-skeleton-action-grid">
           {Array.from({ length: 4 }, (_, index) => (
-            <div key={index}>
-              <Block className="workspace-skeleton-icon" />
-              <Block className="workspace-skeleton-site-name" />
-              <Block className="workspace-skeleton-copy" />
-            </div>
+            <Block className="workspace-skeleton-help-check" key={index} />
           ))}
         </div>
       </section>
-      <section className="workspace-skeleton-help-faq">
-        <Block className="workspace-skeleton-kicker" />
-        <Block className="workspace-skeleton-subtitle" />
-        {Array.from({ length: 4 }, (_, index) => (
-          <Block className="workspace-skeleton-help-row" key={index} />
+      <section className="workspace-skeleton-help-actions">
+        {Array.from({ length: 3 }, (_, index) => (
+          <div key={index}>
+            <Block className="workspace-skeleton-icon workspace-skeleton-square-icon" />
+            <div>
+              <Block className="workspace-skeleton-kicker" />
+              <Block className="workspace-skeleton-site-name" />
+              <Block className="workspace-skeleton-caption" />
+            </div>
+          </div>
         ))}
       </section>
+      <div className="workspace-skeleton-help-layout">
+        <main>
+          <section className="workspace-skeleton-help-section">
+            <div className="workspace-skeleton-help-section-heading">
+              <Block className="workspace-skeleton-icon workspace-skeleton-square-icon" />
+              <div>
+                <Block className="workspace-skeleton-kicker" />
+                <Block className="workspace-skeleton-subtitle" />
+              </div>
+            </div>
+            {Array.from({ length: 4 }, (_, index) => (
+              <div className="workspace-skeleton-help-flow-row" key={index}>
+                <Block className="workspace-skeleton-stage-index" />
+                <div>
+                  <Block className="workspace-skeleton-site-name" />
+                  <Block className="workspace-skeleton-copy" />
+                </div>
+              </div>
+            ))}
+          </section>
+          <section className="workspace-skeleton-help-section">
+            <div className="workspace-skeleton-help-section-heading">
+              <Block className="workspace-skeleton-icon workspace-skeleton-square-icon" />
+              <Block className="workspace-skeleton-subtitle" />
+            </div>
+            {Array.from({ length: 3 }, (_, index) => (
+              <Block className="workspace-skeleton-help-row" key={index} />
+            ))}
+          </section>
+        </main>
+        <aside>
+          <div className="workspace-skeleton-help-contact">
+            <Block className="workspace-skeleton-kicker" />
+            <Block className="workspace-skeleton-subtitle" />
+            <Block className="workspace-skeleton-copy" />
+            <Block className="workspace-skeleton-small-button" />
+          </div>
+          {Array.from({ length: 3 }, (_, index) => (
+            <div key={index}>
+              <Block className="workspace-skeleton-kicker" />
+              <Block className="workspace-skeleton-help-aside-row" />
+              <Block className="workspace-skeleton-help-aside-row" />
+            </div>
+          ))}
+        </aside>
+      </div>
     </div>
   );
 }

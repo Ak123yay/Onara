@@ -373,10 +373,10 @@ caused a noticeable layout swap and could remove the sidebar between workspace s
 ### Reliable generation preview placeholder
 
 **What changed**:
-- Kept the build preview as a native Onara loading panel until valid generated HTML exists.
+- Restored the original iframe-based Onara loading preview from Git history.
 - Reject whitespace, partial documents, empty markup, and invalid cached previews.
 - Remove stale preview cache entries instead of loading them into a blank iframe.
-- Swap to the iframe only after a complete document with visible content arrives.
+- Replace the loading document only after a complete document with visible content arrives.
 
 **Verification**:
 - `pnpm.cmd type-check` passed.
@@ -404,3 +404,32 @@ HTML then produced a large blank iframe even though the build was still running.
 
 **Why**: Strong concepts were being discarded for measurable browser issues that Onara could
 repair safely, and the final transformed HTML had no repair opportunity before failure.
+
+---
+
+### Removed generic root loader
+
+**What changed**:
+- Removed the full-page "Loading your workspace" experience.
+- Removed its unused generic card and heading styles.
+- Kept route-shaped workspace skeletons, the thin navigation indicator, and the generation
+  preview's "Building your website" state.
+
+**Why**: The root loader added an unnecessary intermediate screen and did not match the page
+that was actually opening.
+
+---
+
+### More accurate workspace skeletons
+
+**What changed**:
+- Matched Dashboard loading to the recommendation cells, site badges, public-link panel, and
+  two action controls used by real site rows.
+- Matched Progress loading to all seven build stages and the centered preview-loading document.
+- Added the missing Account training-data card, status metrics, actions, and footer note.
+- Matched Billing loading to the three usage metrics and Starter's secondary annual action.
+- Rebuilt Help loading around its three shortcuts, process/FAQ main column, and support aside.
+- Adjusted responsive stacking so skeleton and loaded page change shape at similar breakpoints.
+
+**Why**: The previous loaders had roughly correct cards but still shifted visibly when the real
+content arrived.

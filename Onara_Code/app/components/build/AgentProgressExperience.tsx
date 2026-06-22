@@ -16,6 +16,7 @@ import { useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   AGENT_STEPS,
+  loadingPreviewHtml,
   type AgentStatus,
   type AgentStep,
 } from "@/lib/build/agent-progress";
@@ -210,7 +211,7 @@ export function AgentProgressExperience() {
   const [connectionMode, setConnectionMode] = useState<ConnectionMode>("connecting");
   const [currentMessage, setCurrentMessage] = useState("Preparing the agent workspace.");
   const [aiNotice, setAiNotice] = useState<string | null>(null);
-  const [previewHtml, setPreviewHtml] = useState<string | null>(null);
+  const [previewHtml, setPreviewHtml] = useState(() => loadingPreviewHtml("Your Contractor Site"));
   const [progress, setProgress] = useState(0);
   const [publicUrl, setPublicUrl] = useState<string | null>(null);
   const [queuePosition, setQueuePosition] = useState<number | null>(null);
@@ -259,7 +260,7 @@ export function AgentProgressExperience() {
 
     setBusinessName(nextBusinessName);
     setBusinessMeta(metaParts.join(" / ") || "Google Business data confirmed");
-    setPreviewHtml(readCachedPreview(jobId));
+    setPreviewHtml(readCachedPreview(jobId) || loadingPreviewHtml(nextBusinessName));
     setStartedAt(Date.now());
   }, [jobId, projectId]);
 
@@ -717,33 +718,12 @@ export function AgentProgressExperience() {
           </div>
 
           <div className="agent-preview-frame-wrap">
-            {isRenderablePreviewHtml(previewHtml) ? (
-              <iframe
-                className="agent-preview-frame"
-                sandbox=""
-                srcDoc={previewHtml}
-                title="Generated website preview"
-              />
-            ) : (
-              <div className="agent-preview-building" role="status">
-                <div className="agent-preview-building-orbit" aria-hidden="true">
-                  <span />
-                  <span />
-                  <span />
-                </div>
-                <p className="mono">Onara build studio</p>
-                <h2 className="serif">Building your website</h2>
-                <p>
-                  {businessName} is being assembled into two complete concepts. The first
-                  tested preview will appear here automatically.
-                </p>
-                <div className="agent-preview-building-lines" aria-hidden="true">
-                  <span />
-                  <span />
-                  <span />
-                </div>
-              </div>
-            )}
+            <iframe
+              className="agent-preview-frame"
+              sandbox=""
+              srcDoc={previewHtml}
+              title="Generated website preview"
+            />
           </div>
 
           <div className="agent-preview-footer">

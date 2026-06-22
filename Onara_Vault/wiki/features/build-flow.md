@@ -68,8 +68,8 @@ The progress page shows:
 The page uses SSE first and polling as fallback. It can reconstruct the build from Supabase after
 a FastAPI restart. Preview HTML is cached in session storage so a transient disconnect does not
 replace a valid preview. Whitespace, partial documents, empty markup, and stale cache entries are
-rejected; the native "Building your website" canvas remains visible until a complete document
-with visible content is available.
+rejected; the original Onara loading preview remains visible until a complete document with
+visible content is available.
 
 ## Progress Events
 
@@ -80,7 +80,7 @@ with visible content is available.
 | `candidate_ready` | Add a concept card |
 | `candidate_scored` | Add thumbnail, quality score, warnings, and eligibility state |
 | `agent_complete` | Complete the customer stage |
-| `preview` | Replace the native loading canvas only with complete, visibly renderable HTML |
+| `preview` | Replace the loading preview only with complete, visibly renderable HTML |
 | `notice` | Add a collapsible build detail |
 | `reconnecting` | Keep last preview and explain that the job is saved |
 | `complete` | Show selected concept, release badges, and live-site action |
