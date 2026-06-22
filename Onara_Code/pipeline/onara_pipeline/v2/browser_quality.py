@@ -274,9 +274,11 @@ def _apply_lighthouse_thresholds(
         warnings.append("Lighthouse report was unavailable")
         return
 
-    # Hard blockers: only critical accessibility and security issues
+    # Axe serious/critical findings remain hard blockers. Lighthouse's category
+    # score is aggregate guidance and can include minor audits already surfaced
+    # by Axe, so do not independently fail an otherwise accessible candidate.
     if float(lighthouse.get("accessibility") or 0) < 90:
-        hard_blockers.append(f"Lighthouse accessibility score {lighthouse.get('accessibility'):g} is below 90")
+        warnings.append(f"Lighthouse accessibility score {lighthouse.get('accessibility'):g} is below 90")
     if float(lighthouse.get("best_practices") or 0) < 90:
         hard_blockers.append(f"Lighthouse best practices score {lighthouse.get('best_practices'):g} is below 90")
 

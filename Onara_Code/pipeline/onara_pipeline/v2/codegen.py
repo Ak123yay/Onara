@@ -185,7 +185,11 @@ async def _generate_candidate(
             provider=response.provider,
             raw_output=response.content,
         )
-        validate_codegen_output(output, allow_repairable_visual_issues=True)
+        validate_codegen_output(
+            output,
+            allow_repairable_visual_issues=True,
+            enforce_visual_quality=False,
+        )
     except ValueError:
         response = await _request_candidate(
             ai_client=ai_client,
@@ -209,7 +213,11 @@ async def _generate_candidate(
                 provider=response.provider,
                 raw_output=response.content,
             )
-            validate_codegen_output(output, allow_repairable_visual_issues=True)
+            validate_codegen_output(
+                output,
+                allow_repairable_visual_issues=True,
+                enforce_visual_quality=False,
+            )
         except (ValueError, ValidationError, SupervisorValidationError) as exc:
             raise AIClientError(f"Candidate {key} returned invalid HTML: {exc}") from exc
     except (ValidationError, SupervisorValidationError) as exc:

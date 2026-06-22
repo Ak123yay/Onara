@@ -23,6 +23,28 @@
 
 ---
 
+### Pipeline V2 candidate and accessibility gate separation
+
+**What changed**:
+- Initial V2 generation now validates document structure, component integrity, safe motion, and
+  output safety without rejecting a candidate based on string-based visual heuristics.
+- Real composition quality remains enforced by browser rendering, deterministic scoring, and
+  the two visual reviewers.
+- Serious and critical Axe violations remain hard blockers.
+- Axe rule names and selectors are passed into the targeted repair prompt.
+- Lighthouse accessibility below 90 is now a warning instead of a duplicate blocker when Axe
+  does not report a serious violation.
+- The compiled prompt now explicitly requires marked output, WCAG contrast, sequential
+  headings, one main landmark, and labels for every visible form field.
+
+**Why**: A structurally valid concept was being rejected before it could be rendered because
+its class names did not match an older visual heuristic. Separately, aggregate Lighthouse
+scores could block release without enough detail for the repair pass.
+
+**Testing**: Python compilation passed. All 27 pipeline unit tests passed.
+
+---
+
 # Code Changes Log
 
 ## 2026-05-15

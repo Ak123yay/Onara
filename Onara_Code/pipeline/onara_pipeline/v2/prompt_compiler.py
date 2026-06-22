@@ -113,6 +113,8 @@ def compile_prompt(
         """
 Technical contract:
 - Return one complete index.html between {FILE_MARKER_START} and {FILE_MARKER_END}.
+- Start the response with {FILE_MARKER_START} immediately followed by <!doctype html>, and end it with </html> immediately followed by {FILE_MARKER_END}.
+- Return no markdown fence, explanation, preamble, or trailing commentary.
 - Keep all CSS inside one style element in head.
 - Do not emit executable JavaScript. The only script allowed is application/ld+json.
 - Do not use external scripts, inline event handlers, javascript: URLs, meta refresh, iframes, or unknown form actions.
@@ -123,6 +125,8 @@ Technical contract:
 - Reflow cleanly at 320px and use 44px primary controls.
 - Use exact verified photo src values when assets exist. Otherwise use an intentional CSS visual, never a broken image.
 - Use semantic HTML, useful alt text, labels, focus states, and reduced-motion handling.
+- Include a non-empty title, html lang="en", one main landmark, sequential headings, and explicit labels for every visible form control.
+- Use foreground/background color combinations that meet WCAG AA contrast; muted text must remain readable on both paper and dark panels.
 - Do not fabricate reviews, credentials, awards, years in business, guarantees, or service claims.
 """.strip(),
     ]

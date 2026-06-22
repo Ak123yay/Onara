@@ -49,7 +49,17 @@ async def _evaluate_candidate(
     )
     candidate.browser = browser
     candidate.hard_blockers = list(browser.hard_blockers)
-    candidate.warnings = list(dict.fromkeys([*candidate.warnings, *browser.warnings]))
+    accessibility_context = [
+        (
+            f"Accessibility repair detail: {issue.get('id', 'unknown')} - "
+            f"{issue.get('help', 'accessibility issue')} at "
+            f"{', '.join(str(selector) for selector in issue.get('selectors', [])[:4])}"
+        )
+        for issue in browser.accessibility_issues
+    ]
+    candidate.warnings = list(
+        dict.fromkeys([*candidate.warnings, *browser.warnings, *accessibility_context])
+    )
     candidate.deterministic_score = deterministic_score(browser)
     candidate.visual_score = await visual_score(
         candidate,

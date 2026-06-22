@@ -8,6 +8,7 @@ from onara_pipeline.agents.supervisor import (
     repair_codegen_motion,
     validate_codegen_output,
 )
+from onara_pipeline.v2.browser_quality import _apply_lighthouse_thresholds
 
 
 def complete_html(css: str) -> str:
@@ -82,6 +83,33 @@ class CodegenRecoveryTests(unittest.TestCase):
         )
         with self.assertRaisesRegex(SupervisorValidationError, "must not animate width"):
             validate_codegen_output(output_for(html), allow_repairable_visual_issues=True)
+
+    def test_v2_structure_validation_defers_visual_scoring(self) -> None:
+        html = repair_codegen_motion(complete_html("body { color: #111; }"))
+        validate_codegen_output(
+            output_for(html),
+            allow_repairable_visual_issues=True,
+            enforce_visual_quality=False,
+        )
+
+    def test_lighthouse_accessibility_score_is_guidance_not_duplicate_blocker(self) -> None:
+        blockers: list[str] = []
+        warnings: list[str] = []
+        _apply_lighthouse_thresholds(
+            lighthouse={
+                "accessibility": 86,
+                "best_practices": 100,
+                "performance": 100,
+                "seo": 100,
+                "lcp_ms": 1000,
+                "cls": 0,
+                "tbt_ms": 0,
+            },
+            hard_blockers=blockers,
+            warnings=warnings,
+        )
+        self.assertEqual(blockers, [])
+        self.assertIn("Lighthouse accessibility score 86 is below 90", warnings)
 
 
 if __name__ == "__main__":

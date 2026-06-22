@@ -242,6 +242,7 @@ Execution rule:
 - [x] Reliable build preview placeholder: preserve the original Onara loading preview until complete, renderable HTML is available
   - [x] Pipeline V2 release-gate recovery: deterministically repair common accessibility, tap-target, and responsive blockers before abandoning a strong concept
   - [x] Pipeline V2 codegen recovery: retry incomplete model documents once and deterministically repair missing or layout-shifting CSS motion without replacing valid model-generated designs
+  - [x] Pipeline V2 gate separation: defer visual composition checks to rendered candidate evaluation, include Axe selectors in targeted repair, and keep aggregate Lighthouse accessibility scores advisory when no serious Axe violation exists
 - [x] Remove the obsolete generic root loading experience; use route-shaped workspace skeletons and the thin navigation indicator only
 - [x] Match workspace skeleton geometry to real page content, including dashboard recommendations, account training controls, billing metrics, help columns, and all seven build stages
 - [x] Eliminate skeleton layout drift by rendering loading placeholders inside the same production page classes and responsive grids as the loaded workspace pages

@@ -304,6 +304,7 @@ def validate_codegen_output(
     output: CodegenOutput,
     *,
     allow_repairable_visual_issues: bool = False,
+    enforce_visual_quality: bool = True,
 ) -> None:
     html = output.html.strip()
     lower = html.lower()
@@ -340,13 +341,16 @@ def validate_codegen_output(
     if "opacity" not in keyframe_css or "transform" not in keyframe_css:
         raise SupervisorValidationError("Codegen animation must use opacity and transform")
 
-    visual_issues = professional_visual_issues(html)
-    blocking_visual_issues = blocking_codegen_visual_issues(
-        visual_issues,
-        allow_repairable_visual_issues=allow_repairable_visual_issues,
-    )
-    if blocking_visual_issues:
-        raise SupervisorValidationError(f"Codegen output failed visual quality gate: {blocking_visual_issues[0]}")
+    if enforce_visual_quality:
+        visual_issues = professional_visual_issues(html)
+        blocking_visual_issues = blocking_codegen_visual_issues(
+            visual_issues,
+            allow_repairable_visual_issues=allow_repairable_visual_issues,
+        )
+        if blocking_visual_issues:
+            raise SupervisorValidationError(
+                f"Codegen output failed visual quality gate: {blocking_visual_issues[0]}"
+            )
 
 
 def validate_debugger_output(output: DebuggerOutput) -> None:
