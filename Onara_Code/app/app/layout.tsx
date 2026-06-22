@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 import { NavigationFeedback } from "@/components/system/NavigationFeedback";
 import { absoluteUrl, getSiteUrl, siteConfig } from "@/lib/seo";
 import "./globals.css";
@@ -77,6 +78,7 @@ export default function RootLayout({
           <NavigationFeedback />
         </Suspense>
         {children}
+        <SpeedInsights />
       </body>
     </html>
   );
