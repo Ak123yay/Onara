@@ -327,3 +327,21 @@ must not freeze the whole app, expose internal errors, lose user input, or bypas
 **Why**: A strong concept could score above 85 but still be rejected by small controls, a
 generic Axe message, or Windows cleanup after Lighthouse had already finished. Both failed AI
 routes also incorrectly collapsed the UI to one concept.
+
+---
+
+### Immediate route navigation
+
+**What changed**:
+- Added an app-wide top navigation progress indicator for internal links.
+- Added root, dashboard, and account loading boundaries.
+- Added Onara loading shells so destination routes render while Supabase/server data streams.
+- Preserved normal browser behavior for external links, downloads, new tabs, modifiers, and
+  same-page anchors.
+
+**Verification**:
+- `pnpm.cmd type-check` passed.
+- `git diff --check` passed.
+
+**Why**: Slow server-rendered pages previously left the old page visible with no response,
+which made clicks feel broken even when navigation was still running.

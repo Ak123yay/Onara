@@ -134,6 +134,149 @@
   text-underline-offset: 3px;
 }
 
+.navigation-feedback {
+  position: fixed;
+  z-index: 10000;
+  top: 0;
+  right: 0;
+  left: 0;
+  height: 3px;
+  overflow: hidden;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+
+.navigation-feedback-active {
+  opacity: 1;
+}
+
+.navigation-feedback span {
+  display: block;
+  width: 42%;
+  height: 100%;
+  background: var(--accent);
+  box-shadow: 0 0 14px rgb(199 111 53 / 0.38);
+  transform: translateX(-110%);
+}
+
+.navigation-feedback-active span {
+  animation: navigation-progress 1.15s ease-in-out infinite;
+}
+
+.route-loading {
+  width: min(1120px, calc(100% - 40px));
+  min-height: 72vh;
+  margin: 0 auto;
+  padding: clamp(52px, 8vw, 104px) 0;
+}
+
+.route-loading-compact {
+  width: 100%;
+  min-height: 60vh;
+  padding: 32px;
+}
+
+.route-loading-header {
+  max-width: 680px;
+}
+
+.route-loading-header h1 {
+  margin: 12px 0 14px;
+  font-size: clamp(42px, 7vw, 76px);
+  font-weight: 400;
+  letter-spacing: -0.055em;
+  line-height: 0.96;
+}
+
+.route-loading-header > p:last-child {
+  color: var(--ink-3);
+  line-height: 1.6;
+}
+
+.route-loading-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 38px;
+}
+
+.route-loading-card {
+  display: grid;
+  gap: 14px;
+  min-height: 170px;
+  padding: 24px;
+  border: 1px solid var(--rule);
+  background: color-mix(in srgb, var(--paper) 88%, #fff);
+}
+
+.route-loading-card-wide {
+  grid-column: 1 / -1;
+}
+
+.route-loading-line {
+  display: block;
+  width: 72%;
+  height: 12px;
+  background: linear-gradient(90deg, var(--paper-2), var(--paper-3), var(--paper-2));
+  background-size: 220% 100%;
+  animation: route-loading-shimmer 1.4s ease-in-out infinite;
+}
+
+.route-loading-line-short {
+  width: 22%;
+  height: 8px;
+}
+
+.route-loading-line-title {
+  width: 48%;
+  height: 28px;
+}
+
+@keyframes navigation-progress {
+  0% {
+    transform: translateX(-110%);
+  }
+  55% {
+    transform: translateX(120%);
+  }
+  100% {
+    transform: translateX(260%);
+  }
+}
+
+@keyframes route-loading-shimmer {
+  from {
+    background-position: 200% 0;
+  }
+  to {
+    background-position: -20% 0;
+  }
+}
+
+@media (max-width: 700px) {
+  .route-loading,
+  .route-loading-compact {
+    width: min(100% - 24px, 1120px);
+    padding: 36px 0;
+  }
+
+  .route-loading-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .route-loading-card-wide {
+    grid-column: auto;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .navigation-feedback-active span,
+  .route-loading-line {
+    animation: none;
+  }
+}
+
 * {
   box-sizing: border-box;
 }
