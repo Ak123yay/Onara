@@ -77,7 +77,28 @@ Strict output rules:
 - Make the page mobile-first, accessible, phone-first, and visually polished.
 - Add lightweight CSS-only motion using opacity and transform for page entry, cards, CTAs, and trust proof.
 - Include at least one @keyframes rule and a @media (prefers-reduced-motion: reduce) block that disables animation, transitions, and smooth scrolling.
-- Do not use JavaScript animations, infinite loops, layout-shifting animation, or heavy filters."""
+- Do not use JavaScript animations, infinite loops, layout-shifting animation, or heavy filters.
+
+EXACT REQUIRED OUTPUT FORMAT:
+
+{FILE_MARKER_START}
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Business Name - Category - City</title>
+  <style>
+    /* All CSS here */
+  </style>
+</head>
+<body>
+  <!-- All HTML here with data-component attributes -->
+</body>
+</html>
+{FILE_MARKER_END}
+
+Return ONLY the content above. No markdown fences like ```html. No explanations before or after."""
 
 
 async def run_codegen(

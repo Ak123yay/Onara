@@ -216,8 +216,15 @@ def validate_codegen_output(
         raise SupervisorValidationError("Codegen output must not use JavaScript-driven animation loops")
     if "infinite" in lower:
         raise SupervisorValidationError("Codegen output must not use infinite animations")
-    if "opacity" not in lower or "transform" not in lower:
-        raise SupervisorValidationError("Codegen animation must use opacity and transform")
+    
+    # Check for unsafe layout-shifting animation properties
+    animation_blocks = re.findall(r"@keyframes\s+[\w-]+\s*\{([^}]+(?:\}[^}]*)*)\}", lower, re.DOTALL)
+    unsafe_animation_props = ("width", "height", "left", "right", "top", "bottom", "margin", "padding")
+    for block in animation_blocks:
+        for prop in unsafe_animation_props:
+            # Match property declarations like "width:", "  width  :", but not inside comments
+            if re.search(rf"\b{prop}\s*:", block):
+                raise SupervisorValidationError(f"Codegen animation must not animate {prop} (use opacity/transform only)")
 
     visual_issues = professional_visual_issues(html)
     blocking_visual_issues = blocking_codegen_visual_issues(
