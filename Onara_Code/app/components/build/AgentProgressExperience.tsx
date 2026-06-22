@@ -16,7 +16,6 @@ import { useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   AGENT_STEPS,
-  loadingPreviewHtml,
   type AgentStatus,
   type AgentStep,
 } from "@/lib/build/agent-progress";
@@ -134,9 +133,41 @@ function readStoredPackage(jobId: string, projectId: string | null): StoredGener
   return null;
 }
 
+function isRenderablePreviewHtml(html: string | null | undefined): html is string {
+  if (!html) {
+    return false;
+  }
+
+  const normalized = html.trim();
+  if (
+    normalized.length < 120
+    || !/<(?:html|body)\b/i.test(normalized)
+    || !/<\/body\s*>/i.test(normalized)
+    || !/<\/html\s*>/i.test(normalized)
+  ) {
+    return false;
+  }
+
+  const visibleText = normalized
+    .replace(/<!--[\s\S]*?-->/g, " ")
+    .replace(/<(?:script|style)\b[\s\S]*?<\/(?:script|style)>/gi, " ")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/&(?:nbsp|#160);/gi, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  return visibleText.length >= 20;
+}
+
 function readCachedPreview(jobId: string) {
   try {
-    return window.sessionStorage.getItem(`${previewCachePrefix}${jobId}`);
+    const cached = window.sessionStorage.getItem(`${previewCachePrefix}${jobId}`);
+    if (isRenderablePreviewHtml(cached)) {
+      return cached;
+    }
+
+    window.sessionStorage.removeItem(`${previewCachePrefix}${jobId}`);
+    return null;
   } catch {
     return null;
   }
@@ -179,7 +210,7 @@ export function AgentProgressExperience() {
   const [connectionMode, setConnectionMode] = useState<ConnectionMode>("connecting");
   const [currentMessage, setCurrentMessage] = useState("Preparing the agent workspace.");
   const [aiNotice, setAiNotice] = useState<string | null>(null);
-  const [previewHtml, setPreviewHtml] = useState(() => loadingPreviewHtml("Your Contractor Site"));
+  const [previewHtml, setPreviewHtml] = useState<string | null>(null);
   const [progress, setProgress] = useState(0);
   const [publicUrl, setPublicUrl] = useState<string | null>(null);
   const [queuePosition, setQueuePosition] = useState<number | null>(null);
@@ -228,7 +259,7 @@ export function AgentProgressExperience() {
 
     setBusinessName(nextBusinessName);
     setBusinessMeta(metaParts.join(" / ") || "Google Business data confirmed");
-    setPreviewHtml(readCachedPreview(jobId) || loadingPreviewHtml(nextBusinessName));
+    setPreviewHtml(readCachedPreview(jobId));
     setStartedAt(Date.now());
   }, [jobId, projectId]);
 
@@ -257,7 +288,7 @@ export function AgentProgressExperience() {
     }
 
     function applyPreview(html: string | undefined) {
-      if (disposed || !html) {
+      if (disposed || !isRenderablePreviewHtml(html)) {
         return;
       }
 
@@ -686,12 +717,33 @@ export function AgentProgressExperience() {
           </div>
 
           <div className="agent-preview-frame-wrap">
-            <iframe
-              className="agent-preview-frame"
-              sandbox=""
-              srcDoc={previewHtml}
-              title="Generated website preview"
-            />
+            {isRenderablePreviewHtml(previewHtml) ? (
+              <iframe
+                className="agent-preview-frame"
+                sandbox=""
+                srcDoc={previewHtml}
+                title="Generated website preview"
+              />
+            ) : (
+              <div className="agent-preview-building" role="status">
+                <div className="agent-preview-building-orbit" aria-hidden="true">
+                  <span />
+                  <span />
+                  <span />
+                </div>
+                <p className="mono">Onara build studio</p>
+                <h2 className="serif">Building your website</h2>
+                <p>
+                  {businessName} is being assembled into two complete concepts. The first
+                  tested preview will appear here automatically.
+                </p>
+                <div className="agent-preview-building-lines" aria-hidden="true">
+                  <span />
+                  <span />
+                  <span />
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="agent-preview-footer">

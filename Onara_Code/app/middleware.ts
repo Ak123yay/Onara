@@ -36,7 +36,8 @@ export async function middleware(request: NextRequest) {
 
   const isProtectedPath =
     request.nextUrl.pathname.startsWith("/dashboard") ||
-    request.nextUrl.pathname.startsWith("/account");
+    request.nextUrl.pathname.startsWith("/account") ||
+    request.nextUrl.pathname.startsWith("/help");
 
   if (isProtectedPath && !user) {
     const redirectUrl = request.nextUrl.clone();
@@ -49,5 +50,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/dashboard/:path*", "/account/:path*"],
+  matcher: ["/dashboard/:path*", "/account/:path*", "/help/:path*"],
 };

@@ -82,8 +82,17 @@ The release is labeled `Static safety checked`, never desktop/mobile tested.
 
 ## Repair Policy
 
-V2 never asks a model to rewrite the entire page after evaluation. It permits one narrow
-JSON patch:
+V2 never asks a model to rewrite the entire page after evaluation. It first applies a
+deterministic release-gate repair for common, measurable browser findings:
+
+- Minimum width and height for interactive controls.
+- 44px primary conversion targets.
+- Missing accessible names on empty icon links and buttons.
+- Flexible images, media, form controls, grids, and flex children.
+- Mobile overflow, wrapping, and one-column grid safeguards.
+
+The repaired candidate is browser-tested again. If blockers remain, V2 permits one narrow
+JSON model patch:
 
 - The document hash must match.
 - Every replacement targets an existing `data-component`.
@@ -91,9 +100,11 @@ JSON patch:
 - CSS can only be appended to the existing style block.
 - Scripts, event handlers, iframes, new claims, and unsafe URLs are rejected.
 
-Structural failures such as a missing header, hero, CTA, or valid HTML document are not
-repairable. If neither candidate passes after the single repair opportunity, the build fails
-with a clear diagnostic and preserves the last valid state.
+After the selected concept receives deterministic SEO, mobile, and QA processing, the final
+HTML receives one more issue-driven deterministic repair and browser re-audit. Structural or
+security failures such as a missing header, hero, CTA, valid HTML document, or unsafe executable
+output remain unrepairable. If neither candidate passes after these bounded repairs, the build
+fails with a clear diagnostic and preserves the last valid state.
 
 ## Publish Order
 

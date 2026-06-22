@@ -1,10 +1,12 @@
 "use client";
 
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
 export function NavigationFeedback() {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const locationKey = `${pathname}?${searchParams.toString()}`;
   const [pending, setPending] = useState(false);
   const timeoutRef = useRef<number | null>(null);
 
@@ -14,7 +16,7 @@ export function NavigationFeedback() {
       window.clearTimeout(timeoutRef.current);
       timeoutRef.current = null;
     }
-  }, [pathname]);
+  }, [locationKey]);
 
   useEffect(() => {
     function handleClick(event: MouseEvent) {
@@ -40,8 +42,10 @@ export function NavigationFeedback() {
         destination.origin !== window.location.origin
         || anchor.target === "_blank"
         || anchor.hasAttribute("download")
-        || destination.pathname === window.location.pathname
+        || (
+          destination.pathname === window.location.pathname
           && destination.search === window.location.search
+        )
       ) {
         return;
       }

@@ -38,7 +38,11 @@ from onara_pipeline.v2.codegen import candidate_routes, generate_candidates
 from onara_pipeline.v2.contracts import BrowserReport, CandidateArtifact
 from onara_pipeline.v2.evaluator import choose_candidate, evaluate_candidates
 from onara_pipeline.v2.prompt_compiler import build_generation_spec, compile_prompt
-from onara_pipeline.v2.repair import deterministic_release_hardening, targeted_repair
+from onara_pipeline.v2.repair import (
+    deterministic_release_gate_repair,
+    deterministic_release_hardening,
+    targeted_repair,
+)
 
 ProgressCallback = Callable[[str, str | None, str, dict[str, Any] | None], Awaitable[None]]
 CandidateCallback = Callable[[CandidateArtifact], Awaitable[None]]
@@ -236,9 +240,24 @@ async def run_pipeline_v2(
                     "stage": "polishing",
                 },
             )
+            repaired_by_rules = deterministic_release_gate_repair(
+                selected.html,
+                [*selected.hard_blockers, *selected.warnings],
+            )
+            if repaired_by_rules != selected.html:
+                selected.html = repaired_by_rules
+                selected.hard_blockers = []
+                selected.warnings = []
+                await evaluate_candidates([selected], ai_client=ai_client, settings=settings, spec=spec)
+                await persist_candidate(selected)
+
             repair_route, _ = candidate_routes(job=job, settings=settings)
-            repaired_html = await targeted_repair(selected, ai_client=ai_client, route=repair_route)
-            if repaired_html:
+            repaired_html = (
+                await targeted_repair(selected, ai_client=ai_client, route=repair_route)
+                if selected.hard_blockers or selected.final_score < settings.pipeline_v2_min_score
+                else None
+            )
+            if repaired_html and repaired_html != selected.html:
                 selected.html = repaired_html
                 selected.hard_blockers = []
                 selected.warnings = []
@@ -277,10 +296,22 @@ async def run_pipeline_v2(
             settings=settings,
         )
         if final_browser.hard_blockers:
-            raise SupervisorValidationError(
-                "Final browser release gate failed: "
-                + "; ".join(final_browser.hard_blockers[:6])
+            repaired_final_html = deterministic_release_gate_repair(
+                final_html,
+                [*final_browser.hard_blockers, *final_browser.warnings],
             )
+            if repaired_final_html != final_html:
+                final_html = repaired_final_html
+                final_browser = await audit_candidate_html(
+                    final_html,
+                    candidate_key=f"{selected.key}-final-repaired",
+                    settings=settings,
+                )
+            if final_browser.hard_blockers:
+                raise SupervisorValidationError(
+                    "Final browser release gate failed after deterministic repair: "
+                    + "; ".join(final_browser.hard_blockers[:6])
+                )
 
         job.blackboard["candidate_summaries"] = [
             _candidate_summary(candidate, include_thumbnail=True) for candidate in candidates

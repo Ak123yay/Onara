@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { NavigationFeedback } from "@/components/system/NavigationFeedback";
 import { absoluteUrl, getSiteUrl, siteConfig } from "@/lib/seo";
 import "./globals.css";
@@ -72,7 +73,9 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
-        <NavigationFeedback />
+        <Suspense fallback={null}>
+          <NavigationFeedback />
+        </Suspense>
         {children}
       </body>
     </html>

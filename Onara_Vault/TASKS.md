@@ -238,6 +238,9 @@ Execution rule:
 - [x] Build Studio UI rework: persistent step rail, live business brief, Smart Direction defaults, supported-section gating, concept cards, server ETA, and release-readiness badges
 - [x] App-wide graceful degradation: recoverable error boundaries, manual Places fallback, safe photo placeholders, user-safe API errors, and Pipeline V2 static release gate when browser tooling is unavailable
 - [x] Immediate app navigation: show destination loading shells while server data streams instead of leaving the previous page frozen
+- [x] Route-shaped workspace skeletons: preserve the dashboard sidebar and match dashboard, build, progress, account, billing, and checkout layouts while data loads
+- [x] Reliable build preview placeholder: keep the native "building your website" state visible until complete, renderable HTML is available
+- [x] Pipeline V2 release-gate recovery: deterministically repair common accessibility, tap-target, and responsive blockers before abandoning a strong concept
 
 ### Phase 28 — Pre-Launch
 

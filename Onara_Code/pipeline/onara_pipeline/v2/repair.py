@@ -11,6 +11,7 @@ from onara_pipeline.ai_client.model_picker import ModelRoute
 from onara_pipeline.v2.contracts import CandidateArtifact, PatchSet
 
 RELEASE_HARDENING_MARKER = "Onara deterministic release hardening"
+RELEASE_GATE_REPAIR_MARKER = "Onara deterministic release gate repair"
 RELEASE_HARDENING_CSS = f"""
 /* {RELEASE_HARDENING_MARKER} */
 a[href],
@@ -20,6 +21,7 @@ select,
 textarea,
 [role="button"] {{
   min-block-size: 24px;
+  min-inline-size: 24px;
 }}
 
 button,
@@ -52,6 +54,103 @@ nav a,
 .hero-card p,
 .hero-photo figcaption {{
   color: #eee9df;
+}}
+""".strip()
+
+RELEASE_GATE_REPAIR_CSS = f"""
+/* {RELEASE_GATE_REPAIR_MARKER} */
+html,
+body {{
+  max-width: 100%;
+  overflow-x: clip;
+}}
+
+img,
+picture,
+video,
+svg,
+canvas {{
+  max-width: 100%;
+}}
+
+img,
+video {{
+  height: auto;
+}}
+
+main,
+section,
+header,
+footer,
+nav,
+form,
+.container,
+.wrapper,
+[class*="grid"],
+[class*="flex"] {{
+  min-width: 0;
+}}
+
+a[href],
+button,
+input,
+select,
+textarea,
+[role="button"] {{
+  min-width: 24px;
+  min-height: 24px;
+}}
+
+.primary-cta,
+.header-cta,
+.contact-cta,
+a[href^="tel:"],
+button[type="submit"],
+input[type="submit"] {{
+  min-width: 44px;
+  min-height: 44px;
+}}
+
+input,
+select,
+textarea {{
+  max-width: 100%;
+}}
+
+p,
+h1,
+h2,
+h3,
+h4,
+li,
+a,
+button,
+label {{
+  overflow-wrap: anywhere;
+}}
+
+@media (max-width: 768px) {{
+  body {{
+    width: 100%;
+  }}
+
+  main,
+  section,
+  header,
+  footer,
+  nav {{
+    max-width: 100%;
+  }}
+
+  [class*="grid"] {{
+    grid-template-columns: minmax(0, 1fr);
+  }}
+
+  [class*="row"],
+  [class*="columns"],
+  [class*="split"] {{
+    flex-wrap: wrap;
+  }}
 }}
 """.strip()
 
@@ -138,6 +237,64 @@ def deterministic_release_hardening(html: str) -> str:
         + "\n"
         + html[index:]
     )
+
+
+def deterministic_release_gate_repair(html: str, issues: list[str]) -> str:
+    if not issues:
+        return html
+
+    fixed = _add_accessible_names(html)
+    if RELEASE_GATE_REPAIR_MARKER in fixed:
+        return fixed
+
+    index = fixed.lower().rfind("</style>")
+    if index < 0:
+        return fixed
+    return fixed[:index] + "\n" + RELEASE_GATE_REPAIR_CSS + "\n" + fixed[index:]
+
+
+def _add_accessible_names(html: str) -> str:
+    def repair_control(match: re.Match[str]) -> str:
+        tag = match.group("tag")
+        attributes = match.group("attributes")
+        content = match.group("content")
+        if re.search(r"\baria-label(?:ledby)?\s*=", attributes, flags=re.IGNORECASE):
+            return match.group(0)
+        if re.sub(r"<[^>]+>", " ", content).strip():
+            return match.group(0)
+
+        title = _attribute_value(attributes, "title")
+        href = _attribute_value(attributes, "href")
+        label = title or _label_for_href(href) or ("Submit" if tag.lower() == "button" else "Open link")
+        return f'<{tag}{attributes} aria-label="{label}">{content}</{tag}>'
+
+    return re.sub(
+        r"<(?P<tag>a|button)\b(?P<attributes>[^>]*)>(?P<content>.*?)</(?P=tag)>",
+        repair_control,
+        html,
+        flags=re.IGNORECASE | re.DOTALL,
+    )
+
+
+def _attribute_value(attributes: str, name: str) -> str:
+    match = re.search(
+        rf"\b{re.escape(name)}\s*=\s*([\"'])(?P<value>.*?)\1",
+        attributes,
+        flags=re.IGNORECASE | re.DOTALL,
+    )
+    return re.sub(r"\s+", " ", match.group("value")).strip() if match else ""
+
+
+def _label_for_href(href: str) -> str:
+    lowered = href.lower()
+    if lowered.startswith("tel:"):
+        return "Call business"
+    if lowered.startswith("mailto:"):
+        return "Email business"
+    if lowered.startswith("#"):
+        target = lowered[1:].replace("-", " ").replace("_", " ").strip()
+        return f"Go to {target}" if target else "Open section"
+    return ""
 
 
 def apply_patch_set(html: str, patch: PatchSet) -> str:

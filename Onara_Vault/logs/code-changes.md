@@ -345,3 +345,62 @@ routes also incorrectly collapsed the UI to one concept.
 
 **Why**: Slow server-rendered pages previously left the old page visible with no response,
 which made clicks feel broken even when navigation was still running.
+
+---
+
+### Route-shaped workspace loading
+
+**What changed**:
+- Replaced the generic workspace loading cards with skeletons shaped like the destination page.
+- Added distinct dashboard, Build Studio, build progress, account, billing, checkout, and help loaders.
+- Moved Dashboard, Account, and Help under one shared route-group layout without changing URLs.
+- Kept the real dashboard sidebar mounted and interactive while workspace pages load.
+- Kept Help protected by the auth middleware after moving it into the shared workspace.
+- Made navigation feedback finish correctly when only URL search parameters change.
+- Used a quiet opacity pulse instead of a large generic shimmer layout.
+
+**Verification**:
+- `pnpm.cmd type-check` passed.
+- `git diff --check` passed.
+- `pnpm.cmd build` reached Next.js compilation and remains blocked locally by the existing
+  Windows `spawn EPERM` environment error.
+
+**Why**: Loading UI should preserve page position and structure. The previous generic shell
+caused a noticeable layout swap and could remove the sidebar between workspace sections.
+
+---
+
+### Reliable generation preview placeholder
+
+**What changed**:
+- Kept the build preview as a native Onara loading panel until valid generated HTML exists.
+- Reject whitespace, partial documents, empty markup, and invalid cached previews.
+- Remove stale preview cache entries instead of loading them into a blank iframe.
+- Swap to the iframe only after a complete document with visible content arrives.
+
+**Verification**:
+- `pnpm.cmd type-check` passed.
+- `git diff --check` passed.
+
+**Why**: Previously any truthy preview string could replace the loading state. Partial or stale
+HTML then produced a large blank iframe even though the build was still running.
+
+---
+
+### Pipeline V2 release-gate recovery
+
+**What changed**:
+- Added deterministic repair for control width/height, 44px primary CTAs, mobile overflow,
+  flexible media, wrapping, and empty icon-control accessible names.
+- Re-audit the strongest candidate after deterministic repair before spending another model call.
+- Use the bounded model patch only when deterministic repair does not clear the blockers.
+- Added one final deterministic repair and browser re-audit after SEO/mobile/QA transforms.
+- Kept structural and security failures fail-closed.
+
+**Verification**:
+- `python -m unittest discover -s tests -p "test_*.py"` passed (21 tests).
+- `python -m compileall onara_pipeline main.py` passed.
+- `git diff --check` passed.
+
+**Why**: Strong concepts were being discarded for measurable browser issues that Onara could
+repair safely, and the final transformed HTML had no repair opportunity before failure.

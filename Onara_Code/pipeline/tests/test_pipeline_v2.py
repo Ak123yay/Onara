@@ -17,7 +17,11 @@ from onara_pipeline.job_queue import _durable_event_payload, _lease_retry_delay,
 from onara_pipeline.schemas import GenerateRequest
 from onara_pipeline.v2.codegen import _fallback_layout
 from onara_pipeline.v2.prompt_compiler import choose_recipes
-from onara_pipeline.v2.repair import apply_patch_set, deterministic_release_hardening
+from onara_pipeline.v2.repair import (
+    apply_patch_set,
+    deterministic_release_gate_repair,
+    deterministic_release_hardening,
+)
 
 
 def digest(value: str) -> str:
@@ -124,6 +128,33 @@ class PipelineV2Tests(unittest.TestCase):
         self.assertIn("Onara deterministic release hardening", hardened)
         self.assertIn("min-height: 44px", hardened)
         self.assertEqual(hardened, hardened_twice)
+
+    def test_release_gate_repair_adds_width_targets_and_mobile_overflow_guards(self) -> None:
+        html = (
+            "<!doctype html><html><head><style>body{margin:0}</style></head><body>"
+            '<a href="tel:7035550100"><svg></svg></a>'
+            '<section class="service-grid"></section>'
+            "</body></html>"
+        )
+
+        repaired = deterministic_release_gate_repair(
+            html,
+            ["mobile: horizontal overflow", "desktop: 1 controls below 24px"],
+        )
+
+        self.assertIn("Onara deterministic release gate repair", repaired)
+        self.assertIn("min-width: 24px", repaired)
+        self.assertIn("overflow-x: clip", repaired)
+        self.assertIn('aria-label="Call business"', repaired)
+
+    def test_release_gate_repair_is_idempotent(self) -> None:
+        html = "<!doctype html><html><head><style></style></head><body></body></html>"
+        repaired = deterministic_release_gate_repair(html, ["mobile: horizontal overflow"])
+
+        self.assertEqual(
+            repaired,
+            deterministic_release_gate_repair(repaired, ["mobile: horizontal overflow"]),
+        )
 
     def test_fallback_layouts_stay_distinct(self) -> None:
         self.assertEqual(_fallback_layout("emergency-utility", "a"), "phone-first")
