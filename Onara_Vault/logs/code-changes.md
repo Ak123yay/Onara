@@ -1,3 +1,28 @@
+
+## 2026-06-22
+
+### Agent 6 format enforcement + animation validator fix
+
+**Files affected**: `Onara_Code/pipeline/onara_pipeline/agents/agent_06_codegen.py`, `Onara_Code/pipeline/onara_pipeline/agents/supervisor.py`, `Onara_Code/pipeline/README.md`, `README.md`
+
+**What changed**:
+- `agent_06_codegen.py`: Restored an exact FILE_MARKER document example and repairs otherwise valid model HTML with a safe motion contract before validation.
+- `v2/codegen.py`: Added one bounded, low-temperature format retry when a model returns an incomplete or unparseable document.
+- `supervisor.py`: Removes layout-shifting keyframe declarations, injects lightweight opacity/transform motion when omitted, and still rejects unsafe unrepaired animation.
+- `tests/test_codegen_recovery.py`: Added parser, missing-motion, unsafe-width, and validator regression coverage.
+- `Onara_Code/pipeline/README.md`: Added "Code Generation Validation" section documenting Agent 6 output format and animation safety rules. Updated Agent 6 description to mention "explicit format examples" and "animation safety validation".
+- `README.md`: Updated AI usage section to mention enforcement of "FILE_MARKER wrapping with explicit examples" and "animation safety (opacity/transform only, blocking layout-shifting properties)".
+
+**Why**: Pipeline V2 builds were failing with both candidates rejected:
+- Candidate A: "Agent 6 output did not contain a marked index.html document" — LLM wasn't wrapping output in FILE_MARKER tags
+- Candidate B: "Codegen animation must use opacity and transform" — validator incorrectly required both keywords to exist instead of validating actual keyframe property usage
+
+**Impact**: A good model-generated page is no longer discarded because it omitted keyframes. Incomplete output gets one model retry, while unsafe width/height-style keyframes are repaired locally without replacing the design with the deterministic fallback template.
+
+**Testing**: Python compilation passed. All 25 pipeline unit tests passed.
+
+---
+
 # Code Changes Log
 
 ## 2026-05-15
@@ -423,13 +448,11 @@ that was actually opening.
 ### More accurate workspace skeletons
 
 **What changed**:
-- Matched Dashboard loading to the recommendation cells, site badges, public-link panel, and
-  two action controls used by real site rows.
-- Matched Progress loading to all seven build stages and the centered preview-loading document.
-- Added the missing Account training-data card, status metrics, actions, and footer note.
-- Matched Billing loading to the three usage metrics and Starter's secondary annual action.
-- Rebuilt Help loading around its three shortcuts, process/FAQ main column, and support aside.
-- Adjusted responsive stacking so skeleton and loaded page change shape at similar breakpoints.
+- Rebuilt every workspace loading state with the same production classes used by its loaded page.
+- Dashboard, Build, Progress, Account, Billing, Checkout, and Help now inherit the real grids,
+  card dimensions, spacing, and responsive breakpoints instead of duplicating that geometry.
+- Limited skeleton-only CSS to placeholder bars, icons, controls, and the quiet loading pulse.
+- Neutralized the old Build and Progress wrapper geometry that could override the real layouts.
 
 **Why**: The previous loaders had roughly correct cards but still shifted visibly when the real
-content arrived.
+content arrived because their dimensions were maintained separately from the finished pages.

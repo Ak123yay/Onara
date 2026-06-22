@@ -30,6 +30,7 @@ Onara also uses AI inside the product. The AI helps with:
 - Fixing broken generated code.
 - Adding SEO metadata and LocalBusiness JSON-LD.
 - Checking the site for missing sections, weak copy, bad structure, and mobile issues.
+- Enforcing output format rules (FILE_MARKER wrapping with explicit examples) and animation safety (opacity/transform only, blocking layout-shifting properties).
 - Saving only approved and cleaned examples to improve future generations.
 
 AI is not trusted for everything. These parts are handled by regular code:

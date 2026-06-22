@@ -17,7 +17,11 @@ from onara_pipeline.agents.contracts import (
     StyleOutput,
 )
 from onara_pipeline.agents.fallbacks import fallback_codegen
-from onara_pipeline.agents.supervisor import SupervisorValidationError, validate_codegen_output
+from onara_pipeline.agents.supervisor import (
+    SupervisorValidationError,
+    repair_codegen_motion,
+    validate_codegen_output,
+)
 from onara_pipeline.ai_client import AIClient, AIClientError, AIMessage, AIRequest
 from onara_pipeline.ai_client.model_picker import (
     BENCHMARKED_PRIMARY_MODEL,
@@ -159,28 +163,20 @@ async def _generate_candidate(
     settings: Settings,
 ) -> CandidateArtifact:
     context = build_business_context(job.business_data, job.style_preferences)
-    response = await asyncio.wait_for(
-        ai_client.generate_text(
-            route=route,
-            request=AIRequest(
-                max_tokens=14_000,
-                messages=[
-                    AIMessage(role="system", content=SYSTEM_PROMPT),
-                    AIMessage(role="user", content=prompt.prompt),
-                ],
-                metadata={
-                    "agent_id": "agent_06_codegen",
-                    "candidate": key,
-                    "job_id": job.job_id,
-                    "recipe": recipe,
-                },
-                temperature=0.22 if key == "a" else 0.28,
-            ),
-        ),
-        timeout=settings.pipeline_v2_candidate_timeout,
+    response = await _request_candidate(
+        ai_client=ai_client,
+        job=job,
+        key=key,
+        prompt=prompt.prompt,
+        recipe=recipe,
+        route=route,
+        settings=settings,
+        temperature=0.22 if key == "a" else 0.28,
     )
     try:
-        html = materialize_photo_tokens(extract_index_html(response.content), context)
+        html = repair_codegen_motion(
+            materialize_photo_tokens(extract_index_html(response.content), context)
+        )
         output = CodegenOutput(
             component_files=split_component_files(html, planner),
             fallback_used=response.fallback_used,
@@ -190,7 +186,33 @@ async def _generate_candidate(
             raw_output=response.content,
         )
         validate_codegen_output(output, allow_repairable_visual_issues=True)
-    except (ValueError, ValidationError, SupervisorValidationError) as exc:
+    except ValueError:
+        response = await _request_candidate(
+            ai_client=ai_client,
+            job=job,
+            key=key,
+            prompt=_format_retry_prompt(prompt.prompt),
+            recipe=recipe,
+            route=route,
+            settings=settings,
+            temperature=0.08,
+        )
+        try:
+            html = repair_codegen_motion(
+                materialize_photo_tokens(extract_index_html(response.content), context)
+            )
+            output = CodegenOutput(
+                component_files=split_component_files(html, planner),
+                fallback_used=response.fallback_used,
+                html=html,
+                model=response.model,
+                provider=response.provider,
+                raw_output=response.content,
+            )
+            validate_codegen_output(output, allow_repairable_visual_issues=True)
+        except (ValueError, ValidationError, SupervisorValidationError) as exc:
+            raise AIClientError(f"Candidate {key} returned invalid HTML: {exc}") from exc
+    except (ValidationError, SupervisorValidationError) as exc:
         raise AIClientError(f"Candidate {key} returned invalid HTML: {exc}") from exc
 
     return CandidateArtifact(
@@ -202,6 +224,67 @@ async def _generate_candidate(
         provider=response.provider,
         recipe=recipe,
     )
+
+
+async def _request_candidate(
+    *,
+    ai_client: AIClient,
+    job: PipelineJob,
+    key: str,
+    prompt: str,
+    recipe: str,
+    route: ModelRoute,
+    settings: Settings,
+    temperature: float,
+):
+    return await asyncio.wait_for(
+        ai_client.generate_text(
+            route=route,
+            request=AIRequest(
+                max_tokens=14_000,
+                messages=[
+                    AIMessage(role="system", content=SYSTEM_PROMPT),
+                    AIMessage(role="user", content=prompt),
+                ],
+                metadata={
+                    "agent_id": "agent_06_codegen",
+                    "candidate": key,
+                    "job_id": job.job_id,
+                    "recipe": recipe,
+                },
+                temperature=temperature,
+            ),
+        ),
+        timeout=settings.pipeline_v2_candidate_timeout,
+    )
+
+
+def _format_retry_prompt(original_prompt: str) -> str:
+    return f"""Your previous response was incomplete or could not be parsed.
+
+Generate the complete website again from this original request:
+
+{original_prompt}
+
+Formatting is mandatory:
+{{FILE_MARKER_START}}
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Business name</title>
+  <style>
+    /* complete CSS with short opacity + transform @keyframes */
+  </style>
+</head>
+<body>
+  <!-- every planned component in order -->
+</body>
+</html>
+{{FILE_MARKER_END}}
+
+Return no explanation, no markdown fence, and no partial document."""
 
 
 def candidate_routes(*, job: PipelineJob, settings: Settings) -> tuple[ModelRoute, ModelRoute]:

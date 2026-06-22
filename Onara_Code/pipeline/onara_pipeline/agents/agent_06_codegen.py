@@ -23,7 +23,11 @@ from onara_pipeline.agents.generation_contracts import (
 from onara_pipeline.agents.json_utils import compact_json
 from onara_pipeline.agents.onara_theme import ONARA_THEME_CONTRACT
 from onara_pipeline.agents.style_directives import style_directive_text
-from onara_pipeline.agents.supervisor import SupervisorValidationError, validate_codegen_output
+from onara_pipeline.agents.supervisor import (
+    SupervisorValidationError,
+    repair_codegen_motion,
+    validate_codegen_output,
+)
 from onara_pipeline.ai_client import AIClient, AIClientError, AIMessage, AIRequest, get_agent_model_route
 from onara_pipeline.config import Settings
 from onara_pipeline.job_queue import PipelineJob
@@ -77,7 +81,25 @@ Strict output rules:
 - Make the page mobile-first, accessible, phone-first, and visually polished.
 - Add lightweight CSS-only motion using opacity and transform for page entry, cards, CTAs, and trust proof.
 - Include at least one @keyframes rule and a @media (prefers-reduced-motion: reduce) block that disables animation, transitions, and smooth scrolling.
-- Do not use JavaScript animations, infinite loops, layout-shifting animation, or heavy filters."""
+- Do not use JavaScript animations, infinite loops, layout-shifting animation, or heavy filters.
+
+EXACT REQUIRED OUTPUT SHAPE:
+{FILE_MARKER_START}
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Business name</title>
+  <style>/* complete CSS, including safe keyframes */</style>
+</head>
+<body>
+  <!-- complete page with data-component attributes -->
+</body>
+</html>
+{FILE_MARKER_END}
+
+Return only that complete marked document. Do not use markdown fences or add commentary."""
 
 
 async def run_codegen(
@@ -117,7 +139,9 @@ async def run_codegen(
                 temperature=0.18,
             ),
         )
-        html = materialize_photo_tokens(extract_index_html(response.content), context)
+        html = repair_codegen_motion(
+            materialize_photo_tokens(extract_index_html(response.content), context)
+        )
         output = CodegenOutput(
             component_files=split_component_files(html, planner),
             fallback_used=response.fallback_used,
@@ -265,7 +289,9 @@ async def _repair_codegen_with_model(
             temperature=0.12,
         ),
     )
-    html = materialize_photo_tokens(extract_index_html(response.content), context)
+    html = repair_codegen_motion(
+        materialize_photo_tokens(extract_index_html(response.content), context)
+    )
     return CodegenOutput(
         component_files=split_component_files(html, planner),
         fallback_used=original.fallback_used or response.fallback_used,

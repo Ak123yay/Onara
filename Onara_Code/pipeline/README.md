@@ -84,6 +84,25 @@ Invoke-WebRequest -Method GET https://pipeline.onara.tech/health -UseBasicParsin
 Set `PIPELINE_V2_ENABLED=false` and restart PM2. Migration `022` can remain applied because
 V1 ignores the V2-only fields and tables.
 
+## Code Generation Validation
+
+Both pipelines enforce the same output quality gates:
+
+### Agent 6 Output Format
+- HTML must be wrapped in `{FILE_MARKER_START}` and `{FILE_MARKER_END}` markers
+- No markdown fences (` ```html `) allowed in output
+- System prompt includes explicit format example to reduce parsing failures
+
+### Animation Safety Rules
+- Animations must use only `opacity` and `transform` properties
+- Layout-shifting properties are blocked: `width`, `height`, `left`, `right`, `top`, `bottom`, `margin`, `padding`
+- `@keyframes` rules are validated for unsafe property usage
+- `@media (prefers-reduced-motion: reduce)` block required
+- JavaScript animation loops (`requestAnimationFrame`, `setInterval`) are blocked
+- Infinite animations are blocked
+
+These rules prevent layout shifts, reduce jank, and ensure accessibility compliance.
+
 ## Local Run
 
 ```powershell
@@ -129,7 +148,7 @@ after enqueue:
 - Agent 3 Style Agent: `z-ai/glm-5.1` through NIM, runs in parallel with Agent 2 and produces higher-quality design tokens.
 - Agent 4 Planner: `z-ai/glm-5.1` through NIM, converts copy and style into a component blueprint.
 - Agent 5 Prompt Engineer: `z-ai/glm-5.1` through NIM, converts the blueprint into the Agent 6 code prompt.
-- Agent 6 Code Generator: plan-gated model picker, FILE_MARKER extraction, component splitting, and deterministic HTML fallback.
+- Agent 6 Code Generator: plan-gated model picker, FILE_MARKER extraction with explicit format examples, component splitting, animation safety validation, and deterministic HTML fallback.
 - Agent 7 Debugger: `z-ai/glm-5.1` through NIM, audits generated HTML/CSS/accessibility/motion, returns PASS or validated fixes, and falls back to deterministic cleanup.
 - Agent 8 SEO Agent: `qwen3.5:9b` through Ollama, injects title, meta description, Open Graph/Twitter tags, canonical placeholder, and LocalBusiness JSON-LD with deterministic fallback.
 - Agent 9 QA: `z-ai/glm-5.1` through NIM, validates launch blockers across document structure, component markers, professional visual system, Onara theme compliance, mobile basics, SEO, schema, tap-to-call, and motion safety.

@@ -32,6 +32,41 @@ REPAIRABLE_CODEGEN_VISUAL_ISSUE_PREFIXES = (
     "Hours card uses awkward summary copy",
 )
 
+UNSAFE_KEYFRAME_PROPERTIES = (
+    "bottom",
+    "height",
+    "left",
+    "margin",
+    "padding",
+    "right",
+    "top",
+    "width",
+)
+
+SAFE_MOTION_CSS = """
+      @keyframes onara-enter {
+        from { opacity: 0; transform: translateY(12px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+
+      body > header,
+      body > main > section,
+      body > footer {
+        animation: onara-enter 420ms ease both;
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        *,
+        *::before,
+        *::after {
+          animation-duration: 0.01ms !important;
+          animation-iteration-count: 1 !important;
+          scroll-behavior: auto !important;
+          transition-duration: 0.01ms !important;
+        }
+      }
+"""
+
 
 def repairable_codegen_visual_issues(issues: list[str]) -> list[str]:
     return [
@@ -186,6 +221,85 @@ def _first_component_position(body_html: str, component_ids: tuple[str, ...]) ->
     return min(positions) if positions else -1
 
 
+def repair_codegen_motion(html: str) -> str:
+    fixed = html
+    blocks = _keyframe_blocks(fixed)
+
+    for start, end, block in reversed(blocks):
+        repaired_block = block
+        for prop in UNSAFE_KEYFRAME_PROPERTIES:
+            repaired_block = re.sub(
+                rf"(?i)\b{prop}\s*:[^;}}]+;?",
+                "",
+                repaired_block,
+            )
+        fixed = fixed[:start] + repaired_block + fixed[end:]
+
+    keyframe_css = " ".join(block for _, _, block in _keyframe_blocks(fixed)).lower()
+    needs_safe_keyframes = (
+        "@keyframes" not in fixed.lower()
+        or "opacity" not in keyframe_css
+        or "transform" not in keyframe_css
+    )
+    needs_reduced_motion = "prefers-reduced-motion" not in fixed.lower()
+
+    if needs_safe_keyframes or needs_reduced_motion:
+        patch = SAFE_MOTION_CSS
+        if not needs_safe_keyframes:
+            patch = re.sub(
+                r"(?s)\s*@keyframes onara-enter.*?body > footer \{.*?\}\s*",
+                "\n",
+                patch,
+                count=1,
+            )
+        fixed = _append_style_patch(fixed, patch)
+
+    return fixed
+
+
+def _append_style_patch(html: str, css: str) -> str:
+    if "</style>" in html.lower():
+        return re.sub(
+            r"</style>",
+            f"\n{css.rstrip()}\n    </style>",
+            html,
+            count=1,
+            flags=re.IGNORECASE,
+        )
+    return re.sub(
+        r"(<head\b[^>]*>)",
+        rf"\1\n    <style>\n{css.rstrip()}\n    </style>",
+        html,
+        count=1,
+        flags=re.IGNORECASE,
+    )
+
+
+def _keyframe_blocks(css: str) -> list[tuple[int, int, str]]:
+    blocks: list[tuple[int, int, str]] = []
+    for match in re.finditer(r"@keyframes\s+[\w-]+\s*\{", css, flags=re.IGNORECASE):
+        depth = 1
+        index = match.end()
+        while index < len(css) and depth:
+            if css[index] == "{":
+                depth += 1
+            elif css[index] == "}":
+                depth -= 1
+            index += 1
+        if depth == 0:
+            blocks.append((match.start(), index, css[match.start():index]))
+    return blocks
+
+
+def _unsafe_keyframe_properties(html: str) -> list[str]:
+    unsafe: list[str] = []
+    for _, _, block in _keyframe_blocks(html):
+        for prop in UNSAFE_KEYFRAME_PROPERTIES:
+            if re.search(rf"(?i)\b{prop}\s*:", block):
+                unsafe.append(prop)
+    return sorted(set(unsafe))
+
+
 def validate_codegen_output(
     output: CodegenOutput,
     *,
@@ -216,7 +330,14 @@ def validate_codegen_output(
         raise SupervisorValidationError("Codegen output must not use JavaScript-driven animation loops")
     if "infinite" in lower:
         raise SupervisorValidationError("Codegen output must not use infinite animations")
-    if "opacity" not in lower or "transform" not in lower:
+    unsafe_animation_properties = _unsafe_keyframe_properties(html)
+    if unsafe_animation_properties:
+        raise SupervisorValidationError(
+            "Codegen animation must not animate "
+            f"{unsafe_animation_properties[0]} (use opacity/transform only)"
+        )
+    keyframe_css = " ".join(block for _, _, block in _keyframe_blocks(html)).lower()
+    if "opacity" not in keyframe_css or "transform" not in keyframe_css:
         raise SupervisorValidationError("Codegen animation must use opacity and transform")
 
     visual_issues = professional_visual_issues(html)

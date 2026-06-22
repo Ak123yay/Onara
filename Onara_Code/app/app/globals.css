@@ -10506,3 +10506,422 @@ button.revision-component-chip:disabled {
     grid-template-columns: 1fr;
   }
 }
+
+/* Loading content uses the production page layouts above. These classes only
+   define placeholder ink, so loading and loaded geometry cannot drift apart. */
+.workspace-skeleton-build,
+.workspace-skeleton-progress {
+  height: auto;
+  min-height: 0;
+  padding: 0;
+  animation: none;
+}
+
+.workspace-skeleton-progress .agent-progress-grid {
+  height: 100%;
+}
+
+.sk-page {
+  animation: workspace-skeleton-enter 180ms ease-out both;
+}
+
+.sk-block {
+  display: block;
+  min-width: 0;
+  border-radius: 2px;
+  background: var(--paper-3);
+  animation: workspace-skeleton-pulse 1.25s ease-in-out infinite alternate;
+}
+
+.sk-block:nth-child(2n) {
+  animation-delay: -450ms;
+}
+
+.sk-text {
+  display: grid;
+  width: min(360px, 76%);
+  gap: 7px;
+  margin-top: 12px;
+}
+
+.sk-text-wide {
+  width: min(620px, 92%);
+}
+
+.sk-text > .sk-block {
+  width: 100%;
+  height: 10px;
+}
+
+.sk-text > .sk-block:last-child {
+  width: 72%;
+}
+
+.sk-eyebrow,
+.sk-label {
+  width: 92px;
+  height: 9px;
+}
+
+.sk-page-title {
+  width: min(500px, 78%);
+  height: 56px;
+  margin-top: 14px;
+}
+
+.sk-dashboard-title {
+  width: min(720px, 72vw);
+  height: 56px;
+  margin-top: 14px;
+}
+
+.sk-section-title {
+  width: min(280px, 78%);
+  height: 30px;
+  margin-top: 9px;
+}
+
+.sk-small-title {
+  width: min(210px, 72%);
+  height: 20px;
+  margin-top: 7px;
+}
+
+.sk-build-title {
+  width: min(560px, 78%);
+  height: 54px;
+  margin-top: 18px;
+}
+
+.sk-help-title {
+  width: min(590px, 88%);
+  height: 48px;
+  margin-top: 12px;
+}
+
+.sk-account-name {
+  width: min(320px, 54vw);
+  height: 38px;
+  margin-top: 9px;
+}
+
+.sk-progress-title {
+  width: min(330px, 86%);
+  height: 40px;
+  margin-top: 14px;
+}
+
+.sk-site-name {
+  width: min(250px, 72%);
+  height: 18px;
+}
+
+.sk-url {
+  width: min(390px, 84%);
+  height: 11px;
+  margin-top: 9px;
+}
+
+.sk-meta {
+  width: min(430px, 88%);
+  height: 10px;
+  margin-top: 8px;
+}
+
+.sk-caption {
+  width: 76px;
+  height: 9px;
+}
+
+.sk-metric {
+  width: 62%;
+  height: 38px;
+  margin-top: 10px;
+}
+
+.sk-stat-value,
+.sk-fact-value {
+  width: 68%;
+  height: 17px;
+  margin-top: 8px;
+}
+
+.sk-price {
+  width: 136px;
+  height: 44px;
+  margin-top: 8px;
+}
+
+.sk-badge {
+  width: 72px;
+  height: 22px;
+}
+
+.sk-button {
+  width: 132px;
+  height: 40px;
+}
+
+.sk-mini-button {
+  width: 88px;
+  height: 30px;
+}
+
+.sk-full-button {
+  width: 100%;
+}
+
+.sk-round-icon,
+.sk-icon,
+.sk-square-icon {
+  flex: 0 0 auto;
+}
+
+.sk-round-icon {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+}
+
+.sk-icon {
+  width: 18px;
+  height: 18px;
+}
+
+.sk-square-icon {
+  width: 38px;
+  height: 38px;
+}
+
+.sk-card-fill {
+  width: 100%;
+  height: 46px;
+}
+
+.dashboard-ai-brief-recs .sk-card-fill::before {
+  content: none;
+}
+
+.sk-site-thumb {
+  width: 64px;
+  height: 64px;
+}
+
+.sk-link {
+  width: min(360px, 80%);
+  height: 11px;
+}
+
+.sk-site-actions {
+  display: grid;
+  align-content: center;
+  gap: 6px;
+}
+
+.sk-site-actions .sk-button {
+  width: 100%;
+  height: 34px;
+}
+
+.sk-logo {
+  width: 112px;
+  height: 32px;
+}
+
+.sk-user-pill {
+  width: 180px;
+  height: 32px;
+  border-radius: 16px;
+}
+
+.sk-step-label {
+  width: 92px;
+  height: 11px;
+}
+
+.sk-centered {
+  margin-right: auto;
+  margin-left: auto;
+}
+
+.build-subcopy > .sk-text {
+  margin-right: auto;
+  margin-left: auto;
+}
+
+.sk-search-form {
+  align-items: center;
+}
+
+.sk-search-input {
+  width: 100%;
+  height: 18px;
+}
+
+.sk-search-form > .sk-button {
+  height: 52px;
+}
+
+.sk-fact-row {
+  width: 100%;
+  height: 38px;
+  border-radius: 0;
+}
+
+.sk-chip {
+  width: 74px;
+  height: 24px;
+}
+
+.sk-back {
+  width: 104px;
+  height: 12px;
+}
+
+.sk-progress-bar {
+  width: 100%;
+  height: 6px;
+  margin-top: 12px;
+}
+
+.sk-stage-title {
+  width: min(190px, 86%);
+  height: 12px;
+}
+
+.sk-stage-copy {
+  width: min(250px, 94%);
+  height: 9px;
+  margin-top: 5px;
+}
+
+.sk-stage-status {
+  width: 58px;
+  height: 22px;
+}
+
+.sk-window-dots {
+  width: 47px;
+  height: 11px;
+}
+
+.sk-preview-url {
+  width: 100%;
+  height: 35px;
+}
+
+.sk-preview-loading {
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  padding: 48px;
+}
+
+.sk-preview-loading > .sk-text {
+  margin-right: auto;
+  margin-left: auto;
+}
+
+.sk-preview-logo {
+  width: 82px;
+  height: 82px;
+  margin-bottom: 24px;
+  border-radius: 50%;
+}
+
+.sk-preview-title {
+  width: min(480px, 76%);
+  height: 52px;
+  margin-top: 18px;
+}
+
+.sk-preview-lines {
+  display: grid;
+  width: min(420px, 72%);
+  gap: 8px;
+  margin-top: 30px;
+}
+
+.sk-preview-lines .sk-block {
+  width: 100%;
+  height: 7px;
+}
+
+.sk-preview-lines .sk-block:nth-child(2) {
+  width: 78%;
+}
+
+.sk-preview-lines .sk-block:nth-child(3) {
+  width: 56%;
+}
+
+.sk-dark {
+  background: rgb(255 255 255 / 18%);
+}
+
+.sk-dark-meter {
+  width: 100%;
+  background: rgb(255 255 255 / 12%);
+}
+
+.sk-note,
+.sk-footnote,
+.sk-support {
+  width: 100%;
+  height: 46px;
+}
+
+.sk-feature {
+  width: min(220px, 72%);
+  height: 12px;
+}
+
+.sk-total {
+  width: 100%;
+  height: 88px;
+}
+
+.sk-payment-row {
+  width: 100%;
+  height: 58px;
+  border: 1px solid var(--rule-2);
+  background: var(--paper-2);
+}
+
+.sk-check {
+  width: 84%;
+  height: 12px;
+  background: rgb(255 255 255 / 18%);
+}
+
+.sk-step-number {
+  width: 32px;
+  height: 12px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sk-block,
+  .sk-page {
+    animation: none;
+  }
+}
+
+@media (max-width: 720px) {
+  .sk-page-title,
+  .sk-dashboard-title,
+  .sk-build-title,
+  .sk-help-title,
+  .sk-preview-title {
+    width: 88%;
+    height: 42px;
+  }
+
+  .sk-site-actions {
+    grid-column: 1 / -1;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .sk-preview-loading {
+    padding: 28px 20px;
+  }
+}
