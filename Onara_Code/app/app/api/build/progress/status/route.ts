@@ -455,6 +455,10 @@ function publicBuildError(message: string) {
     return releaseGateMessage(message);
   }
 
+  if (normalized.includes("final browser release gate failed")) {
+    return releaseGateMessage(message);
+  }
+
   if (normalized.includes("pipeline job timed out")) {
     return "The build took too long and stopped safely. Try the build again.";
   }
@@ -465,7 +469,12 @@ function publicBuildError(message: string) {
 }
 
 function releaseGateMessage(message: string) {
-  const reason = message.split("release gates:", 2)[1]?.trim().toLowerCase() ?? "";
+  const rawReason = (
+    message.split("release gates:", 2)[1]
+    ?? message.split("targeted repair:", 2)[1]
+    ?? message
+  ).trim();
+  const reason = rawReason.toLowerCase();
   const failures: string[] = [];
 
   if (reason.includes("accessibility") || reason.includes("axe")) {
@@ -487,8 +496,10 @@ function releaseGateMessage(message: string) {
     failures.push("page structure");
   }
 
+  const axeDetail = rawReason.match(/Axe (?:critical|serious):\s*[^-;]+-\s*([^;]+)/i)?.[1]?.trim();
+
   return failures.length
-    ? `The strongest concept was stopped by ${[...new Set(failures)].join(" and ")} checks. Onara kept it unpublished so a broken site was not shipped.`
+    ? `The strongest concept was stopped by ${[...new Set(failures)].join(" and ")} checks.${axeDetail ? ` ${axeDetail}.` : ""} Onara kept it unpublished so a broken site was not shipped.`
     : "Neither website concept passed the final quality checks. Onara kept them unpublished.";
 }
 

@@ -45,6 +45,42 @@ scores could block release without enough detail for the repair pass.
 
 ---
 
+### Final accessibility repair pass
+
+**What changed**:
+- Added the missing targeted repair opportunity after final SEO, mobile, and QA transforms.
+- Final Axe findings now include the rule, help text, and selectors in the repair prompt.
+- Progress APIs expose the actual Axe help text instead of only saying "accessibility checks."
+- Codegen logs now say a candidate "needs recovery" and "recovered successfully" so a successful
+  alternate-route recovery is not presented as the final build failure.
+
+**Why**: Candidate recovery was working, but a later accessibility issue introduced or preserved
+after final transforms had no model repair opportunity and produced an overly generic UI message.
+
+**Testing**: Python compilation passed, progress route syntax passed, and all 28 pipeline tests passed.
+
+---
+
+### Candidate A model-specific recovery
+
+**What changed**:
+- Confirmed Candidate A always starts on the selected route, which defaults to `z-ai/glm-5.1`,
+  while Candidate B starts on Llama 4 Maverick.
+- Candidate A now keeps the full fallback chain instead of removing Maverick.
+- When a provider returns malformed HTML, the retry advances to the next model instead of
+  asking the same model to repeat the response.
+- `finish_reason=length` or `max_tokens` is detected before HTML parsing and reported as output
+  truncation.
+- Codegen logs now include the model, finish reason, response character count, and retry model.
+
+**Why**: The parser already accepted complete unmarked HTML. Repeated "no marked index.html"
+errors therefore meant GLM returned an incomplete/non-document response. The old retry reused
+the same successful HTTP response route, so malformed provider output did not trigger fallback.
+
+**Testing**: Python compilation passed and all 30 pipeline tests passed.
+
+---
+
 # Code Changes Log
 
 ## 2026-05-15

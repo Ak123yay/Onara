@@ -22,7 +22,7 @@ from onara_pipeline.agents.supervisor import (
     repair_codegen_motion,
     validate_codegen_output,
 )
-from onara_pipeline.ai_client import AIClient, AIClientError, AIMessage, AIRequest
+from onara_pipeline.ai_client import AIClient, AIClientError, AIMessage, AIRequest, AIResponse
 from onara_pipeline.ai_client.model_picker import (
     BENCHMARKED_PRIMARY_MODEL,
     BENCHMARKED_QUALITY_FALLBACK_MODEL,
@@ -83,7 +83,7 @@ async def generate_candidates(
     for i, result in enumerate(results):
         if isinstance(result, Exception):
             key = "a" if i == 0 else "b"
-            error_msg = f"Candidate {key} initial generation failed: {type(result).__name__}: {str(result)[:200]}"
+            error_msg = f"Candidate {key} needs recovery: {type(result).__name__}: {str(result)[:200]}"
             print(f"[codegen] {error_msg}")
     
     if len(candidates) == 1:
@@ -107,7 +107,7 @@ async def generate_candidates(
                 "Original candidate route failed; alternate route recovered this concept"
             )
             candidates.append(recovered)
-            print(f"[codegen] Recovery succeeded for candidate {missing_key}")
+            print(f"[codegen] Candidate {missing_key} recovered successfully")
         except (AIClientError, TimeoutError) as exc:
             print(f"[codegen] Recovery failed for candidate {missing_key}: {type(exc).__name__}: {str(exc)[:200]}")
     if len(candidates) >= 2:
@@ -174,6 +174,7 @@ async def _generate_candidate(
         temperature=0.22 if key == "a" else 0.28,
     )
     try:
+        _raise_for_truncated_response(response)
         html = repair_codegen_motion(
             materialize_photo_tokens(extract_index_html(response.content), context)
         )
@@ -190,18 +191,26 @@ async def _generate_candidate(
             allow_repairable_visual_issues=True,
             enforce_visual_quality=False,
         )
-    except ValueError:
+    except ValueError as initial_error:
+        retry_route = _route_after_model(route, response.model)
+        retry_model = retry_route.model if retry_route else response.model
+        print(
+            f"[codegen] Candidate {key} received unusable output from {response.model} "
+            f"(finish_reason={response.finish_reason or 'unknown'}, chars={len(response.content)}); "
+            f"retrying with {retry_model}: {initial_error}"
+        )
         response = await _request_candidate(
             ai_client=ai_client,
             job=job,
             key=key,
             prompt=_format_retry_prompt(prompt.prompt),
             recipe=recipe,
-            route=route,
+            route=retry_route or route,
             settings=settings,
             temperature=0.08,
         )
         try:
+            _raise_for_truncated_response(response)
             html = repair_codegen_motion(
                 materialize_photo_tokens(extract_index_html(response.content), context)
             )
@@ -295,6 +304,32 @@ Formatting is mandatory:
 Return no explanation, no markdown fence, and no partial document."""
 
 
+def _raise_for_truncated_response(response: AIResponse) -> None:
+    if str(response.finish_reason or "").lower() in {"length", "max_tokens"}:
+        raise ValueError(
+            f"{response.model} stopped at its output limit before completing index.html"
+        )
+
+
+def _route_after_model(route: ModelRoute, used_model: str) -> ModelRoute | None:
+    candidates = list(route.candidates())
+    used_index = next(
+        (index for index, candidate in enumerate(candidates) if candidate.model == used_model),
+        -1,
+    )
+    remaining = candidates[used_index + 1:] if used_index >= 0 else candidates[1:]
+    if not remaining:
+        return None
+    primary, *fallback = remaining
+    return ModelRoute(
+        fallback_model=fallback[0].model if fallback else None,
+        fallback_provider=fallback[0].provider if fallback else None,
+        fallback_chain=tuple(fallback),
+        model=primary.model,
+        provider=primary.provider,
+    )
+
+
 def candidate_routes(*, job: PipelineJob, settings: Settings) -> tuple[ModelRoute, ModelRoute]:
     selected = get_agent_model_route(
         "agent_06_codegen",
@@ -310,7 +345,7 @@ def candidate_routes(*, job: PipelineJob, settings: Settings) -> tuple[ModelRout
         if selected_primary == BENCHMARKED_QUALITY_FALLBACK_MODEL
         else BENCHMARKED_QUALITY_FALLBACK_MODEL
     )
-    route_a = _without_model(selected, second_model)
+    route_a = selected
     route_b = ModelRoute(
         fallback_model=settings.ollama_fallback_model,
         fallback_provider="ollama",
@@ -373,14 +408,3 @@ def _fallback_layout(recipe: str, key: str) -> str:
     if recipe == "photo-led":
         return "split-hero"
     return "split-hero" if key == "b" else "phone-first"
-
-
-def _without_model(route: ModelRoute, excluded_model: str) -> ModelRoute:
-    chain = tuple(candidate for candidate in route.fallback_chain if candidate.model != excluded_model)
-    return ModelRoute(
-        fallback_model=chain[0].model if chain else None,
-        fallback_provider=chain[0].provider if chain else None,
-        fallback_chain=chain,
-        model=route.model,
-        provider=route.provider,
-    )

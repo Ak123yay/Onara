@@ -308,10 +308,35 @@ async def run_pipeline_v2(
                     settings=settings,
                 )
             if final_browser.hard_blockers:
-                raise SupervisorValidationError(
-                    "Final browser release gate failed after deterministic repair: "
-                    + "; ".join(final_browser.hard_blockers[:6])
+                final_repair_candidate = selected.model_copy(
+                    update={
+                        "browser": final_browser,
+                        "hard_blockers": list(final_browser.hard_blockers),
+                        "html": final_html,
+                        "warnings": [
+                            *final_browser.warnings,
+                            *_accessibility_repair_context(final_browser),
+                        ],
+                    }
                 )
+                final_repair_route, _ = candidate_routes(job=job, settings=settings)
+                targeted_final_html = await targeted_repair(
+                    final_repair_candidate,
+                    ai_client=ai_client,
+                    route=final_repair_route,
+                )
+                if targeted_final_html and targeted_final_html != final_html:
+                    final_html = deterministic_release_hardening(targeted_final_html)
+                    final_browser = await audit_candidate_html(
+                        final_html,
+                        candidate_key=f"{selected.key}-final-targeted-repair",
+                        settings=settings,
+                    )
+                if final_browser.hard_blockers:
+                    raise SupervisorValidationError(
+                        "Final browser release gate failed after deterministic and targeted repair: "
+                        + "; ".join(final_browser.hard_blockers[:6])
+                    )
 
         job.blackboard["candidate_summaries"] = [
             _candidate_summary(candidate, include_thumbnail=True) for candidate in candidates
@@ -417,6 +442,17 @@ def _best_candidate(candidates: list[CandidateArtifact]) -> CandidateArtifact:
     if not candidates:
         raise ValueError("Pipeline V2 did not produce any candidates")
     return max(candidates, key=lambda item: item.final_score)
+
+
+def _accessibility_repair_context(browser: BrowserReport) -> list[str]:
+    return [
+        (
+            f"Accessibility repair detail: {issue.get('id', 'unknown')} - "
+            f"{issue.get('help', 'accessibility issue')} at "
+            f"{', '.join(str(selector) for selector in issue.get('selectors', [])[:4])}"
+        )
+        for issue in browser.accessibility_issues
+    ]
 
 
 def _candidate_summary(

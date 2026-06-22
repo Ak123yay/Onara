@@ -9,6 +9,11 @@ from onara_pipeline.agents.supervisor import (
     validate_codegen_output,
 )
 from onara_pipeline.v2.browser_quality import _apply_lighthouse_thresholds
+from onara_pipeline.ai_client import AIResponse
+from onara_pipeline.ai_client.model_picker import ModelCandidate, ModelRoute
+from onara_pipeline.v2.contracts import BrowserReport
+from onara_pipeline.v2.codegen import _raise_for_truncated_response, _route_after_model
+from onara_pipeline.v2.orchestrator import _accessibility_repair_context
 
 
 def complete_html(css: str) -> str:
@@ -110,6 +115,52 @@ class CodegenRecoveryTests(unittest.TestCase):
         )
         self.assertEqual(blockers, [])
         self.assertIn("Lighthouse accessibility score 86 is below 90", warnings)
+
+    def test_accessibility_repair_context_keeps_rule_and_selector(self) -> None:
+        report = BrowserReport(
+            accessibility_issues=[
+                {
+                    "help": "Elements must meet minimum color contrast ratio thresholds",
+                    "id": "color-contrast",
+                    "impact": "serious",
+                    "selectors": [".hero-copy p"],
+                }
+            ]
+        )
+        context = _accessibility_repair_context(report)
+        self.assertEqual(len(context), 1)
+        self.assertIn("color-contrast", context[0])
+        self.assertIn(".hero-copy p", context[0])
+
+    def test_truncated_provider_response_is_not_sent_to_html_parser(self) -> None:
+        response = AIResponse(
+            content="<!doctype html><html><head>",
+            finish_reason="length",
+            model="z-ai/glm-5.1",
+            provider="nim",
+        )
+        with self.assertRaisesRegex(ValueError, "output limit"):
+            _raise_for_truncated_response(response)
+
+    def test_malformed_primary_response_moves_to_next_model(self) -> None:
+        route = ModelRoute(
+            fallback_model="local-model",
+            fallback_provider="ollama",
+            fallback_chain=(
+                ModelCandidate(
+                    model="meta/llama-4-maverick-17b-128e-instruct",
+                    provider="nim",
+                ),
+                ModelCandidate(model="local-model", provider="ollama"),
+            ),
+            model="z-ai/glm-5.1",
+            provider="nim",
+        )
+        retry = _route_after_model(route, "z-ai/glm-5.1")
+        self.assertIsNotNone(retry)
+        assert retry is not None
+        self.assertEqual(retry.model, "meta/llama-4-maverick-17b-128e-instruct")
+        self.assertEqual(retry.candidates()[-1].model, "local-model")
 
 
 if __name__ == "__main__":
