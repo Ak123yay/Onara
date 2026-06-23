@@ -12,7 +12,10 @@ export const dynamic = "force-dynamic";
 
 type PipelineProgressEntry = {
   agent_id?: string | null;
+  candidateKey?: string;
+  componentId?: string;
   event?: string;
+  fallbackUsed?: boolean;
   message?: string;
   timestamp?: string;
 };
@@ -172,6 +175,7 @@ function mapPipelineStatus(status: PipelineStatusResponse) {
   return {
     activeAgent,
     candidates: status.candidates ?? [],
+    components: componentProgressFromLog(status.progress_log),
     complete,
     currentStepIndex,
     failed: status.status === "failed",
@@ -193,6 +197,16 @@ function mapPipelineStatus(status: PipelineStatusResponse) {
     siteId: status.site_id ?? null,
     totalSteps: AGENT_STEPS.length,
   };
+}
+
+function componentProgressFromLog(entries: PipelineProgressEntry[]) {
+  return entries
+    .filter((entry) => entry.event === "component_ready" && entry.candidateKey && entry.componentId)
+    .map((entry) => ({
+      candidateKey: entry.candidateKey,
+      componentId: entry.componentId,
+      fallbackUsed: Boolean(entry.fallbackUsed),
+    }));
 }
 
 function mockStatus(jobId: string, businessName: string, elapsedMs: number) {

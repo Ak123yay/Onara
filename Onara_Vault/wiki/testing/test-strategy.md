@@ -75,6 +75,18 @@ _Step verification checklists, Agent 9 QA gate, and pre-launch manual QA. Source
 - [ ] Static mode blocks unsafe scripts, incomplete documents, missing CTA/contact form, and invalid image sources
 - [ ] Static mode never displays desktop-tested or mobile-tested badges
 
+### Pipeline V3
+- [ ] Migration `023_pipeline_v3_components.sql` applies successfully
+- [ ] Three distinct directions are created and two are selected
+- [ ] Both candidates build components concurrently
+- [ ] Completed component rows are reused after a simulated worker restart
+- [ ] Invalid component HTML/CSS retries, then falls back only for that component
+- [ ] Desktop, tablet, mobile, and 320px reports complete
+- [ ] Serious Axe, unsafe output, broken assets, missing structure, and overflow block release
+- [ ] Performance/SEO/preferred-score guidance does not discard a safe candidate
+- [ ] `PIPELINE_V3_CANARY_PERCENT` routes deterministically
+- [ ] `PIPELINE_V3_ENABLED=false` returns new builds to V2
+
 ### Graceful Degradation
 - [ ] `GET /api/health` exposes readiness booleans without secret values
 - [ ] Places outage opens manual business entry and preserves typed details

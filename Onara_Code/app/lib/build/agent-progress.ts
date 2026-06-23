@@ -31,15 +31,15 @@ export const AGENT_STEPS: AgentStep[] = [
   },
   {
     id: "concepts",
-    model: "Two directions",
-    name: "Designing two concepts",
-    task: "Planning two distinct visual directions that fit the business data",
+    model: "3 directions",
+    name: "Designing your concepts",
+    task: "Creating three directions and selecting the strongest two to build",
   },
   {
     id: "building",
-    model: "Parallel build",
+    model: "Component build",
     name: "Building your websites",
-    task: "Generating two complete website candidates in parallel",
+    task: "Building two websites from independently checked components",
   },
   {
     id: "testing",

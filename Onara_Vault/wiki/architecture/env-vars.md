@@ -118,6 +118,17 @@ _Environment variable reference. `[NEXT]` = Next.js `.env.local` | `[FAST]` = Fa
 | `PIPELINE_V2_MAX_ATTEMPTS` | FAST | Maximum durable recovery claims; default `3` |
 | `PIPELINE_V2_MIN_SCORE` | FAST | Minimum blocker-free combined release score; default `80` |
 | `PIPELINE_V2_WORKER_ID` | FAST | Optional stable worker identifier; generated automatically when empty |
+| `PIPELINE_V3_ENABLED` | FAST | Enables V3 routing; keep V2 enabled as the rollback path |
+| `PIPELINE_V3_CANARY_PERCENT` | FAST | Stable percentage of new jobs routed to V3; `0` disables routing, `100` is full rollout |
+| `PIPELINE_V3_COMPONENT_TIMEOUT` | FAST | Per-component model timeout; default `75` seconds |
+| `PIPELINE_V3_COMPONENT_MAX_TOKENS` | FAST | Per-component output budget; default `3200` |
+| `PIPELINE_V3_JOB_TIMEOUT` | FAST | V3 whole-job timeout; default `420` seconds |
+| `PIPELINE_V3_LEASE_SECONDS` | FAST | V3 durable worker lease; default `60` seconds |
+| `PIPELINE_V3_MAX_COMPONENT_ATTEMPTS` | FAST | Model attempts before component-only safe fallback; default `2` |
+| `PIPELINE_V3_MAX_FALLBACK_COMPONENTS` | FAST | Maximum safe fallback components allowed for release; default `2` |
+| `PIPELINE_V3_MAX_ATTEMPTS` | FAST | Maximum durable V3 recovery claims; default `3` |
+| `PIPELINE_V3_MIN_SCORE` | FAST | Preferred score; below this is a warning unless a critical blocker exists |
+| `PIPELINE_V3_WORKER_ID` | FAST | Optional stable V3 worker identifier |
 | `AI_NIM_CONCURRENCY` | FAST | Shared per-job NIM request cap; recommended `3` |
 | `AI_OLLAMA_CONCURRENCY` | FAST | Shared per-job Ollama request cap; keep `1` on the mini PC |
 | `AI_COPILOT_CONCURRENCY` | FAST | Shared per-job Copilot request cap; default `1` |
@@ -128,7 +139,7 @@ _Environment variable reference. `[NEXT]` = Next.js `.env.local` | `[FAST]` = Fa
 
 | Variable | Target | Description |
 |----------|--------|-------------|
-| `REDIS_URL` | FAST | Not used by Pipeline V2; Supabase leases provide the current durable queue |
+| `REDIS_URL` | FAST | Not used by Pipeline V2/V3; Supabase leases provide the durable queue |
 
 ---
 

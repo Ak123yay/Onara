@@ -449,10 +449,12 @@ Launch SEO work includes:
 
 ## AI Pipeline Details
 
-Onara keeps both generation paths available during rollout:
+Onara keeps three generation paths available during rollout:
 
 - `PIPELINE_V2_ENABLED=false` runs Pipeline V1. This is the default and rollback path.
 - `PIPELINE_V2_ENABLED=true` runs Pipeline V2 for new initial-generation jobs.
+- `PIPELINE_V3_ENABLED=true` plus `PIPELINE_V3_CANARY_PERCENT=1..100` routes a stable
+  percentage of new jobs to Pipeline V3. Non-canary jobs fall back to V2 when V2 is enabled.
 
 Pipeline V1 uses 10 agents:
 
@@ -495,6 +497,25 @@ Before enabling V2:
 
 Rollback is setting the flag to `false` and restarting PM2. Migration `022` does not need to
 be reverted.
+
+Pipeline V3 keeps the durable V2 queue but changes generation from two monolithic documents
+to bounded components:
+
+```text
+three design directions
+  -> select two
+  -> parallel component generation
+  -> component validation and checkpoint
+  -> assemble two complete candidates
+  -> desktop, tablet, mobile, Axe, Lighthouse, and visual checks
+  -> targeted repair
+  -> deploy
+```
+
+Migration `023_pipeline_v3_components.sql` stores completed component artifacts. If the
+worker restarts, V3 reuses valid completed components and generates only unfinished ones.
+Critical structural, security, broken-asset, overflow, undersized-control, and serious Axe
+issues block release. Lower scores and non-critical guidance remain visible warnings.
 
 ### Agent 1: Analyst
 

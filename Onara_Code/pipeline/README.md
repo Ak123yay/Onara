@@ -4,12 +4,13 @@ FastAPI server for the Onara generation pipeline.
 
 ## Pipeline Modes
 
-Both pipeline versions remain available:
+All three pipeline versions remain available:
 
 | Setting | Active path | Use |
 | --- | --- | --- |
 | `PIPELINE_V2_ENABLED=false` | Pipeline V1 | Default and immediate rollback |
 | `PIPELINE_V2_ENABLED=true` | Pipeline V2 | Durable dual-candidate generation |
+| `PIPELINE_V3_ENABLED=true`, canary `1..100` | Pipeline V3 | Durable component-built generation |
 
 Pipeline V1 is the original 10-agent, in-memory generation flow described later in this
 document. Pipeline V2 replaces the initial website-generation orchestration while keeping
@@ -24,6 +25,55 @@ Pipeline V2 adds:
 - Two independent visual reviews with reversed rubric order.
 - One hash-checked component repair instead of a full-page rewrite.
 - A hard release rule: no candidate deploys with blockers or below the configured score.
+
+Pipeline V3 keeps the durable queue and deployment contracts, but replaces monolithic
+full-document generation with:
+
+- Three design directions, with the strongest two selected for generation.
+- Parallel generation of bounded header, hero, services, proof, contact, and footer artifacts.
+- Strict per-component HTML/CSS scope, safety, fact, form, and responsive validation.
+- Per-component retries and a safe component-only fallback instead of discarding a full site.
+- Supabase component checkpoints so a restart regenerates only unfinished components.
+- Desktop, tablet, mobile, and 320px browser checks.
+- Critical-only release blocking for structure, security, broken assets, overflow, controls
+  below 24px, and serious/critical Axe failures.
+- Preferred quality score warnings without rejecting an otherwise safe, usable site.
+- Build Studio component progress and clearer concept direction metadata.
+
+## Enable Pipeline V3
+
+Apply migrations and install the browser tooling:
+
+```powershell
+cd "C:\Users\Aarush\Downloads\Onara\Onara_Code"
+supabase db push --linked
+
+cd ".\pipeline"
+python -m pip install -r requirements.txt
+npm install
+npm run install-browser
+python -m unittest discover -s tests -p "test_*.py"
+```
+
+Start with a canary:
+
+```dotenv
+PIPELINE_V2_ENABLED=true
+PIPELINE_V3_ENABLED=true
+PIPELINE_V3_CANARY_PERCENT=10
+PIPELINE_V3_COMPONENT_TIMEOUT=75
+PIPELINE_V3_COMPONENT_MAX_TOKENS=3200
+PIPELINE_V3_JOB_TIMEOUT=420
+PIPELINE_V3_LEASE_SECONDS=60
+PIPELINE_V3_MAX_COMPONENT_ATTEMPTS=2
+PIPELINE_V3_MAX_FALLBACK_COMPONENTS=2
+PIPELINE_V3_MAX_ATTEMPTS=3
+PIPELINE_V3_MIN_SCORE=84
+```
+
+Set `PIPELINE_V3_CANARY_PERCENT=100` after canary verification. Set
+`PIPELINE_V3_ENABLED=false` to return immediately to V2. Set both V2 and V3 flags to `false`
+to use V1. Migrations `022` and `023` can remain applied.
 
 ## Enable Pipeline V2
 

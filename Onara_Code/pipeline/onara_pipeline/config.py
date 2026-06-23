@@ -79,6 +79,52 @@ class Settings(BaseSettings):
     pipeline_v2_max_attempts: int = Field(default=3, ge=1, le=5, alias="PIPELINE_V2_MAX_ATTEMPTS")
     pipeline_v2_min_score: float = Field(default=80.0, ge=0, le=100, alias="PIPELINE_V2_MIN_SCORE")
     pipeline_v2_worker_id: str | None = Field(default=None, alias="PIPELINE_V2_WORKER_ID")
+    pipeline_v3_enabled: bool = Field(default=False, alias="PIPELINE_V3_ENABLED")
+    pipeline_v3_canary_percent: int = Field(
+        default=0,
+        ge=0,
+        le=100,
+        alias="PIPELINE_V3_CANARY_PERCENT",
+    )
+    pipeline_v3_component_timeout: int = Field(
+        default=75,
+        ge=20,
+        le=180,
+        alias="PIPELINE_V3_COMPONENT_TIMEOUT",
+    )
+    pipeline_v3_component_max_tokens: int = Field(
+        default=3200,
+        ge=1200,
+        le=8000,
+        alias="PIPELINE_V3_COMPONENT_MAX_TOKENS",
+    )
+    pipeline_v3_job_timeout: int = Field(
+        default=420,
+        ge=120,
+        le=1800,
+        alias="PIPELINE_V3_JOB_TIMEOUT",
+    )
+    pipeline_v3_lease_seconds: int = Field(
+        default=60,
+        ge=30,
+        le=300,
+        alias="PIPELINE_V3_LEASE_SECONDS",
+    )
+    pipeline_v3_max_component_attempts: int = Field(
+        default=2,
+        ge=1,
+        le=3,
+        alias="PIPELINE_V3_MAX_COMPONENT_ATTEMPTS",
+    )
+    pipeline_v3_max_fallback_components: int = Field(
+        default=2,
+        ge=0,
+        le=12,
+        alias="PIPELINE_V3_MAX_FALLBACK_COMPONENTS",
+    )
+    pipeline_v3_max_attempts: int = Field(default=3, ge=1, le=5, alias="PIPELINE_V3_MAX_ATTEMPTS")
+    pipeline_v3_min_score: float = Field(default=84.0, ge=0, le=100, alias="PIPELINE_V3_MIN_SCORE")
+    pipeline_v3_worker_id: str | None = Field(default=None, alias="PIPELINE_V3_WORKER_ID")
     ai_nim_concurrency: int = Field(default=3, ge=1, le=8, alias="AI_NIM_CONCURRENCY")
     ai_ollama_concurrency: int = Field(default=1, ge=1, le=4, alias="AI_OLLAMA_CONCURRENCY")
     ai_copilot_concurrency: int = Field(default=1, ge=1, le=4, alias="AI_COPILOT_CONCURRENCY")

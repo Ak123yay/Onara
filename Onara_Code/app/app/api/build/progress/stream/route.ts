@@ -13,7 +13,10 @@ export const runtime = "nodejs";
 
 type PipelineProgressEntry = {
   agent_id?: string | null;
+  candidateKey?: string;
+  componentId?: string;
   event?: string;
+  fallbackUsed?: boolean;
   message?: string;
   timestamp?: string;
   candidate?: Record<string, unknown>;
@@ -459,6 +462,16 @@ function emitProgressEntry(
     send(entry.event, {
       candidate: entry.candidate ?? {},
       etaSeconds: entry.eta_seconds ?? status.eta_seconds ?? null,
+      jobId: status.job_id,
+      message: entry.message,
+    });
+  }
+
+  if (entry.event === "component_ready") {
+    send("component_ready", {
+      candidateKey: entry.candidateKey,
+      componentId: entry.componentId,
+      fallbackUsed: Boolean(entry.fallbackUsed),
       jobId: status.job_id,
       message: entry.message,
     });

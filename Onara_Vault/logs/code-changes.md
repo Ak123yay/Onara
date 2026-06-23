@@ -1,6 +1,23 @@
 
 ## 2026-06-22
 
+### Pipeline V3 component architecture
+
+**What changed**:
+- Added three-direction planning and two distinct component-built candidates.
+- Generates planner components concurrently, validates scoped HTML/CSS, and falls back only
+  for the component that failed.
+- Stores component artifacts in Supabase so restarts reuse finished work.
+- Added desktop, tablet, mobile, 320px, Axe, Lighthouse, and visual evaluation.
+- Keeps serious structural/accessibility/security failures as blockers while treating lower
+  scores and non-critical design guidance as warnings.
+- Added canary routing, V2/V1 rollback, component progress in Build Studio, and V3 tests.
+
+**Testing**: Python compilation, 36 unit tests, and Node syntax checks passed. Frontend
+TypeScript reached the existing missing local `@vercel/speed-insights/next` dependency.
+
+---
+
 ### Agent 6 format enforcement + animation validator fix
 
 **Files affected**: `Onara_Code/pipeline/onara_pipeline/agents/agent_06_codegen.py`, `Onara_Code/pipeline/onara_pipeline/agents/supervisor.py`, `Onara_Code/pipeline/README.md`, `README.md`

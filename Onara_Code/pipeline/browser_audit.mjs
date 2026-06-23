@@ -58,6 +58,7 @@ try {
   browser = await chromium.launch({ headless: true });
   for (const viewport of [
     { key: "desktop", width: 1440, height: 1000 },
+    { key: "tablet", width: 768, height: 1024 },
     { key: "mobile", width: 390, height: 844 },
     { key: "reflow", width: 320, height: 800 },
   ]) {
@@ -191,6 +192,11 @@ try {
         help: violation.help,
         id: violation.id,
         impact: violation.impact,
+        nodes: violation.nodes.slice(0, 4).map((node) => ({
+          failureSummary: node.failureSummary,
+          html: node.html,
+          selectors: node.target.map(String),
+        })),
         selectors: violation.nodes.slice(0, 4).flatMap((node) => node.target.map(String)),
       }));
       for (const violation of report.accessibility_issues) {

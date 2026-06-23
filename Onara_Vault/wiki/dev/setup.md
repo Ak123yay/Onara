@@ -156,6 +156,20 @@ pm2 logs onara-pipeline --lines 50
 
 To return to V1, set the flag back to `false` and restart PM2. Do not revert migration `022`.
 
+## Pipeline V3 Setup
+
+Apply migration `023`, keep V2 enabled as rollback, and start with a small canary:
+
+```dotenv
+PIPELINE_V2_ENABLED=true
+PIPELINE_V3_ENABLED=true
+PIPELINE_V3_CANARY_PERCENT=10
+```
+
+Restart PM2 and inspect real builds. Increase the percentage to `100` after browser audits,
+component fallback counts, build duration, and deployment success look normal. To roll back,
+set `PIPELINE_V3_ENABLED=false` and restart PM2. Do not revert migrations `022` or `023`.
+
 ---
 
 ## Starting the Development Environment

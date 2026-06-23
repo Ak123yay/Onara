@@ -44,6 +44,9 @@ type StreamPayload = {
   agent?: AgentStep;
   candidate?: CandidateSummary;
   candidates?: CandidateSummary[];
+  candidateKey?: string;
+  componentId?: string;
+  components?: ComponentProgress[];
   elapsedSeconds?: number;
   etaSeconds?: number | null;
   fallbackUsed?: boolean;
@@ -71,8 +74,11 @@ type ConnectionMode = "connecting" | "sse" | "polling" | "complete" | "error";
 
 type CandidateSummary = {
   candidateKey?: string;
+  componentCount?: number;
   degradedReason?: string | null;
   deterministicScore?: number;
+  directionName?: string;
+  fallbackComponentCount?: number;
   fallbackUsed?: boolean;
   finalScore?: number;
   hardBlockers?: string[];
@@ -82,6 +88,12 @@ type CandidateSummary = {
   thumbnailDataUrl?: string | null;
   visualScore?: number;
   warnings?: string[];
+};
+
+type ComponentProgress = {
+  candidateKey?: string;
+  componentId?: string;
+  fallbackUsed?: boolean;
 };
 
 const emptyStatuses = AGENT_STEPS.map<AgentStatus>(() => "pending");
@@ -218,6 +230,7 @@ export function AgentProgressExperience() {
   const [siteId, setSiteId] = useState<string | null>(null);
   const [statuses, setStatuses] = useState<AgentStatus[]>(emptyStatuses);
   const [candidates, setCandidates] = useState<CandidateSummary[]>([]);
+  const [components, setComponents] = useState<ComponentProgress[]>([]);
   const [etaSeconds, setEtaSeconds] = useState<number | null>(null);
   const [fallbackUsed, setFallbackUsed] = useState(false);
   const [qualityBadges, setQualityBadges] = useState<string[]>([]);
@@ -303,6 +316,9 @@ export function AgentProgressExperience() {
       }
       if (data.candidates) {
         setCandidates(data.candidates);
+      }
+      if (data.components) {
+        setComponents(data.components);
       }
       if (data.candidate) {
         setCandidates((current) => mergeCandidateList(current, data.candidate as CandidateSummary));
@@ -507,6 +523,24 @@ export function AgentProgressExperience() {
       });
     }
 
+    eventSource.addEventListener("component_ready", (event) => {
+      const data = JSON.parse((event as MessageEvent).data) as StreamPayload;
+      if (!data.candidateKey || !data.componentId) {
+        return;
+      }
+      setComponents((current) => {
+        const next = {
+          candidateKey: data.candidateKey,
+          componentId: data.componentId,
+          fallbackUsed: data.fallbackUsed,
+        };
+        const exists = current.some(
+          (item) => item.candidateKey === next.candidateKey && item.componentId === next.componentId,
+        );
+        return exists ? current : [...current, next];
+      });
+    });
+
     eventSource.addEventListener("reconnecting", (event) => {
       const data = JSON.parse((event as MessageEvent).data) as StreamPayload;
       setConnectionMode("sse");
@@ -667,6 +701,39 @@ export function AgentProgressExperience() {
             </section>
           ) : null}
 
+          {components.length > 0 && connectionMode !== "complete" ? (
+            <section className="agent-components card" aria-label="Component build progress">
+              <div className="agent-step-list-head">
+                <p className="mono">Component build</p>
+                <span>{components.length} ready</span>
+              </div>
+              <div className="agent-component-groups">
+                {["a", "b"].map((candidateKey) => {
+                  const ready = components.filter((item) => item.candidateKey === candidateKey);
+                  if (!ready.length) {
+                    return null;
+                  }
+                  return (
+                    <div className="agent-component-group" key={candidateKey}>
+                      <strong>Concept {candidateKey.toUpperCase()}</strong>
+                      <div>
+                        {ready.map((item) => (
+                          <span
+                            className={item.fallbackUsed ? "agent-component-safe" : undefined}
+                            key={`${candidateKey}-${item.componentId}`}
+                          >
+                            <Check aria-hidden="true" size={10} />
+                            {item.componentId?.replaceAll("_", " ")}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </section>
+          ) : null}
+
           {qualityBadges.length > 0 ? (
             <section className="agent-readiness card" aria-label="Release readiness">
               <p className="mono">Release readiness</p>
@@ -815,10 +882,10 @@ function CandidateCard({
       </div>
       <div className="agent-concept-copy">
         <span className="mono">Concept {label}</span>
-        <strong>{candidate.recipe || "Custom direction"}</strong>
+        <strong>{candidate.directionName || candidate.recipe || "Custom direction"}</strong>
         <small>
           {score === null
-            ? "Testing"
+            ? `${candidate.componentCount || 0} components ready`
             : candidate.qualityMode === "static"
               ? `${score}/100 static quality score`
               : `${score}/100 quality score`}

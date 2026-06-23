@@ -83,8 +83,13 @@ def deterministic_score(browser) -> float:
         return 0
     structure = 15 if checks.get("html_structure") and checks.get("header") and checks.get("hero") else 0
     facts_and_cta = 15 if checks.get("primary_cta") else 5
+    reflow_keys = [
+        key
+        for key in ("desktop_reflow", "tablet_reflow", "mobile_reflow", "reflow_reflow")
+        if key in checks
+    ]
     responsive = 10 * (
-        sum(bool(checks.get(key)) for key in ("desktop_reflow", "mobile_reflow", "reflow_reflow")) / 3
+        sum(bool(checks.get(key)) for key in reflow_keys) / max(1, len(reflow_keys))
     )
     assets_and_forms = (
         10

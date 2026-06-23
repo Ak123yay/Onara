@@ -99,11 +99,14 @@ Onara/
 
 ## AI pipeline agents
 
-Onara keeps two generation pipelines available:
+Onara keeps three generation pipelines available:
 
 - **Pipeline V1** is the original 10-agent pipeline and remains the default rollback path.
 - **Pipeline V2** uses durable Supabase jobs, two parallel website candidates, browser
   testing, visual scoring, and one bounded repair before deployment.
+- **Pipeline V3** builds each site from bounded components. It creates three design
+  directions, builds the strongest two in parallel, validates each component, and only
+  falls back for the individual component that failed.
 
 The FastAPI environment flag selects the active path:
 
@@ -113,11 +116,15 @@ PIPELINE_V2_ENABLED=false
 
 # V2
 PIPELINE_V2_ENABLED=true
+
+# V3 full rollout, with V2 kept as rollback
+PIPELINE_V2_ENABLED=true
+PIPELINE_V3_ENABLED=true
+PIPELINE_V3_CANARY_PERCENT=100
 ```
 
-Changing the flag requires a FastAPI/PM2 restart. Do not enable V2 until migration
-`022_pipeline_v2_durable_jobs.sql` is applied and the Playwright browser dependencies are
-installed.
+Changing the flags requires a FastAPI/PM2 restart. Do not enable V3 until migrations `022`
+and `023` are applied and the Playwright browser dependencies are installed.
 
 ### Pipeline V1
 
@@ -152,6 +159,25 @@ Business facts
 
 V2 stores jobs, events, leases, checkpoints, and candidate results in Supabase. A
 mini-PC restart can recover an unfinished build instead of losing an in-memory job.
+
+### Pipeline V3
+
+```text
+Verified facts + approved copy
+  -> three distinct design directions
+  -> select two directions
+  -> generate header/hero/services/proof/contact/footer independently
+  -> validate and persist every component
+  -> assemble two complete sites
+  -> desktop/tablet/mobile/Axe/Lighthouse/visual evaluation
+  -> repair only failed selectors or components
+  -> Cloudflare Pages deployment
+```
+
+V3 does not throw away a strong site because one component model response is malformed.
+That component retries through the model route, then uses the approved deterministic
+baseline for that component only. Completed components are stored in Supabase so a mini-PC
+restart resumes unfinished work.
 
 ## Local development
 
@@ -201,7 +227,7 @@ Restart after pipeline code changes:
 pm2 restart onara-pipeline
 ```
 
-### Enable Pipeline V2
+### Enable Pipeline V3
 
 ```powershell
 cd "C:\Users\Aarush\Downloads\Onara\Onara_Code"
@@ -221,6 +247,8 @@ Set this in `Onara_Code/pipeline/.env`:
 
 ```dotenv
 PIPELINE_V2_ENABLED=true
+PIPELINE_V3_ENABLED=true
+PIPELINE_V3_CANARY_PERCENT=100
 ```
 
 Restart and verify:
@@ -231,8 +259,9 @@ pm2 logs onara-pipeline --lines 50
 Invoke-WebRequest -Method GET https://pipeline.onara.tech/health -UseBasicParsing
 ```
 
-Rollback does not require reverting code or migration `022`. Set
-`PIPELINE_V2_ENABLED=false`, then run `pm2 restart onara-pipeline`.
+To roll back V3 to V2, set `PIPELINE_V3_ENABLED=false` and keep
+`PIPELINE_V2_ENABLED=true`. To roll back to V1, set both flags to `false`. Migrations `022`
+and `023` can remain applied.
 
 ## Environment files
 

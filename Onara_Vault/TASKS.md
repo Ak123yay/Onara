@@ -235,6 +235,8 @@ Execution rule:
 - [x] Curated RAG learning loop: save only QA-approved generated components/patterns back into ChromaDB so future builds improve without storing bad or duplicate sites
 - [x] Training data pipeline: add user consent fields and `training_examples` storage for QA-approved, redacted generation examples that can feed RAG now and future model fine-tuning later
 - [x] Pipeline V2: durable Supabase leases/checkpoints, parallel code candidates, browser + visual evaluation, bounded component repair, and feature-flag rollback
+- [x] Pipeline V3: three design directions, two component-built candidates, per-component validation/fallback/recovery, critical-only release blockers, tablet browser checks, and V2/V1 rollout controls
+- [x] Pipeline V3 Build Studio UI: stream completed components, show direction names/component counts, and keep the seven-stage Onara command-center layout
 - [x] Build Studio UI rework: persistent step rail, live business brief, Smart Direction defaults, supported-section gating, concept cards, server ETA, and release-readiness badges
 - [x] App-wide graceful degradation: recoverable error boundaries, manual Places fallback, safe photo placeholders, user-safe API errors, and Pipeline V2 static release gate when browser tooling is unavailable
 - [x] Immediate app navigation: show destination loading shells while server data streams instead of leaving the previous page frozen

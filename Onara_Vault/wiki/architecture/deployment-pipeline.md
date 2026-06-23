@@ -4,26 +4,40 @@ _How a build moves from the Next.js Build Studio to a tested Cloudflare Pages si
 
 ## Current Architecture
 
-Pipeline V2 is a feature-flagged replacement for the original in-memory, single-candidate
-pipeline. The FastAPI process still runs on the mini PC, but Supabase now owns durable job,
-event, lease, checkpoint, and candidate state.
+Pipeline V3 is the canary generation path. The FastAPI process still runs on the mini PC,
+while Supabase owns durable job, event, lease, candidate, and component checkpoint state.
 
 ```text
 Build Studio
   -> Next.js generate route
   -> FastAPI durable queue
   -> business brief + content/style
-  -> two code candidates in parallel
+  -> three design directions; select two
+  -> bounded components for two candidates in parallel
+  -> validate and checkpoint each component
+  -> assemble two complete sites
   -> browser + visual evaluation
-  -> one bounded repair when needed
+  -> targeted repair when needed
   -> deterministic final safeguards
   -> Cloudflare Pages
   -> Supabase project record
   -> GitHub backup
 ```
 
-`PIPELINE_V2_ENABLED=false` is the safe default. The legacy pipeline remains available while
-V2 is rolled out.
+`PIPELINE_V3_ENABLED=true` enables V3 and `PIPELINE_V3_CANARY_PERCENT` controls deterministic
+rollout. Jobs outside the canary use V2 when enabled, otherwise V1. Disabling V3 is the
+immediate V2 rollback.
+
+## V3 Component Checkpoints
+
+Migration `023_pipeline_v3_components.sql` adds `pipeline_candidate_components`. Each row
+stores one candidate/component artifact, model route, attempt count, validation state,
+fingerprint, warnings, and fallback state. Completed artifacts are reused after a worker
+restart; missing or invalid artifacts are regenerated.
+
+The model never owns the document shell. Onara creates an approved, fact-safe baseline,
+generates bounded component replacements, validates them, and assembles the final document.
+One malformed hero therefore cannot erase the header, body, or other valid sections.
 
 ## Durable Queue
 
@@ -45,14 +59,27 @@ prevents duplicate active jobs for the same user and input.
 | --- | --- |
 | Understanding your business | Resolve photos, normalize trusted facts, run Analyst |
 | Writing your content | Run Content Writer and Style Agent in parallel |
-| Designing two concepts | Run Planner and compile two deterministic prompts/recipes |
-| Building your websites | Generate candidate A and B concurrently through separate model routes |
-| Testing desktop and mobile | Render 1440px, 390px, and 320px; run Axe and Lighthouse; run two visual reviews |
-| Polishing the strongest version | Apply at most one hash-checked component patch, then deterministic SEO/mobile/QA safeguards |
+| Designing your concepts | Create three distinct directions and select two |
+| Building your websites | Generate bounded components for A and B concurrently and persist each result |
+| Testing desktop and mobile | Render 1440px, 768px, 390px, and 320px; run Axe, Lighthouse, and visual reviews |
+| Polishing the strongest version | Repair failed selectors/components and apply deterministic safeguards |
 | Publishing your site | Build artifact, deploy to Cloudflare, persist Supabase project, back up to GitHub |
 
-Agent 5 is not used in V2. Prompt assembly is deterministic so facts, component order, safety
-rules, and visual recipes cannot disappear during another model call.
+Agent 5 is not used in V2/V3. Prompt assembly is deterministic so facts, component order,
+safety rules, and visual direction cannot disappear during another model call.
+
+## V3 Release Policy
+
+V3 blocks release only for critical failures:
+
+- Incomplete document, missing header/hero/CTA/contact form, or unsafe executable behavior.
+- Broken images, horizontal overflow, unlabeled controls, or controls below 24px.
+- Serious or critical Axe findings.
+- Browser audit failure when strict static fallback also cannot prove safety.
+- More component fallbacks than `PIPELINE_V3_MAX_FALLBACK_COMPONENTS`.
+
+Performance, SEO, preferred 44px targets, and a score below `PIPELINE_V3_MIN_SCORE` remain
+visible warnings. This prevents a usable site from being discarded for advisory guidance.
 
 ## Candidate Evaluation
 
@@ -143,18 +170,30 @@ PIPELINE_V2_MIN_SCORE=80
 AI_NIM_CONCURRENCY=3
 AI_OLLAMA_CONCURRENCY=1
 AI_COPILOT_CONCURRENCY=1
+PIPELINE_V3_ENABLED=true
+PIPELINE_V3_CANARY_PERCENT=10
+PIPELINE_V3_COMPONENT_TIMEOUT=75
+PIPELINE_V3_COMPONENT_MAX_TOKENS=3200
+PIPELINE_V3_JOB_TIMEOUT=420
+PIPELINE_V3_LEASE_SECONDS=60
+PIPELINE_V3_MAX_COMPONENT_ATTEMPTS=2
+PIPELINE_V3_MAX_FALLBACK_COMPONENTS=2
+PIPELINE_V3_MAX_ATTEMPTS=3
+PIPELINE_V3_MIN_SCORE=84
 ```
 
 Restart the PM2 pipeline process after installing the Node browser dependencies and applying
-the migration. Roll back immediately by setting `PIPELINE_V2_ENABLED=false` and restarting
-PM2; existing legacy generation remains intact.
+the migrations. Roll back V3 immediately by setting `PIPELINE_V3_ENABLED=false` and
+restarting PM2. Keep V2 enabled for the durable fallback, or disable both flags for V1.
 
 ## Related Files
 
 - `Onara_Code/pipeline/onara_pipeline/job_queue.py`
 - `Onara_Code/pipeline/onara_pipeline/durable_jobs.py`
 - `Onara_Code/pipeline/onara_pipeline/v2/`
+- `Onara_Code/pipeline/onara_pipeline/v3/`
 - `Onara_Code/pipeline/browser_audit.mjs`
 - `Onara_Code/supabase/migrations/022_pipeline_v2_durable_jobs.sql`
+- `Onara_Code/supabase/migrations/023_pipeline_v3_components.sql`
 - `wiki/ai_agents/workflows.md`
 - `wiki/features/build-flow.md`

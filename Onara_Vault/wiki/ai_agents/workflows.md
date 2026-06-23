@@ -1,12 +1,33 @@
 # Generation Workflows - Onara Pipeline
 
-_The model, deterministic, browser, and deployment work behind Pipeline V2._
+_The model, component, deterministic, browser, and deployment work behind Pipeline V3._
 
 ## Core Principle
 
-Models create content and complete website candidates. Deterministic code owns contracts,
-fact safety, prompt assembly, browser gates, patch application, final SEO/mobile safeguards,
-job state, and deployment.
+Models create content, directions, and bounded components. Deterministic code owns the
+document shell, contracts, fact safety, component assembly, browser gates, repair
+application, final safeguards, job state, and deployment.
+
+## V3 Sequence
+
+```text
+Durable claim + heartbeat
+  -> Analyst
+  -> Content Writer + Style Agent in parallel
+  -> Planner + three design directions
+  -> select two directions
+  -> candidate A components + candidate B components in parallel
+  -> validate and checkpoint each component
+  -> assemble complete candidates
+  -> desktop/tablet/mobile/Axe/Lighthouse/visual checks
+  -> targeted repair of critical failures
+  -> Cloudflare -> Supabase -> GitHub
+```
+
+V3 component prompts receive verified facts, approved copy, one typed component spec, one
+design direction, relevant curated RAG patterns, and a safe structural reference. Generated
+CSS stays under `.c-{component_id}` and uses approved variables. Invalid output retries
+through the model route, then falls back only for that component.
 
 This avoids two unreliable patterns from V1:
 
@@ -89,6 +110,7 @@ Prompt output is capped at 40,000 characters. Candidate A and B always use diffe
 `browser_audit.mjs` hosts each candidate on an isolated localhost server and checks:
 
 - 1440x1000 desktop.
+- 768x1024 tablet.
 - 390x844 mobile.
 - 320x800 reflow.
 - Console/page errors and failed requests.
@@ -103,7 +125,8 @@ it to compare A against B. This reduces ordering and model-identity bias.
 ## Durable Recovery
 
 Every customer stage emits an ordered event to `pipeline_job_events`. Candidate HTML and score
-metadata live in `pipeline_candidates`. Safe stage outputs live in `pipeline_jobs.stage_state`.
+metadata live in `pipeline_candidates`. V3 component artifacts live in
+`pipeline_candidate_components`. Safe stage outputs live in `pipeline_jobs.stage_state`.
 
 The queue uses a lease:
 
@@ -119,11 +142,12 @@ The UI exposes seven product stages rather than internal model names:
 
 1. Understanding your business
 2. Writing your content
-3. Designing two concepts
+3. Designing your concepts
 4. Building your websites
 5. Testing desktop and mobile
 6. Polishing the strongest version
 7. Publishing your site
 
-It also receives server ETA, concept readiness/score events, selected candidate, fallback state,
-and release badges. The last valid preview remains visible through reconnects.
+It also receives server ETA, per-component readiness, concept readiness/score events, selected
+candidate, fallback state, and release badges. The last valid preview remains visible through
+reconnects.

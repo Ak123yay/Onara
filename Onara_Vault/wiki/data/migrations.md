@@ -196,3 +196,23 @@ group by pipeline_version, stage, status;
 select to_regclass('public.pipeline_job_events'),
        to_regclass('public.pipeline_candidates');
 ```
+
+## Pipeline V3 Migration
+
+Migration `023_pipeline_v3_components.sql` must be applied before routing jobs to V3.
+
+It adds:
+
+- `pipeline_candidate_components` for resumable component artifacts.
+- Service-role-only access to component HTML/CSS, fingerprints, attempts, and validation state.
+- V2/V3 support in `claim_pipeline_job`.
+
+Verify:
+
+```sql
+select to_regclass('public.pipeline_candidate_components');
+
+select candidate_key, status, count(*)
+from public.pipeline_candidate_components
+group by candidate_key, status;
+```

@@ -19,7 +19,7 @@ class DurableClaim:
 
 
 class DurableJobStore:
-    """Small PostgREST adapter for Pipeline V2 lifecycle state."""
+    """Small PostgREST adapter for durable Pipeline V2/V3 lifecycle state."""
 
     def __init__(self, settings: Settings) -> None:
         self.settings = settings
@@ -28,12 +28,16 @@ class DurableJobStore:
 
     @property
     def enabled(self) -> bool:
-        return bool(self.settings.pipeline_v2_enabled and self.base_url and self.service_key)
+        return bool(
+            (self.settings.pipeline_v2_enabled or self.settings.pipeline_v3_enabled)
+            and self.base_url
+            and self.service_key
+        )
 
     def require_enabled(self) -> None:
         if not self.enabled:
             raise DurableJobStoreError(
-                "Pipeline V2 requires SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY"
+                "Durable pipelines require SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY"
             )
 
     async def enqueue(self, job: Any) -> None:
@@ -45,7 +49,7 @@ class DurableJobStore:
             "id": job.job_id,
             "job_type": "initial_generation",
             "phase": "analyst",
-            "pipeline_version": "v2",
+            "pipeline_version": job.pipeline_version,
             "project_id": job.project_id,
             "queued_at": job.created_at.isoformat(),
             "request_payload": {
@@ -72,7 +76,13 @@ class DurableJobStore:
             )
         self._raise_for_status(response, expected={200, 201, 204})
 
-    async def claim(self, *, job_id: str | None, worker_id: str) -> DurableClaim | None:
+    async def claim(
+        self,
+        *,
+        job_id: str | None,
+        pipeline_version: str,
+        worker_id: str,
+    ) -> DurableClaim | None:
         self.require_enabled()
         async with self._client() as client:
             response = await client.post(
@@ -80,7 +90,7 @@ class DurableJobStore:
                 headers=self._headers(),
                 json={
                     "p_job_id": job_id,
-                    "p_lease_seconds": self.settings.pipeline_v2_lease_seconds,
+                    "p_lease_seconds": self._lease_seconds(pipeline_version),
                     "p_worker_id": worker_id,
                 },
             )
@@ -90,7 +100,13 @@ class DurableJobStore:
             return None
         return DurableClaim(row=rows[0])
 
-    async def heartbeat(self, *, job_id: str, worker_id: str) -> bool:
+    async def heartbeat(
+        self,
+        *,
+        job_id: str,
+        pipeline_version: str,
+        worker_id: str,
+    ) -> bool:
         self.require_enabled()
         async with self._client() as client:
             response = await client.post(
@@ -98,7 +114,7 @@ class DurableJobStore:
                 headers=self._headers(),
                 json={
                     "p_job_id": job_id,
-                    "p_lease_seconds": self.settings.pipeline_v2_lease_seconds,
+                    "p_lease_seconds": self._lease_seconds(pipeline_version),
                     "p_worker_id": worker_id,
                 },
             )
@@ -107,13 +123,16 @@ class DurableJobStore:
 
     async def recoverable(self, *, limit: int = 25) -> list[dict[str, Any]]:
         self.require_enabled()
+        versions = self._enabled_versions()
+        if not versions:
+            return []
         async with self._client() as client:
             response = await client.get(
                 f"{self.base_url}/rest/v1/pipeline_jobs",
                 params={
                     "limit": str(limit),
                     "order": "queued_at.asc",
-                    "pipeline_version": "eq.v2",
+                    "pipeline_version": f"in.({','.join(versions)})",
                     "select": "*",
                     "status": "in.(queued,running)",
                 },
@@ -137,7 +156,13 @@ class DurableJobStore:
             return rows[0]
         return None
 
-    async def find_active(self, *, request_signature: str, user_id: str) -> dict[str, Any] | None:
+    async def find_active(
+        self,
+        *,
+        pipeline_version: str,
+        request_signature: str,
+        user_id: str,
+    ) -> dict[str, Any] | None:
         self.require_enabled()
         async with self._client() as client:
             response = await client.get(
@@ -145,7 +170,7 @@ class DurableJobStore:
                 params={
                     "limit": "1",
                     "order": "queued_at.desc",
-                    "pipeline_version": "eq.v2",
+                    "pipeline_version": f"eq.{pipeline_version}",
                     "request_signature": f"eq.{request_signature}",
                     "select": "*",
                     "status": "in.(queued,running)",
@@ -183,6 +208,22 @@ class DurableJobStore:
                 params={
                     "job_id": f"eq.{job_id}",
                     "order": "candidate_key.asc",
+                    "select": "*",
+                },
+                headers=self._headers(),
+            )
+        self._raise_for_status(response, expected={200})
+        rows = response.json()
+        return [row for row in rows if isinstance(row, dict)] if isinstance(rows, list) else []
+
+    async def components(self, job_id: str) -> list[dict[str, Any]]:
+        self.require_enabled()
+        async with self._client() as client:
+            response = await client.get(
+                f"{self.base_url}/rest/v1/pipeline_candidate_components",
+                params={
+                    "job_id": f"eq.{job_id}",
+                    "order": "candidate_key.asc,component_id.asc",
                     "select": "*",
                 },
                 headers=self._headers(),
@@ -261,6 +302,31 @@ class DurableJobStore:
             )
         self._raise_for_status(response, expected={200, 201, 204})
 
+    async def upsert_component(
+        self,
+        *,
+        candidate_key: str,
+        component_id: str,
+        job_id: str,
+        payload: dict[str, Any],
+    ) -> None:
+        self.require_enabled()
+        row = {
+            **payload,
+            "candidate_key": candidate_key,
+            "component_id": component_id,
+            "job_id": job_id,
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+        }
+        async with self._client() as client:
+            response = await client.post(
+                f"{self.base_url}/rest/v1/pipeline_candidate_components",
+                params={"on_conflict": "job_id,candidate_key,component_id"},
+                headers=self._headers(prefer="resolution=merge-duplicates,return=minimal"),
+                json=row,
+            )
+        self._raise_for_status(response, expected={200, 201, 204})
+
     def _headers(self, *, prefer: str | None = None) -> dict[str, str]:
         if not self.service_key:
             raise DurableJobStoreError("Supabase service key is missing")
@@ -275,6 +341,19 @@ class DurableJobStore:
 
     def _client(self) -> httpx.AsyncClient:
         return httpx.AsyncClient(timeout=min(self.settings.ai_request_timeout, 20.0))
+
+    def _lease_seconds(self, pipeline_version: str) -> int:
+        if pipeline_version == "v3":
+            return self.settings.pipeline_v3_lease_seconds
+        return self.settings.pipeline_v2_lease_seconds
+
+    def _enabled_versions(self) -> list[str]:
+        versions: list[str] = []
+        if self.settings.pipeline_v2_enabled:
+            versions.append("v2")
+        if self.settings.pipeline_v3_enabled:
+            versions.append("v3")
+        return versions
 
     @staticmethod
     def _raise_for_status(response: httpx.Response, *, expected: set[int]) -> None:

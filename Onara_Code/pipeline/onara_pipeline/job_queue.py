@@ -60,9 +60,11 @@ class JobQueue:
         self._worker_id = f"{socket.gethostname()}:{uuid4().hex[:8]}"
 
     async def enqueue(self, request: GenerateRequest, settings: Settings) -> EnqueueResult:
-        signature = request_signature(request)
-        if settings.pipeline_v2_enabled:
+        pipeline_version = _select_pipeline_version(request, settings)
+        signature = request_signature(request, pipeline_version=pipeline_version)
+        if _is_durable_pipeline(pipeline_version):
             existing_row = await self._store(settings).find_active(
+                pipeline_version=pipeline_version,
                 request_signature=signature,
                 user_id=request.user_id,
             )
@@ -98,20 +100,21 @@ class JobQueue:
                 business_data=request.business_data,
                 style_preferences=request.style_preferences,
                 request_signature=signature,
-                agents_total=7 if settings.pipeline_v2_enabled else 10,
-                pipeline_version="v2" if settings.pipeline_v2_enabled else "v1",
+                agents_total=7 if _is_durable_pipeline(pipeline_version) else 10,
+                pipeline_version=pipeline_version,
             )
 
             self._jobs[job_id] = job
             self._queued_job_ids.append(job_id)
             self._project_to_job_id[project_key] = job_id
 
-        if settings.pipeline_v2_enabled:
+        if _is_durable_pipeline(pipeline_version):
             try:
                 await self._store(settings).enqueue(job)
             except Exception:
                 try:
                     existing_row = await self._store(settings).find_active(
+                        pipeline_version=pipeline_version,
                         request_signature=signature,
                         user_id=request.user_id,
                     )
@@ -133,7 +136,7 @@ class JobQueue:
 
     async def start_workers(self, settings: Settings) -> None:
         self._settings = settings
-        if settings.pipeline_v2_enabled:
+        if _durable_pipeline_configured(settings):
             await self._recover_durable_jobs(settings)
         async with self._lock:
             self._worker_tasks = {task for task in self._worker_tasks if not task.done()}
@@ -147,7 +150,7 @@ class JobQueue:
     async def get(self, job_id: str, settings: Settings | None = None) -> PipelineJob | None:
         async with self._lock:
             job = self._jobs.get(job_id)
-        if job or not settings or not settings.pipeline_v2_enabled:
+        if job or not settings or not _durable_pipeline_configured(settings):
             return job
 
         row = await self._store(settings).get(job_id)
@@ -174,18 +177,23 @@ class JobQueue:
                 return
 
             heartbeat_task = None
-            if job.pipeline_version == "v2":
+            if _is_durable_pipeline(job.pipeline_version):
                 heartbeat_task = asyncio.create_task(self._heartbeat_loop(job, settings))
+            timeout_seconds = (
+                settings.pipeline_v3_job_timeout
+                if job.pipeline_version == "v3"
+                else settings.pipeline_job_timeout
+            )
             try:
                 await asyncio.wait_for(
                     self._run_job(job, settings),
-                    timeout=float(settings.pipeline_job_timeout),
+                    timeout=float(timeout_seconds),
                 )
             except TimeoutError:
                 await self._handle_job_failure(
                     job,
                     settings,
-                    TimeoutError(f"Pipeline job timed out after {settings.pipeline_job_timeout}s"),
+                    TimeoutError(f"Pipeline job timed out after {timeout_seconds}s"),
                 )
             except Exception as exc:
                 await self._handle_job_failure(job, settings, exc)
@@ -215,7 +223,17 @@ class JobQueue:
             status="generating",
         )
         await self._enrich_business_photos(job, settings, progress)
-        if job.pipeline_version == "v2":
+        if job.pipeline_version == "v3":
+            from onara_pipeline.v3 import run_pipeline_v3
+
+            await run_pipeline_v3(
+                job,
+                settings,
+                progress,
+                lambda candidate: self._persist_candidate(job, candidate, settings),
+                lambda component: self._persist_component(job, component, settings),
+            )
+        elif job.pipeline_version == "v2":
             from onara_pipeline.v2 import run_pipeline_v2
 
             await run_pipeline_v2(
@@ -276,7 +294,7 @@ class JobQueue:
             current_agent="deploying",
             status="deploying",
         )
-        if job.pipeline_version == "v2":
+        if _is_durable_pipeline(job.pipeline_version):
             await self.record_progress(
                 job.job_id,
                 "stage_started",
@@ -287,7 +305,7 @@ class JobQueue:
         await self._deploy_to_cloudflare_pages(job, settings, progress)
         await self._store_project_record_in_supabase(job, settings, progress)
         await self._commit_deployment_files_to_github(job, settings, progress)
-        if job.pipeline_version == "v2":
+        if _is_durable_pipeline(job.pipeline_version):
             await self.record_progress(
                 job.job_id,
                 "stage_completed",
@@ -574,7 +592,7 @@ class JobQueue:
                 "Supabase project record store failed; deployment artifacts remain available.",
                 {"phase": "phase_22_supabase", "supabase_project": payload},
             )
-            if job.pipeline_version == "v2":
+            if _is_durable_pipeline(job.pipeline_version):
                 raise
 
     async def _update_project_record_status(
@@ -880,11 +898,12 @@ class JobQueue:
                 job_id = self._queued_job_ids.pop(0)
                 job = self._jobs[job_id]
 
-            if job.pipeline_version == "v2":
+            if _is_durable_pipeline(job.pipeline_version):
                 try:
                     claim = await self._store(settings).claim(
                         job_id=job.job_id,
-                        worker_id=self._effective_worker_id(settings),
+                        pipeline_version=job.pipeline_version,
+                        worker_id=self._effective_worker_id(settings, job.pipeline_version),
                     )
                 except DurableJobStoreError:
                     await self._requeue_durable_job(job.job_id)
@@ -920,8 +939,8 @@ class JobQueue:
                     {
                         "event": "pipeline_started",
                         "message": (
-                            "Pipeline V2 durable worker started."
-                            if job.pipeline_version == "v2"
+                            f"Pipeline {job.pipeline_version.upper()} durable worker started."
+                            if _is_durable_pipeline(job.pipeline_version)
                             else "Phase 18-21 worker started."
                         ),
                         "stage": job.stage,
@@ -1007,7 +1026,7 @@ class JobQueue:
                 "stage": job.stage,
             }
 
-        if job.pipeline_version == "v2" and self._settings and durable_payload:
+        if _is_durable_pipeline(job.pipeline_version) and self._settings and durable_payload:
             store = self._store(self._settings)
             await store.append_event(**durable_payload)
             await store.update(
@@ -1040,7 +1059,7 @@ class JobQueue:
                     "timestamp": now.isoformat(),
                 }
             )
-        if job.pipeline_version == "v2" and self._settings:
+        if _is_durable_pipeline(job.pipeline_version) and self._settings:
             await self._store(self._settings).update(
                 job_id,
                 fields={
@@ -1079,7 +1098,7 @@ class JobQueue:
                     "timestamp": now.isoformat(),
                 }
             )
-        if job.pipeline_version == "v2" and self._settings:
+        if _is_durable_pipeline(job.pipeline_version) and self._settings:
             await self._store(self._settings).update(
                 job_id,
                 fields={
@@ -1103,11 +1122,19 @@ class JobQueue:
     async def _recover_durable_jobs(self, settings: Settings) -> None:
         rows = await self._store(settings).recoverable()
         for row in rows:
-            if int(row.get("attempt") or 0) >= settings.pipeline_v2_max_attempts:
+            pipeline_version = str(row.get("pipeline_version") or "v2")
+            max_attempts = (
+                settings.pipeline_v3_max_attempts
+                if pipeline_version == "v3"
+                else settings.pipeline_v2_max_attempts
+            )
+            if int(row.get("attempt") or 0) >= max_attempts:
                 await self._store(settings).update(
                     str(row["id"]),
                     fields={
-                        "error_message": "Pipeline V2 exhausted its durable retry attempts",
+                        "error_message": (
+                            f"Pipeline {pipeline_version.upper()} exhausted its durable retry attempts"
+                        ),
                         "stage": "failed",
                         "status": "failed",
                     },
@@ -1133,6 +1160,11 @@ class JobQueue:
         payload = row.get("request_payload") if isinstance(row.get("request_payload"), dict) else {}
         events = await self._store(settings).events(job_id)
         candidate_rows = await self._store(settings).candidates(job_id)
+        component_rows = (
+            await self._store(settings).components(job_id)
+            if str(row.get("pipeline_version") or "") == "v3"
+            else []
+        )
         progress_log = []
         completed_agent_ids: set[str] = set()
         event_sequence = 0
@@ -1164,7 +1196,7 @@ class JobQueue:
             event_sequence=event_sequence,
             is_trial=bool(payload.get("is_trial")),
             job_id=job_id,
-            pipeline_version="v2",
+            pipeline_version=str(row.get("pipeline_version") or "v2"),
             progress_log=progress_log,
             project_id=str(row.get("project_id") or payload.get("project_id") or ""),
             request_signature=str(row.get("request_signature") or ""),
@@ -1182,6 +1214,7 @@ class JobQueue:
         checkpoint = stage_state.get("blackboard") if isinstance(stage_state.get("blackboard"), dict) else {}
         job.blackboard.update(checkpoint)
         job.blackboard["recovered_candidate_rows"] = candidate_rows
+        job.blackboard["recovered_component_rows"] = component_rows
         job.blackboard["candidate_summaries"] = [
             {
                 "candidateKey": row.get("candidate_key"),
@@ -1227,13 +1260,19 @@ class JobQueue:
         return job
 
     async def _heartbeat_loop(self, job: PipelineJob, settings: Settings) -> None:
-        interval = max(5, settings.pipeline_v2_lease_seconds // 4)
+        lease_seconds = (
+            settings.pipeline_v3_lease_seconds
+            if job.pipeline_version == "v3"
+            else settings.pipeline_v2_lease_seconds
+        )
+        interval = max(5, lease_seconds // 4)
         while True:
             await asyncio.sleep(interval)
             try:
                 alive = await self._store(settings).heartbeat(
                     job_id=job.job_id,
-                    worker_id=self._effective_worker_id(settings),
+                    pipeline_version=job.pipeline_version,
+                    worker_id=self._effective_worker_id(settings, job.pipeline_version),
                 )
             except Exception:
                 continue
@@ -1241,7 +1280,7 @@ class JobQueue:
                 return
 
     async def _persist_candidate(self, job: PipelineJob, candidate: Any, settings: Settings) -> None:
-        if job.pipeline_version != "v2":
+        if not _is_durable_pipeline(job.pipeline_version):
             return
         browser = candidate.browser.model_dump(
             exclude={"mobile_thumbnail_data_url", "thumbnail_data_url"}
@@ -1252,7 +1291,12 @@ class JobQueue:
             else "rejected"
             if candidate.hard_blockers
             else "eligible"
-            if candidate.final_score >= settings.pipeline_v2_min_score
+            if candidate.final_score
+            >= (
+                settings.pipeline_v3_min_score
+                if job.pipeline_version == "v3"
+                else settings.pipeline_v2_min_score
+            )
             else "validating"
         )
         await self._store(settings).upsert_candidate(
@@ -1277,7 +1321,33 @@ class JobQueue:
             },
         )
 
-    def _effective_worker_id(self, settings: Settings) -> str:
+    async def _persist_component(self, job: PipelineJob, component: Any, settings: Settings) -> None:
+        if job.pipeline_version != "v3":
+            return
+        await self._store(settings).upsert_component(
+            candidate_key=component.candidate_key,
+            component_id=component.component_id,
+            job_id=job.job_id,
+            payload={
+                "artifact_css": component.css,
+                "artifact_html": component.html,
+                "attempts": component.attempts,
+                "audit": {
+                    "warnings": component.warnings,
+                },
+                "error_message": "; ".join(component.warnings[:6]) or None,
+                "fallback_used": component.fallback_used,
+                "fingerprint": component.fingerprint,
+                "model": component.model,
+                "provider": component.provider,
+                "status": "fallback" if component.fallback_used else "eligible",
+                "warnings": component.warnings,
+            },
+        )
+
+    def _effective_worker_id(self, settings: Settings, pipeline_version: str | None = None) -> str:
+        if pipeline_version == "v3":
+            return settings.pipeline_v3_worker_id or self._worker_id
         return settings.pipeline_v2_worker_id or self._worker_id
 
     @staticmethod
@@ -1412,13 +1482,14 @@ def _truncate_snapshot_value(value: Any) -> Any:
     return str(value)[:MAX_SNAPSHOT_VALUE_CHARS]
 
 
-def request_signature(request: GenerateRequest) -> str:
+def request_signature(request: GenerateRequest, *, pipeline_version: str = "v1") -> str:
     """Identify jobs that are truly identical for queue dedupe."""
     canonical = json.dumps(
         {
             "agent_6_model": request.agent_6_model,
             "business_data": request.business_data,
             "is_trial": request.is_trial,
+            "pipeline_version": pipeline_version,
             "style_preferences": request.style_preferences,
             "user_plan": request.user_plan,
         },
@@ -1427,6 +1498,34 @@ def request_signature(request: GenerateRequest) -> str:
         sort_keys=True,
     )
     return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+
+
+def _select_pipeline_version(request: GenerateRequest, settings: Settings) -> str:
+    fallback = "v2" if settings.pipeline_v2_enabled else "v1"
+    if not settings.pipeline_v3_enabled or settings.pipeline_v3_canary_percent <= 0:
+        return fallback
+    if settings.pipeline_v3_canary_percent >= 100:
+        return "v3"
+    bucket_source = json.dumps(
+        {
+            "business": request.business_data,
+            "project_id": request.project_id,
+            "user_id": request.user_id,
+        },
+        default=str,
+        separators=(",", ":"),
+        sort_keys=True,
+    )
+    bucket = int(hashlib.sha256(bucket_source.encode("utf-8")).hexdigest()[:8], 16) % 100
+    return "v3" if bucket < settings.pipeline_v3_canary_percent else fallback
+
+
+def _is_durable_pipeline(pipeline_version: str) -> bool:
+    return pipeline_version in {"v2", "v3"}
+
+
+def _durable_pipeline_configured(settings: Settings) -> bool:
+    return settings.pipeline_v2_enabled or settings.pipeline_v3_enabled
 
 
 def _project_key_for_request(request: GenerateRequest) -> str:
@@ -1505,6 +1604,8 @@ def _stage_state_snapshot(job: PipelineJob) -> dict[str, Any]:
         "planner_output",
         "prompt_output",
         "prompt_b_output",
+        "v3_directions",
+        "v3_selected_directions",
         "selected_candidate_id",
         "quality_mode",
         "degraded_services",
