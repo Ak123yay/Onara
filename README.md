@@ -1,135 +1,203 @@
-<div align="center">
-
 # Onara
 
-<!-- Primary action badges -->
-[![Try Live Demo](https://img.shields.io/badge/_Try_Live_Demo-onara.tech-6366f1?style=for-the-badge&logoColor=white&logo=react)](https://onara.tech/)
-[![Status](https://img.shields.io/badge/status-pre--launch-yellow?style=for-the-badge)](https://onara.tech)
-[![MIT License](https://img.shields.io/badge/License-Proprietary-blue?style=for-the-badge)](LICENSE)
-[![Star on GitHub](https://img.shields.io/github/stars/Ak123yay/onara?style=for-the-badge&logo=github&color=gold)](https://github.com/Ak123yay/onara)
+[![Try Live Demo](https://img.shields.io/badge/Try%20Live%20Demo-onara.tech-6366f1?style=for-the-badge)](https://onara.tech/)
+[![Status](https://img.shields.io/badge/status-pre--launch-yellow?style=for-the-badge)](https://onara.tech/)
+[![License](https://img.shields.io/badge/license-proprietary-blue?style=for-the-badge)](#license)
+[![Pipeline](https://img.shields.io/badge/pipeline-health%20check-success?style=for-the-badge)](https://pipeline.onara.tech/health)
 
-<!-- Tech stack badges -->
-[![Next.js](https://img.shields.io/badge/Next.js-15-black?style=flat-square&logo=next.js&logoColor=white)](https://nextjs.org)
-[![React](https://img.shields.io/badge/React-19-20232A?style=flat-square&logo=react&logoColor=61DAFB)](https://react.dev)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.0+-3178C6?style=flat-square&logo=typescript&logoColor=white)](https://www.typescriptlang.org)
-[![FastAPI](https://img.shields.io/badge/FastAPI-0.100+-009688?style=flat-square&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
-[![Python](https://img.shields.io/badge/Python-3.11+-3776AB?style=flat-square&logo=python&logoColor=white)](https://www.python.org)
-[![Supabase](https://img.shields.io/badge/Supabase-3ECF8E?style=flat-square&logo=supabase&logoColor=white)](https://supabase.com)
-[![Stripe](https://img.shields.io/badge/Stripe-008CDD?style=flat-square&logo=stripe&logoColor=white)](https://stripe.com)
-[![Cloudflare](https://img.shields.io/badge/Cloudflare-F38020?style=flat-square&logo=cloudflare&logoColor=white)](https://cloudflare.com)
-[![Pipeline](https://img.shields.io/badge/pipeline-healthy-success?style=flat-square)](https://pipeline.onara.tech/health)
-
-**AI-Powered Website Builder for Local Businesses**
-
-</div>
-
-> **Business Profile → Live Website in Minutes.** Onara transforms Google Business Profiles into professional websites with AI-generated copy, custom design, SEO optimization, contact forms, and a public URL. Built for contractors and local service businesses who need web presence without hiring a designer or learning a website builder.
-
-Transform any local business into a polished online presence — no code, no design skills, just a Google Business Profile or manual entry.
-
-```
-Google Business Profile --> Onara AI Pipeline --> Live Website
-    (or manual entry)         10 AI Agents          Cloudflare Pages
-                              3 Pipelines           + GitHub Backup
-                              QA Guardrails         + SEO Ready
-```
-
-**Launch Market:** Washington DC & Northern Virginia  
-**Target Customers:** Plumbers • HVAC • Electricians • Roofers • Landscapers • Local Service Pros
-
-[Try Demo](https://onara.tech) • [Support](mailto:support@onara.tech) • [Pipeline Status](https://pipeline.onara.tech/health) • [Documentation](documentation.md)
-
----
+![Next.js](https://img.shields.io/badge/Next.js-15-black?style=flat-square&logo=next.js&logoColor=white)
+![React](https://img.shields.io/badge/React-19-20232A?style=flat-square&logo=react&logoColor=61DAFB)
+![TypeScript](https://img.shields.io/badge/TypeScript-5+-3178C6?style=flat-square&logo=typescript&logoColor=white)
+![FastAPI](https://img.shields.io/badge/FastAPI-009688?style=flat-square&logo=fastapi&logoColor=white)
+![Supabase](https://img.shields.io/badge/Supabase-3ECF8E?style=flat-square&logo=supabase&logoColor=white)
+![Cloudflare](https://img.shields.io/badge/Cloudflare-F38020?style=flat-square&logo=cloudflare&logoColor=white)
+![Stripe](https://img.shields.io/badge/Stripe-008CDD?style=flat-square&logo=stripe&logoColor=white)
 
 <p align="center">
   <img width="100%" alt="Onara AI Website Builder Dashboard" src="https://github.com/user-attachments/assets/207074fe-684f-48d7-b7e1-413dc9df7d8c" />
 </p>
 
-## Tech Stack
+Onara is a website builder I am building for small local businesses.
 
-<div align="center">
+The idea is simple: a plumber, HVAC company, landscaper, roofer, or other local service business should be able to turn their basic business information into a usable website without hiring a designer or learning a website builder.
 
-![Next.js](https://img.shields.io/badge/Next.js-black?style=flat-square&logo=next.js&logoColor=white)
-![React](https://img.shields.io/badge/React-20232A?style=flat-square&logo=react&logoColor=61DAFB)
-![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?style=flat-square&logo=typescript&logoColor=white)
-![FastAPI](https://img.shields.io/badge/FastAPI-009688?style=flat-square&logo=fastapi&logoColor=white)
-![Python](https://img.shields.io/badge/Python-3776AB?style=flat-square&logo=python&logoColor=white)
+Right now, Onara can use a Google Business Profile or manually entered business details, generate a website with AI, run checks on the result, and deploy the finished site to Cloudflare Pages.
 
-![Supabase](https://img.shields.io/badge/Supabase-3ECF8E?style=flat-square&logo=supabase&logoColor=white)
-![PostgreSQL](https://img.shields.io/badge/PostgreSQL-316192?style=flat-square&logo=postgresql&logoColor=white)
-![Stripe](https://img.shields.io/badge/Stripe-008CDD?style=flat-square&logo=stripe&logoColor=white)
-![Cloudflare](https://img.shields.io/badge/Cloudflare-F38020?style=flat-square&logo=cloudflare&logoColor=white)
-![GitHub](https://img.shields.io/badge/GitHub-181717?style=flat-square&logo=github&logoColor=white)
+Live app: https://onara.tech  
+Pipeline health check: https://pipeline.onara.tech/health  
+Support: support@onara.tech
 
-![Vercel](https://img.shields.io/badge/Vercel-000000?style=flat-square&logo=vercel&logoColor=white)
-![NVIDIA](https://img.shields.io/badge/NVIDIA%20NIM-76B900?style=flat-square&logo=nvidia&logoColor=white)
-![Ollama](https://img.shields.io/badge/Ollama-000000?style=flat-square&logo=ollama&logoColor=white)
-![ChromaDB](https://img.shields.io/badge/ChromaDB-FF6F61?style=flat-square)
+## Why I built this
 
-</div>
+A lot of local businesses either have no website or have one that looks outdated. Many of them rely only on Google Maps, reviews, phone calls, and word of mouth.
 
----
+Onara is meant to give those businesses a faster starting point. It is not trying to replace a full design agency. The goal is to generate a clean first version of a website, make sure the important business details are correct, and give the owner a public URL they can actually use.
 
-## AI usage note
+My first launch area is Washington, DC and Northern Virginia.
 
-Some parts of the frontend UI and styling were made or edited with AI help.
-That does not mean the whole app was blindly generated by AI.
+## Current status
 
-The important app logic is normal production code. This includes auth, billing,
-Supabase access, RLS, deployment, webhooks, secrets, plan limits, and safety
-checks.
+Onara is still in pre-launch development.
 
-Onara also uses AI inside the product. The AI helps with:
+The main pieces are built, but I am still testing, fixing edge cases, and hardening the production setup before treating it as a finished product.
 
-- Reading business details like services, location, hours, reviews, and photos.
-- Writing website copy for local businesses.
-- Picking a design direction, layout, fonts, and colors.
-- Planning page sections like hero, services, reviews, contact, and footer.
-- Generating the HTML/CSS site.
-- Fixing broken generated code.
-- Adding SEO metadata and LocalBusiness JSON-LD.
-- Checking the site for missing sections, weak copy, bad structure, and mobile issues.
-- Enforcing output format rules (FILE_MARKER wrapping with explicit examples) and animation safety (opacity/transform only, blocking layout-shifting properties).
-- Saving only approved and cleaned examples to improve future generations.
+Working areas include:
 
-AI is not trusted for everything. These parts are handled by regular code:
+- account creation and login
+- business search and manual business entry
+- AI website generation
+- Cloudflare Pages deployment
+- Supabase project storage
+- GitHub backup for generated site files
+- Stripe billing setup
+- revision and rollback tools
+- contact form handling
+- pipeline health checks
 
-- Stripe payment status.
-- Supabase row-level security.
-- Login and user permissions.
-- Secret handling.
-- Final billing status.
-- Final deploy approval.
-- Blocking fake license, insurance, or certification claims.
+## What Onara does
 
-## How the product works
+A user can:
 
-1. The user signs in.
-2. The user finds a business on Google Maps or enters it manually.
-3. Onara collects the business name, address, phone, hours, category, photos, reviews, and services.
-4. The user confirms the details and picks a style.
-5. The AI pipeline builds the site.
-6. Guardrails check the site before it ships.
-7. The site deploys to Cloudflare Pages.
-8. The project is saved in Supabase and backed up to GitHub.
-9. The user can revise, rollback, download code if allowed, and manage billing.
+1. Sign in.
+2. Search for a business from Google Maps or enter the business manually.
+3. Review the business information.
+4. Choose a style direction.
+5. Start the website build.
+6. Wait while the pipeline generates and checks the website.
+7. Deploy the site.
+8. Make revisions or roll back to an older version.
 
-## Main features
+The generated website usually includes sections like:
 
-- Google Business Profile import.
-- Manual business entry if the business is not on Google Maps.
-- AI-generated local business websites.
-- Cloudflare Pages deployment.
-- GitHub backup for generated site files.
-- Supabase auth, projects, billing, revisions, and consent storage.
-- Stripe billing for Starter, Starter annual, and Pro plans.
-- Reverse trial flow.
-- Revision studio with queued edits, work log, diffs, and rollback.
-- Lead emails from generated contact forms.
-- Weekly Google Reviews badge refresh.
-- Pro code download.
-- Plan-gated model picker for Agent 6.
-- Curated RAG loop that saves only QA-approved patterns.
+- hero section
+- services
+- reviews or proof
+- contact information
+- business hours
+- location
+- footer
+- basic SEO metadata
+- LocalBusiness JSON-LD
+
+## How the build pipeline works
+
+The pipeline takes verified business facts and turns them into a website.
+
+At a high level:
+
+```text
+Business details
+  -> copy and style planning
+  -> website generation
+  -> quality checks
+  -> repair if needed
+  -> Cloudflare Pages deployment
+  -> Supabase + GitHub backup
+```
+
+The project currently has three pipeline versions.
+
+### Pipeline V1
+
+This is the original pipeline. It uses separate agents for:
+
+- business analysis
+- copywriting
+- style planning
+- page planning
+- code generation
+- debugging
+- SEO
+- QA
+- mobile cleanup
+
+V1 is kept as the safest rollback path.
+
+### Pipeline V2
+
+V2 is more durable. Instead of keeping everything only in memory, it stores jobs, checkpoints, events, leases, and candidate results in Supabase.
+
+That matters because the pipeline runs on a mini PC. If the process restarts, V2 can recover more cleanly instead of losing the whole build.
+
+V2 also generates multiple candidates, tests them, scores them, and tries one bounded repair before deployment.
+
+### Pipeline V3
+
+V3 breaks the website into components.
+
+Instead of generating one whole site and throwing it away if one part fails, V3 generates and validates pieces like:
+
+- header
+- hero
+- services
+- proof/reviews
+- contact
+- footer
+
+If one component fails, only that part needs to be retried or replaced with a fallback component.
+
+## AI use
+
+Onara uses AI inside the product, but I try not to trust AI blindly.
+
+AI is used for:
+
+- reading business details
+- writing first-draft website copy
+- choosing layout and style directions
+- generating site HTML and CSS
+- fixing broken generated code
+- adding SEO metadata
+- checking for missing or weak sections
+- improving mobile layout
+- saving approved examples for later generation
+
+Regular code handles the important account, billing, and permission logic, including:
+
+- Supabase row-level security
+- user login and project ownership
+- Stripe payment status
+- plan limits
+- webhook handling
+- secrets
+- deployment approval
+- blocking fake license, insurance, or certification claims
+
+## Tech stack
+
+### App
+
+- Next.js
+- React
+- TypeScript
+- CSS
+- Vercel
+
+### Backend and data
+
+- FastAPI
+- Python
+- Supabase
+- PostgreSQL
+- Supabase Edge Functions
+
+### Deployment and services
+
+- Cloudflare Pages
+- GitHub App backups
+- Stripe
+- Resend
+- Google Places API
+
+### AI and evaluation
+
+- NVIDIA NIM
+- Ollama
+- optional Copilot SDK routes
+- ChromaDB
+- Playwright checks
+- Lighthouse checks
+- Axe accessibility checks
 
 ## Repository layout
 
@@ -137,110 +205,19 @@ AI is not trusted for everything. These parts are handled by regular code:
 Onara/
   Onara_Code/
     app/        Next.js app, dashboard, billing, auth, build flow, revision UI
-    pipeline/   FastAPI AI generation pipeline and deployment logic
+    pipeline/   FastAPI generation pipeline and deployment logic
     supabase/   migrations and Edge Functions
-  Onara_Design/ Design reference for the Onara visual system
-  Onara_Vault/  planning, wiki, tasks, runbooks, and product docs
+
+  Onara_Design/
+    design reference and visual system notes
+
+  Onara_Vault/
+    planning notes, wiki pages, tasks, runbooks, and product docs
 ```
 
-## Tech stack
+## Running the app locally
 
-- Frontend: Next.js, React, TypeScript, CSS.
-- Auth and database: Supabase.
-- Billing: Stripe Checkout, embedded Elements, and webhooks.
-- Pipeline server: FastAPI on the mini PC, managed by PM2.
-- Pipeline URL: `https://pipeline.onara.tech`.
-- Site hosting: Cloudflare Pages.
-- Site backup: GitHub App.
-- Email: Resend and Supabase Edge Functions.
-- AI providers: NVIDIA NIM, Ollama, and optional Copilot SDK routes.
-- RAG: ChromaDB with curated Onara examples.
-
-## AI pipeline agents
-
-Onara keeps three generation pipelines available:
-
-- **Pipeline V1** is the original 10-agent pipeline and remains the default rollback path.
-- **Pipeline V2** uses durable Supabase jobs, two parallel website candidates, browser
-  testing, visual scoring, and one bounded repair before deployment.
-- **Pipeline V3** builds each site from bounded components. It creates three design
-  directions, builds the strongest two in parallel, validates each component, and only
-  falls back for the individual component that failed.
-
-The FastAPI environment flag selects the active path:
-
-```dotenv
-# V1 (default and rollback)
-PIPELINE_V2_ENABLED=false
-
-# V2
-PIPELINE_V2_ENABLED=true
-
-# V3 full rollout, with V2 kept as rollback
-PIPELINE_V2_ENABLED=true
-PIPELINE_V3_ENABLED=true
-PIPELINE_V3_CANARY_PERCENT=100
-```
-
-Changing the flags requires a FastAPI/PM2 restart. Do not enable V3 until migrations `022`
-and `023` are applied and the Playwright browser dependencies are installed.
-
-### Pipeline V1
-
-```text
-Agent 1  Analyst
-Agent 2  Content Writer
-Agent 3  Style Agent
-Agent 4  Planner
-Agent 5  Prompt Engineer
-Agent 6  Code Generator
-Agent 7  Debugger
-Agent 8  SEO Agent
-Agent 9  QA
-Agent 10 Mobile Optimizer
-```
-
-Each agent writes to a shared build state. The supervisor checks the output and
-decides if the pipeline can keep going, needs a repair, or should fail safely.
-
-### Pipeline V2
-
-```text
-Business facts
-  -> content and style in parallel
-  -> two distinct code candidates in parallel
-  -> desktop, mobile, accessibility, and Lighthouse tests
-  -> independent visual scoring
-  -> one targeted component repair if needed
-  -> deterministic SEO, mobile, and QA safeguards
-  -> Cloudflare Pages deployment
-```
-
-V2 stores jobs, events, leases, checkpoints, and candidate results in Supabase. A
-mini-PC restart can recover an unfinished build instead of losing an in-memory job.
-
-### Pipeline V3
-
-```text
-Verified facts + approved copy
-  -> three distinct design directions
-  -> select two directions
-  -> generate header/hero/services/proof/contact/footer independently
-  -> validate and persist every component
-  -> assemble two complete sites
-  -> desktop/tablet/mobile/Axe/Lighthouse/visual evaluation
-  -> repair only failed selectors or components
-  -> Cloudflare Pages deployment
-```
-
-V3 does not throw away a strong site because one component model response is malformed.
-That component retries through the model route, then uses the approved deterministic
-baseline for that component only. Completed components are stored in Supabase so a mini-PC
-restart resumes unfinished work.
-
-## Local development
-
-### Next.js app
+These commands match my Windows development setup.
 
 ```powershell
 cd C:\Users\Aarush\Downloads\Onara\Onara_Code\app
@@ -255,7 +232,7 @@ pnpm.cmd type-check
 pnpm.cmd build
 ```
 
-### Pipeline server
+## Running the pipeline locally
 
 ```powershell
 cd C:\Users\Aarush\Downloads\Onara\Onara_Code\pipeline
@@ -265,13 +242,13 @@ npm run install-browser
 python -m uvicorn main:app --reload --port 8000
 ```
 
-Health check:
+Local health check:
 
 ```powershell
 Invoke-WebRequest -Method GET http://localhost:8000/health -UseBasicParsing
 ```
 
-### Mini PC / PM2
+## Running the pipeline on the mini PC
 
 ```powershell
 cd "C:\Users\Aarush Katam\Downloads\Onara\Onara_Code\pipeline"
@@ -280,29 +257,31 @@ pm2 status
 pm2 logs onara-pipeline --lines 50
 ```
 
-Restart after pipeline code changes:
+Restart after pipeline changes:
 
 ```powershell
 pm2 restart onara-pipeline
 ```
 
-### Enable Pipeline V3
+## Enabling Pipeline V3
+
+Apply the database migrations first:
 
 ```powershell
 cd "C:\Users\Aarush\Downloads\Onara\Onara_Code"
 supabase db push --linked
+```
 
+Install browser tooling and run tests:
+
+```powershell
 cd ".\pipeline"
 npm install
 npm run install-browser
 python -m unittest discover -s tests -p "test_*.py"
 ```
 
-If npm reports moderate vulnerabilities, inspect them with `npm audit`. Do not use
-`npm audit fix --force` blindly because it can install incompatible browser-testing
-versions.
-
-Set this in `Onara_Code/pipeline/.env`:
+Set these flags in `Onara_Code/pipeline/.env`:
 
 ```dotenv
 PIPELINE_V2_ENABLED=true
@@ -310,7 +289,7 @@ PIPELINE_V3_ENABLED=true
 PIPELINE_V3_CANARY_PERCENT=100
 ```
 
-Restart and verify:
+Restart and check logs:
 
 ```powershell
 pm2 restart onara-pipeline
@@ -318,57 +297,74 @@ pm2 logs onara-pipeline --lines 50
 Invoke-WebRequest -Method GET https://pipeline.onara.tech/health -UseBasicParsing
 ```
 
-To roll back V3 to V2, set `PIPELINE_V3_ENABLED=false` and keep
-`PIPELINE_V2_ENABLED=true`. To roll back to V1, set both flags to `false`. Migrations `022`
-and `023` can remain applied.
+To roll back from V3 to V2:
 
-## Environment files
+```dotenv
+PIPELINE_V2_ENABLED=true
+PIPELINE_V3_ENABLED=false
+```
 
-Use these examples:
+To roll back to V1:
+
+```dotenv
+PIPELINE_V2_ENABLED=false
+PIPELINE_V3_ENABLED=false
+```
+
+Migrations `022` and `023` can stay applied.
+
+## Environment variables
+
+Use the example files instead of committing real secrets:
 
 - `Onara_Code/app/.env.example`
 - `Onara_Code/pipeline/.env.example`
 
-Main environment groups:
+The main environment groups are:
 
-- Supabase URL, anon key, and service role key.
-- Stripe keys, webhook secret, and price IDs.
-- Pipeline URL and pipeline API secret.
-- Google Places API key.
-- Cloudflare account, API token, and Pages settings.
-- GitHub App credentials.
-- Resend and email settings.
-- AI provider keys and Ollama settings.
+- Supabase URL, anon key, and service role key
+- Stripe keys, webhook secret, and price IDs
+- pipeline URL and pipeline API secret
+- Google Places API key
+- Cloudflare account, API token, and Pages settings
+- GitHub App credentials
+- Resend and email settings
+- AI provider keys
+- Ollama settings
 
-Do not commit real secrets.
+Do not commit real keys or secrets.
 
 ## Production notes
 
-- Vercel hosts the main Onara app.
-- `NEXT_PUBLIC_APP_URL` and `APP_URL` should point to the production app URL.
-- Supabase Auth redirect URLs need the production callback URL.
-- The FastAPI pipeline runs outside Vercel because builds can take a while.
-- UptimeRobot checks `https://pipeline.onara.tech/health`.
+- The main app runs on Vercel.
+- The pipeline runs outside Vercel because generation can take longer than a normal serverless request.
 - Customer sites deploy to Cloudflare Pages.
+- UptimeRobot checks the pipeline health endpoint.
+- Supabase Auth redirect URLs must include the production callback URL.
+- `NEXT_PUBLIC_APP_URL` and `APP_URL` should point to the production app URL.
 
-## Graceful degradation
+## Failure handling
 
-Onara keeps core work usable when an optional service fails:
+Onara is supposed to keep the user from losing progress when something fails.
 
-- Google Places failure opens manual business entry.
-- Google photo failure uses an Onara placeholder.
-- Pipeline and revision starts time out with retryable messages while preserving form input.
-- Pipeline V2 uses a strict static safety gate when browser tooling is unavailable.
-- Stripe failures never change payment or plan state.
-- Lead forms store the lead before attempting email delivery.
-- Dashboard, account, and root routes use recoverable error boundaries instead of blank pages.
+Examples:
 
-`GET /api/health` reports whether Supabase, the pipeline, Stripe, and Google Places are
-configured without exposing secret values.
+- If Google Places fails, the user can enter the business manually.
+- If a Google photo is missing, Onara can use a placeholder.
+- If generation times out, the app should preserve the form input.
+- Stripe errors should not change a user's plan state.
+- Lead forms store the lead before trying to send the email.
+- Dashboard and account routes use error boundaries instead of showing a blank page.
 
-## Verification checklist
+The app health route reports whether major services are configured without exposing secret values:
 
-Before shipping app changes:
+```text
+GET /api/health
+```
+
+## Checks before shipping changes
+
+For app changes:
 
 ```powershell
 cd C:\Users\Aarush\Downloads\Onara\Onara_Code\app
@@ -385,23 +381,26 @@ python -m unittest discover -s tests -p "test_*.py"
 node --check browser_audit.mjs
 ```
 
-Manual checks:
+Manual checks I usually run:
 
-- Sign in works.
-- Business search works.
-- Manual business entry works.
-- Generation starts and streams progress.
-- Generated site deploys.
-- Revision page loads.
-- Billing page loads.
-- Contact form emails arrive.
+- sign in
+- business search
+- manual business entry
+- generation start
+- progress streaming
+- deployed website
+- revision page
+- billing page
+- contact form email
 
-## Support
+## License
 
-For product and account support, use `support@onara.tech`.
+This repository is not currently presented as an open-source project. Do not reuse the code without permission.
 
-## Status
+## Contact
 
-Onara is in pre-launch development. The main app, AI pipeline, billing,
-revisions, deployment, and retention features exist. Production hardening and
-launch work are still in progress.
+For product or account support, email:
+
+```text
+support@onara.tech
+```
