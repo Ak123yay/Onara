@@ -1,29 +1,49 @@
 <div align="center">
 
+<!-- Primary action badges -->
+[![Try Live Demo](https://img.shields.io/badge/_Try_Live_Demo-onara.tech-6366f1?style=for-the-badge&logoColor=white&logo=react)](https://onara.tech/)
+[![Status](https://img.shields.io/badge/status-pre--launch-yellow?style=for-the-badge)](https://onara.tech)
+[![MIT License](https://img.shields.io/badge/License-Proprietary-blue?style=for-the-badge)](LICENSE)
+[![Star on GitHub](https://img.shields.io/github/stars/yourusername/onara?style=for-the-badge&logo=github&color=gold)](https://github.com/yourusername/onara)
+
+<!-- Tech stack badges -->
+[![Next.js](https://img.shields.io/badge/Next.js-15-black?style=flat-square&logo=next.js&logoColor=white)](https://nextjs.org)
+[![React](https://img.shields.io/badge/React-19-20232A?style=flat-square&logo=react&logoColor=61DAFB)](https://react.dev)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.0+-3178C6?style=flat-square&logo=typescript&logoColor=white)](https://www.typescriptlang.org)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.100+-009688?style=flat-square&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
+[![Python](https://img.shields.io/badge/Python-3.11+-3776AB?style=flat-square&logo=python&logoColor=white)](https://www.python.org)
+[![Supabase](https://img.shields.io/badge/Supabase-3ECF8E?style=flat-square&logo=supabase&logoColor=white)](https://supabase.com)
+[![Stripe](https://img.shields.io/badge/Stripe-008CDD?style=flat-square&logo=stripe&logoColor=white)](https://stripe.com)
+[![Cloudflare](https://img.shields.io/badge/Cloudflare-F38020?style=flat-square&logo=cloudflare&logoColor=white)](https://cloudflare.com)
+[![Pipeline](https://img.shields.io/badge/pipeline-healthy-success?style=flat-square)](https://pipeline.onara.tech/health)
+
 # Onara
 
-### AI-Powered Website Builder for Local Businesses
-
-[![Status](https://img.shields.io/badge/status-pre--launch-yellow?style=for-the-badge)](https://onara.tech)
-[![License](https://img.shields.io/badge/license-proprietary-blue?style=for-the-badge)](LICENSE)
-[![Made with AI](https://img.shields.io/badge/Made%20with-AI-ff69b4?style=for-the-badge)](https://github.com)
-[![Next.js](https://img.shields.io/badge/Next.js-14+-black?style=for-the-badge&logo=next.js&logoColor=white)](https://nextjs.org)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.0+-3178C6?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org)
-[![FastAPI](https://img.shields.io/badge/FastAPI-0.100+-009688?style=for-the-badge&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
-[![Python](https://img.shields.io/badge/Python-3.11+-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org)
-
-Transform Google Business Profiles into stunning, live websites in minutes—complete with copy, design, SEO, photos, contact forms, and a public URL.
-
-**Launch Area:** Washington DC & Northern Virginia  
-**Target:** Plumbers • HVAC • Electricians • Roofers • Landscapers • Local Service Pros
-
-[Support](mailto:support@onara.tech) • [Pipeline Status](https://pipeline.onara.tech/health)
-
----
+**AI-Powered Website Builder for Local Businesses**
 
 </div>
 
-<img width="2558" height="1267" alt="image" src="https://github.com/user-attachments/assets/207074fe-684f-48d7-b7e1-413dc9df7d8c" />
+> **Business Profile → Live Website in Minutes.** Onara transforms Google Business Profiles into professional websites with AI-generated copy, custom design, SEO optimization, contact forms, and a public URL. Built for contractors and local service businesses who need web presence without hiring a designer or learning a website builder.
+
+Transform any local business into a polished online presence — no code, no design skills, just a Google Business Profile or manual entry.
+
+```
+Google Business Profile --> Onara AI Pipeline --> Live Website
+    (or manual entry)         10 AI Agents          Cloudflare Pages
+                              3 Pipelines           + GitHub Backup
+                              QA Guardrails         + SEO Ready
+```
+
+**Launch Market:** Washington DC & Northern Virginia  
+**Target Customers:** Plumbers • HVAC • Electricians • Roofers • Landscapers • Local Service Pros
+
+[Try Demo](https://onara.tech) • [Support](mailto:support@onara.tech) • [Pipeline Status](https://pipeline.onara.tech/health) • [Documentation](documentation.md)
+
+---
+
+<p align="center">
+  <img width="100%" alt="Onara AI Website Builder Dashboard" src="https://github.com/user-attachments/assets/207074fe-684f-48d7-b7e1-413dc9df7d8c" />
+</p>
 
 ## Tech Stack
 
