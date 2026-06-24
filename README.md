@@ -8,8 +8,6 @@
 
 # Onara
 
-**AI-Powered Website Builder for Local Businesses**
-
 <!-- Tech stack badges -->
 [![Next.js](https://img.shields.io/badge/Next.js-15-black?style=flat-square&logo=next.js&logoColor=white)](https://nextjs.org)
 [![React](https://img.shields.io/badge/React-19-20232A?style=flat-square&logo=react&logoColor=61DAFB)](https://react.dev)
@@ -20,6 +18,8 @@
 [![Stripe](https://img.shields.io/badge/Stripe-008CDD?style=flat-square&logo=stripe&logoColor=white)](https://stripe.com)
 [![Cloudflare](https://img.shields.io/badge/Cloudflare-F38020?style=flat-square&logo=cloudflare&logoColor=white)](https://cloudflare.com)
 [![Pipeline](https://img.shields.io/badge/pipeline-healthy-success?style=flat-square)](https://pipeline.onara.tech/health)
+
+**AI-Powered Website Builder for Local Businesses**
 
 </div>
 
