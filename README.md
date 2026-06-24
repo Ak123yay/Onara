@@ -1,6 +1,6 @@
 <div align="center">
 
-# Onara (Hope to expand the proj :))
+# Onara 
 
 [![Try Live Demo](https://img.shields.io/badge/Try%20Live%20Demo-onara.tech-6366f1?style=for-the-badge)](https://onara.tech)
 [![Status](https://img.shields.io/badge/Status-Pre--launch-yellow?style=for-the-badge)](https://onara.tech)
