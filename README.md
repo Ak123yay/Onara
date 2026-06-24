@@ -8,7 +8,6 @@
 [![Pipeline](https://img.shields.io/badge/Pipeline-Healthy-success?style=for-the-badge)](https://pipeline.onara.tech/health)
 
 <br />
-
 ![Next.js](https://img.shields.io/badge/Next.js-15-black?style=flat-square&logo=next.js)
 ![React](https://img.shields.io/badge/React-19-20232A?style=flat-square&logo=react)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5+-3178C6?style=flat-square&logo=typescript&logoColor=white)
