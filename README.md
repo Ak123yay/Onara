@@ -6,7 +6,6 @@
 [![Status](https://img.shields.io/badge/Status-Pre--launch-yellow?style=for-the-badge)](https://onara.tech)
 [![License](https://img.shields.io/badge/License-Proprietary-blue?style=for-the-badge)](LICENSE)
 [![Pipeline](https://img.shields.io/badge/Pipeline-Healthy-success?style=for-the-badge)](https://pipeline.onara.tech/health)
-
 <br />
 ![Next.js](https://img.shields.io/badge/Next.js-15-black?style=flat-square&logo=next.js)
 ![React](https://img.shields.io/badge/React-19-20232A?style=flat-square&logo=react)
