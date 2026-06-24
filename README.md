@@ -6,6 +6,10 @@
 [![MIT License](https://img.shields.io/badge/License-Proprietary-blue?style=for-the-badge)](LICENSE)
 [![Star on GitHub](https://img.shields.io/github/stars/Ak123yay/onara?style=for-the-badge&logo=github&color=gold)](https://github.com/Ak123yay/onara)
 
+# Onara
+
+**AI-Powered Website Builder for Local Businesses**
+
 <!-- Tech stack badges -->
 [![Next.js](https://img.shields.io/badge/Next.js-15-black?style=flat-square&logo=next.js&logoColor=white)](https://nextjs.org)
 [![React](https://img.shields.io/badge/React-19-20232A?style=flat-square&logo=react&logoColor=61DAFB)](https://react.dev)
@@ -16,10 +20,6 @@
 [![Stripe](https://img.shields.io/badge/Stripe-008CDD?style=flat-square&logo=stripe&logoColor=white)](https://stripe.com)
 [![Cloudflare](https://img.shields.io/badge/Cloudflare-F38020?style=flat-square&logo=cloudflare&logoColor=white)](https://cloudflare.com)
 [![Pipeline](https://img.shields.io/badge/pipeline-healthy-success?style=flat-square)](https://pipeline.onara.tech/health)
-
-# Onara
-
-**AI-Powered Website Builder for Local Businesses**
 
 </div>
 
