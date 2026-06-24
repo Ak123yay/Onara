@@ -1,15 +1,52 @@
+<div align="center">
+
 # Onara
 
-Onara is an AI website builder for local businesses.
+### AI-Powered Website Builder for Local Businesses
 
-It takes a Google Business Profile, or details entered by the user, and turns it
-into a live website with copy, design, SEO, photos, contact forms, and a public
-URL.
+[![Status](https://img.shields.io/badge/status-pre--launch-yellow?style=for-the-badge)](https://onara.tech)
+[![License](https://img.shields.io/badge/license-proprietary-blue?style=for-the-badge)](LICENSE)
+[![Made with AI](https://img.shields.io/badge/Made%20with-AI-ff69b4?style=for-the-badge)](https://github.com)
+[![Next.js](https://img.shields.io/badge/Next.js-14+-black?style=for-the-badge&logo=next.js&logoColor=white)](https://nextjs.org)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.0+-3178C6?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.100+-009688?style=for-the-badge&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
+[![Python](https://img.shields.io/badge/Python-3.11+-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org)
 
-The first launch area is Washington DC and Northern Virginia. The first target
-customers are contractors like plumbers, HVAC companies, electricians, roofers,
-landscapers, and other local service businesses that need a real website without
-building one by hand.
+Transform Google Business Profiles into stunning, live websites in minutes—complete with copy, design, SEO, photos, contact forms, and a public URL.
+
+**Launch Area:** Washington DC & Northern Virginia  
+**Target:** Plumbers • HVAC • Electricians • Roofers • Landscapers • Local Service Pros
+
+[Support](mailto:support@onara.tech) • [Pipeline Status](https://pipeline.onara.tech/health)
+
+---
+
+</div>
+
+## Tech Stack
+
+<div align="center">
+
+![Next.js](https://img.shields.io/badge/Next.js-black?style=flat-square&logo=next.js&logoColor=white)
+![React](https://img.shields.io/badge/React-20232A?style=flat-square&logo=react&logoColor=61DAFB)
+![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?style=flat-square&logo=typescript&logoColor=white)
+![FastAPI](https://img.shields.io/badge/FastAPI-009688?style=flat-square&logo=fastapi&logoColor=white)
+![Python](https://img.shields.io/badge/Python-3776AB?style=flat-square&logo=python&logoColor=white)
+
+![Supabase](https://img.shields.io/badge/Supabase-3ECF8E?style=flat-square&logo=supabase&logoColor=white)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-316192?style=flat-square&logo=postgresql&logoColor=white)
+![Stripe](https://img.shields.io/badge/Stripe-008CDD?style=flat-square&logo=stripe&logoColor=white)
+![Cloudflare](https://img.shields.io/badge/Cloudflare-F38020?style=flat-square&logo=cloudflare&logoColor=white)
+![GitHub](https://img.shields.io/badge/GitHub-181717?style=flat-square&logo=github&logoColor=white)
+
+![Vercel](https://img.shields.io/badge/Vercel-000000?style=flat-square&logo=vercel&logoColor=white)
+![NVIDIA](https://img.shields.io/badge/NVIDIA%20NIM-76B900?style=flat-square&logo=nvidia&logoColor=white)
+![Ollama](https://img.shields.io/badge/Ollama-000000?style=flat-square&logo=ollama&logoColor=white)
+![ChromaDB](https://img.shields.io/badge/ChromaDB-FF6F61?style=flat-square)
+
+</div>
+
+---
 
 ## AI usage note
 
