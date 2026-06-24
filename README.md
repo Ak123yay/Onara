@@ -1,6 +1,6 @@
 <div align="center">
 
-# Onara
+# Onara (Hope to expand the proj :))
 
 [![Try Live Demo](https://img.shields.io/badge/Try%20Live%20Demo-onara.tech-6366f1?style=for-the-badge)](https://onara.tech)
 [![Status](https://img.shields.io/badge/Status-Pre--launch-yellow?style=for-the-badge)](https://onara.tech)
@@ -399,7 +399,7 @@ Manual checks I usually run:
 
 ## License
 
-This repository is not currently presented as an open-source project. Do not reuse the code without permission.
+Open-source with MIT liscence.
 
 ## Contact
 
