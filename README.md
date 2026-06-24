@@ -4,7 +4,7 @@
 [![Try Live Demo](https://img.shields.io/badge/_Try_Live_Demo-onara.tech-6366f1?style=for-the-badge&logoColor=white&logo=react)](https://onara.tech/)
 [![Status](https://img.shields.io/badge/status-pre--launch-yellow?style=for-the-badge)](https://onara.tech)
 [![MIT License](https://img.shields.io/badge/License-Proprietary-blue?style=for-the-badge)](LICENSE)
-[![Star on GitHub](https://img.shields.io/github/stars/yourusername/onara?style=for-the-badge&logo=github&color=gold)](https://github.com/yourusername/onara)
+[![Star on GitHub](https://img.shields.io/github/stars/Ak123yay/onara?style=for-the-badge&logo=github&color=gold)](https://github.com/Ak123yay/onara)
 
 <!-- Tech stack badges -->
 [![Next.js](https://img.shields.io/badge/Next.js-15-black?style=flat-square&logo=next.js&logoColor=white)](https://nextjs.org)
