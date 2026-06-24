@@ -1,17 +1,23 @@
+<div align="center">
+
 # Onara
 
-[![Try Live Demo](https://img.shields.io/badge/Try%20Live%20Demo-onara.tech-6366f1?style=for-the-badge)](https://onara.tech/)
-[![Status](https://img.shields.io/badge/status-pre--launch-yellow?style=for-the-badge)](https://onara.tech/)
-[![License](https://img.shields.io/badge/license-proprietary-blue?style=for-the-badge)](#license)
-[![Pipeline](https://img.shields.io/badge/pipeline-health%20check-success?style=for-the-badge)](https://pipeline.onara.tech/health)
+[![Try Live Demo](https://img.shields.io/badge/Try%20Live%20Demo-onara.tech-6366f1?style=for-the-badge)](https://onara.tech)
+[![Status](https://img.shields.io/badge/Status-Pre--launch-yellow?style=for-the-badge)](https://onara.tech)
+[![License](https://img.shields.io/badge/License-Proprietary-blue?style=for-the-badge)](LICENSE)
+[![Pipeline](https://img.shields.io/badge/Pipeline-Healthy-success?style=for-the-badge)](https://pipeline.onara.tech/health)
 
-![Next.js](https://img.shields.io/badge/Next.js-15-black?style=flat-square&logo=next.js&logoColor=white)
-![React](https://img.shields.io/badge/React-19-20232A?style=flat-square&logo=react&logoColor=61DAFB)
+<br />
+
+![Next.js](https://img.shields.io/badge/Next.js-15-black?style=flat-square&logo=next.js)
+![React](https://img.shields.io/badge/React-19-20232A?style=flat-square&logo=react)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5+-3178C6?style=flat-square&logo=typescript&logoColor=white)
-![FastAPI](https://img.shields.io/badge/FastAPI-009688?style=flat-square&logo=fastapi&logoColor=white)
+![FastAPI](https://img.shields.io/badge/FastAPI-0.100+-009688?style=flat-square&logo=fastapi&logoColor=white)
 ![Supabase](https://img.shields.io/badge/Supabase-3ECF8E?style=flat-square&logo=supabase&logoColor=white)
 ![Cloudflare](https://img.shields.io/badge/Cloudflare-F38020?style=flat-square&logo=cloudflare&logoColor=white)
 ![Stripe](https://img.shields.io/badge/Stripe-008CDD?style=flat-square&logo=stripe&logoColor=white)
+
+</div>
 
 <p align="center">
   <img width="100%" alt="Onara AI Website Builder Dashboard" src="https://github.com/user-attachments/assets/207074fe-684f-48d7-b7e1-413dc9df7d8c" />
