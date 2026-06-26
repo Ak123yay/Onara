@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import time
 from collections.abc import Awaitable, Callable
 from typing import Any
 
@@ -46,6 +47,16 @@ async def run_pipeline_v3(
     persist_candidate: CandidateCallback,
     persist_component: ComponentCallback,
 ) -> None:
+    job_start_time = time.time()
+    original_progress = progress
+    async def progress_wrapper(event: str, agent_id: str | None, message: str, extra: dict[str, Any] | None = None) -> None:
+        if extra and "eta_seconds" in extra and extra["eta_seconds"] is not None:
+            ratio = settings.pipeline_v3_job_timeout / 420.0
+            extra = dict(extra)
+            extra["eta_seconds"] = max(5, int(extra["eta_seconds"] * ratio))
+        await original_progress(event, agent_id, message, extra)
+    progress = progress_wrapper
+
     spec = build_generation_spec(
         business_data=job.business_data,
         style_preferences=job.style_preferences,
@@ -226,7 +237,9 @@ async def run_pipeline_v3(
             "Testing real browser behavior, accessibility, responsive layout, and visual quality.",
             {"eta_seconds": 65, "stage": "testing_candidates"},
         )
-        await evaluate_candidates(candidates, ai_client=ai_client, settings=settings, spec=spec)
+        elapsed = time.time() - job_start_time
+        remaining_budget = max(5.0, settings.pipeline_v3_job_timeout - elapsed)
+        await evaluate_candidates(candidates, ai_client=ai_client, settings=settings, spec=spec, remaining_budget=remaining_budget)
         for candidate in candidates:
             _apply_release_policy(candidate, settings)
             await persist_candidate(candidate)
@@ -255,6 +268,7 @@ async def run_pipeline_v3(
                     job=job,
                     settings=settings,
                     spec=spec,
+                    remaining_budget=max(5.0, settings.pipeline_v3_job_timeout - (time.time() - job_start_time))
                 )
                 for candidate in candidates
                 if candidate.hard_blockers or candidate.final_score < settings.pipeline_v3_min_score
@@ -273,6 +287,21 @@ async def run_pipeline_v3(
             )
         selected = max(eligible, key=lambda item: item.final_score)
         selected.selected = True
+
+        from onara_pipeline.agents.supervisor import validate_codegen_output
+        from onara_pipeline.agents.contracts import CodegenOutput
+        validate_codegen_output(
+            CodegenOutput(
+                component_files=selected.component_files,
+                fallback_used=selected.fallback_used,
+                html=selected.html,
+                model=selected.model,
+                provider=selected.provider,
+                raw_output="",
+                used_fallback_template=selected.fallback_component_count > 0,
+            ),
+            enforce_visual_quality=True,
+        )
         selected.html = deterministic_release_hardening(selected.html)
         await persist_candidate(selected)
 
@@ -366,18 +395,25 @@ async def _build_candidate(
         settings=settings,
         style=effective_style,
     )
-    html, component_files = assemble_candidate(
-        baseline_html=baseline_html,
-        components=artifacts,
-        direction=direction,
-    )
+    try:
+        html, component_files = assemble_candidate(
+            baseline_html=baseline_html,
+            components=artifacts,
+            direction=direction,
+        )
+        blockers = []
+    except ValueError as exc:
+        html = baseline_html
+        component_files = {"index.html": html}
+        blockers = [str(exc)]
+
     fallback_count = sum(artifact.fallback_used for artifact in artifacts)
     warnings = [
         warning
         for artifact in artifacts
         for warning in artifact.warnings
     ]
-    return V3CandidateArtifact(
+    candidate = V3CandidateArtifact(
         component_artifacts=artifacts,
         component_files=component_files,
         direction=direction,
@@ -391,6 +427,8 @@ async def _build_candidate(
         recipe=direction.recipe,
         warnings=warnings,
     )
+    candidate.hard_blockers = blockers
+    return candidate
 
 
 async def _repair_candidate(
@@ -400,6 +438,7 @@ async def _repair_candidate(
     job: PipelineJob,
     settings: Settings,
     spec,
+    remaining_budget: float | None = None,
 ) -> None:
     repaired = deterministic_release_gate_repair(
         candidate.html,
@@ -410,7 +449,7 @@ async def _repair_candidate(
         candidate.component_files["index.html"] = repaired
         candidate.hard_blockers = []
         candidate.warnings = []
-        await evaluate_candidates([candidate], ai_client=ai_client, settings=settings, spec=spec)
+        await evaluate_candidates([candidate], ai_client=ai_client, settings=settings, spec=spec, remaining_budget=remaining_budget)
         _apply_release_policy(candidate, settings)
 
     if candidate.hard_blockers or candidate.final_score < settings.pipeline_v3_min_score:
@@ -421,7 +460,7 @@ async def _repair_candidate(
             candidate.component_files["index.html"] = candidate.html
             candidate.hard_blockers = []
             candidate.warnings = []
-            await evaluate_candidates([candidate], ai_client=ai_client, settings=settings, spec=spec)
+            await evaluate_candidates([candidate], ai_client=ai_client, settings=settings, spec=spec, remaining_budget=remaining_budget)
             _apply_release_policy(candidate, settings)
 
 

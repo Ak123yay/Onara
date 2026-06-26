@@ -53,7 +53,7 @@ class Settings(BaseSettings):
     pipeline_api_secret: str | None = Field(default=None, alias="PIPELINE_API_SECRET")
     pipeline_max_concurrency: int = Field(default=1, ge=1, le=10, alias="PIPELINE_MAX_CONCURRENCY")
     pipeline_job_timeout: int = Field(default=600, ge=30, le=3600, alias="PIPELINE_JOB_TIMEOUT")
-    pipeline_v2_enabled: bool = Field(default=False, alias="PIPELINE_V2_ENABLED")
+    pipeline_v2_enabled: bool = Field(default=True, alias="PIPELINE_V2_ENABLED")
     pipeline_v2_browser_audit_timeout: int = Field(
         default=75,
         ge=20,
@@ -99,7 +99,7 @@ class Settings(BaseSettings):
         alias="PIPELINE_V3_COMPONENT_MAX_TOKENS",
     )
     pipeline_v3_job_timeout: int = Field(
-        default=420,
+        default=600,
         ge=120,
         le=1800,
         alias="PIPELINE_V3_JOB_TIMEOUT",
@@ -125,7 +125,7 @@ class Settings(BaseSettings):
     pipeline_v3_max_attempts: int = Field(default=3, ge=1, le=5, alias="PIPELINE_V3_MAX_ATTEMPTS")
     pipeline_v3_min_score: float = Field(default=84.0, ge=0, le=100, alias="PIPELINE_V3_MIN_SCORE")
     pipeline_v3_worker_id: str | None = Field(default=None, alias="PIPELINE_V3_WORKER_ID")
-    ai_nim_concurrency: int = Field(default=3, ge=1, le=8, alias="AI_NIM_CONCURRENCY")
+    ai_nim_concurrency: int = Field(default=8, ge=1, le=8, alias="AI_NIM_CONCURRENCY")
     ai_ollama_concurrency: int = Field(default=1, ge=1, le=4, alias="AI_OLLAMA_CONCURRENCY")
     ai_copilot_concurrency: int = Field(default=1, ge=1, le=4, alias="AI_COPILOT_CONCURRENCY")
     feature_lead_email: bool = Field(default=False, alias="FEATURE_LEAD_EMAIL")

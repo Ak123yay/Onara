@@ -19,6 +19,9 @@ class OllamaClient:
         self.http_client = http_client
 
     async def generate(self, *, model: str, request: AIRequest) -> AIResponse:
+        if not await self.is_available():
+            raise AIServiceUnavailableError("Ollama host is unreachable or not running")
+
         payload = {
             "messages": [message.model_dump() for message in request.messages],
             "model": model,

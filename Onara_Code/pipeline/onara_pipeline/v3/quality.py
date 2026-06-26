@@ -39,6 +39,7 @@ def audit_component(
     blockers: list[str] = []
     warnings: list[str] = []
     lower = html.lower()
+    css_lower = css.lower()
     marker_patterns = (
         f'data-component="{component_id}"',
         f"data-component='{component_id}'",
@@ -61,6 +62,51 @@ def audit_component(
         blockers.append(
             f"Component {component_id} uses raw color values instead of approved Onara variables"
         )
+
+    # Protected variables redeclaration check
+    protected_vars = (
+        "--paper",
+        "--paper-2",
+        "--paper-3",
+        "--ink",
+        "--ink-2",
+        "--ink-3",
+        "--rule",
+        "--accent",
+        "--accent-ink",
+        "--leaf",
+    )
+    duplicate_vars = [
+        variable
+        for variable in protected_vars
+        if len(re.findall(rf"{re.escape(variable)}\s*:", css_lower)) > 0
+    ]
+    if duplicate_vars:
+        blockers.append(
+            f"Component {component_id} redeclares protected Onara variables: {', '.join(duplicate_vars)}"
+        )
+
+    # Font family checks: ensure it only uses Onara font variables
+    font_families = re.findall(r"font-family\s*:\s*([^;}{]+)", css_lower)
+    for family in font_families:
+        if "var(" not in family:
+            blockers.append(
+                f"Component {component_id} CSS font-family '{family.strip()}' does not use Onara theme variables"
+            )
+
+    # Pill radius check on non-badge/chip/tag selectors
+    if "border-radius: 999" in css_lower or "border-radius: 9999" in css_lower:
+        if not any(token in css_lower for token in ("badge", "chip", "tag", "pill")):
+            blockers.append(
+                f"Component {component_id} uses pill-shaped border-radius for non-badge elements"
+            )
+
+    # Onara composition depth: components must use named Onara surface classes
+    _check_composition_depth(component_id, lower, css_lower, blockers, warnings)
+
+    # Onara anti-brochure: reject centered-only layouts in hero and services
+    _check_anti_brochure(component_id, lower, css_lower, blockers, warnings)
+
     if component_id == "hero":
         if "<h1" not in lower:
             blockers.append("Hero component has no h1")

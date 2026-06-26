@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import base64
 import json
+import os
 import re
 import tempfile
 from pathlib import Path
@@ -17,16 +18,8 @@ async def audit_candidate_html(
     *,
     candidate_key: str,
     settings: Settings,
+    remaining_budget: float | None = None,
 ) -> BrowserReport:
-    pipeline_root = Path(__file__).resolve().parents[2]
-    script_path = pipeline_root / "browser_audit.mjs"
-    if not script_path.exists():
-        return _unavailable_browser_report(
-            html,
-            reason="Browser audit script is missing",
-            settings=settings,
-        )
-
     with tempfile.TemporaryDirectory(prefix=f"onara-{candidate_key}-") as directory:
         root = Path(directory)
         html_path = root / "index.html"
@@ -34,82 +27,201 @@ async def audit_candidate_html(
         output_dir = root / "artifacts"
         html_path.write_text(html, encoding="utf-8")
 
-        try:
-            process = await asyncio.create_subprocess_exec(
-                "node",
-                str(script_path),
-                str(html_path),
-                str(output_dir),
-                str(report_path),
-                cwd=str(pipeline_root),
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.PIPE,
+        reports = await _run_batch_audit(
+            [
+                {
+                    "inputPath": str(html_path),
+                    "outputDirectory": str(output_dir),
+                    "reportPath": str(report_path),
+                    "html": html,
+                    "candidate_key": candidate_key,
+                }
+            ],
+            settings=settings,
+            remaining_budget=remaining_budget,
+        )
+        return reports[0]
+
+
+async def audit_candidates_html(
+    candidates: list[tuple[str, str]],
+    *,
+    settings: Settings,
+    remaining_budget: float | None = None,
+) -> list[BrowserReport]:
+    if not candidates:
+        return []
+
+    if remaining_budget is not None and remaining_budget < 25.0:
+        return [
+            _unavailable_browser_report(
+                html,
+                reason="Browser audit skipped due to low remaining job budget",
+                settings=settings,
             )
+            for html, _ in candidates
+        ]
+
+    pipeline_root = Path(__file__).resolve().parents[2]
+    script_path = pipeline_root / "browser_audit.mjs"
+    if not script_path.exists():
+        return [
+            _unavailable_browser_report(
+                html,
+                reason="Browser audit script is missing",
+                settings=settings,
+            )
+            for html, _ in candidates
+        ]
+
+    temp_dirs = []
+    batch_config = []
+    try:
+        for html, key in candidates:
+            temp_dir = tempfile.TemporaryDirectory(prefix=f"onara-{key}-")
+            temp_dirs.append(temp_dir)
+            root = Path(temp_dir.name)
+            html_path = root / "index.html"
+            report_path = root / "report.json"
+            output_dir = root / "artifacts"
+            html_path.write_text(html, encoding="utf-8")
+
+            batch_config.append({
+                "inputPath": str(html_path),
+                "outputDirectory": str(output_dir),
+                "reportPath": str(report_path),
+                "html": html,
+                "candidate_key": key,
+            })
+
+        return await _run_batch_audit(
+            batch_config,
+            settings=settings,
+            remaining_budget=remaining_budget,
+        )
+    finally:
+        for temp_dir in temp_dirs:
+            try:
+                temp_dir.cleanup()
+            except Exception:
+                pass
+
+
+async def _run_batch_audit(
+    batch_config: list[dict[str, Any]],
+    *,
+    settings: Settings,
+    remaining_budget: float | None = None,
+) -> list[BrowserReport]:
+    pipeline_root = Path(__file__).resolve().parents[2]
+    script_path = pipeline_root / "browser_audit.mjs"
+
+    with tempfile.NamedTemporaryFile(suffix=".json", mode="w", encoding="utf-8", delete=False) as f:
+        config_to_save = [
+            {
+                "inputPath": item["inputPath"],
+                "outputDirectory": item["outputDirectory"],
+                "reportPath": item["reportPath"],
+            }
+            for item in batch_config
+        ]
+        json.dump(config_to_save, f)
+        config_path = f.name
+
+    try:
+        timeout = settings.pipeline_v2_browser_audit_timeout
+        if remaining_budget is not None:
+            timeout = min(timeout, max(10.0, remaining_budget - 5.0))
+
+        process = await asyncio.create_subprocess_exec(
+            "node",
+            str(script_path),
+            "--batch",
+            config_path,
+            cwd=str(pipeline_root),
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        try:
             stdout, stderr = await asyncio.wait_for(
                 process.communicate(),
-                timeout=settings.pipeline_v2_browser_audit_timeout,
-            )
-        except FileNotFoundError:
-            return _unavailable_browser_report(
-                html,
-                reason="Node.js is not installed for browser validation",
-                settings=settings,
+                timeout=timeout,
             )
         except TimeoutError:
-            if "process" in locals():
+            if process:
                 process.kill()
                 await process.communicate()
-            return _unavailable_browser_report(
-                html,
-                reason="Browser audit timed out",
-                settings=settings,
-            )
+            return [
+                _unavailable_browser_report(
+                    item["html"],
+                    reason="Browser audit timed out under budget constraints",
+                    settings=settings,
+                )
+                for item in batch_config
+            ]
 
-        if process.returncode != 0 or not report_path.exists():
-            detail = (stderr or stdout).decode("utf-8", errors="replace")[:600]
-            return _unavailable_browser_report(
-                html,
-                reason=f"Browser audit failed: {detail or 'unknown error'}",
-                settings=settings,
-            )
+        reports = []
+        for item in batch_config:
+            report_path = Path(item["reportPath"])
+            html = item["html"]
+            if process.returncode != 0 or not report_path.exists():
+                detail = (stderr or stdout).decode("utf-8", errors="replace")[:600]
+                reports.append(
+                    _unavailable_browser_report(
+                        html,
+                        reason=f"Browser audit failed: {detail or 'unknown error'}",
+                        settings=settings,
+                    )
+                )
+                continue
 
+            try:
+                payload = json.loads(report_path.read_text(encoding="utf-8"))
+                screenshots = payload.pop("screenshots", {})
+                thumbnail_data_url = _data_url(screenshots.get("desktop"))
+                mobile_thumbnail_data_url = _data_url(screenshots.get("mobile"))
+                lighthouse_data = payload.get("lighthouse") if isinstance(payload.get("lighthouse"), dict) else {}
+                hard_blockers = [str(hb) for hb in payload.get("hard_blockers", [])]
+                warnings = [str(w) for w in payload.get("warnings", [])]
+
+                _apply_lighthouse_thresholds(
+                    lighthouse=lighthouse_data,
+                    hard_blockers=hard_blockers,
+                    warnings=warnings,
+                )
+                reports.append(
+                    BrowserReport(
+                        accessibility_violations=int(payload.get("accessibility_violations") or 0),
+                        accessibility_issues=[
+                            issue for issue in payload.get("accessibility_issues", []) if isinstance(issue, dict)
+                        ],
+                        available=bool(payload.get("available")),
+                        mode="full",
+                        checks=payload.get("checks") if isinstance(payload.get("checks"), dict) else {},
+                        console_errors=[str(err) for err in payload.get("console_errors", [])],
+                        failed_requests=[str(req) for req in payload.get("failed_requests", [])],
+                        hard_blockers=_unique(hard_blockers),
+                        lighthouse={str(k): float(v) for k, v in lighthouse_data.items() if isinstance(v, int | float)},
+                        mobile_thumbnail_data_url=mobile_thumbnail_data_url,
+                        screenshot_hash=str(payload.get("screenshot_hash") or "") or None,
+                        thumbnail_data_url=thumbnail_data_url,
+                        warnings=_unique(warnings),
+                    )
+                )
+            except Exception as exc:
+                reports.append(
+                    _unavailable_browser_report(
+                        html,
+                        reason=f"Browser audit report could not be read: {exc}",
+                        settings=settings,
+                    )
+                )
+        return reports
+    finally:
         try:
-            payload = json.loads(report_path.read_text(encoding="utf-8"))
-        except (OSError, ValueError) as exc:
-            return _unavailable_browser_report(
-                html,
-                reason=f"Browser audit report could not be read: {exc}",
-                settings=settings,
-            )
-        screenshots = payload.pop("screenshots", {})
-        thumbnail_data_url = _data_url(screenshots.get("desktop"))
-        mobile_thumbnail_data_url = _data_url(screenshots.get("mobile"))
-        lighthouse = payload.get("lighthouse") if isinstance(payload.get("lighthouse"), dict) else {}
-        hard_blockers = [str(item) for item in payload.get("hard_blockers", [])]
-        warnings = [str(item) for item in payload.get("warnings", [])]
-
-        _apply_lighthouse_thresholds(
-            lighthouse=lighthouse,
-            hard_blockers=hard_blockers,
-            warnings=warnings,
-        )
-        return BrowserReport(
-            accessibility_violations=int(payload.get("accessibility_violations") or 0),
-            accessibility_issues=[
-                item for item in payload.get("accessibility_issues", []) if isinstance(item, dict)
-            ],
-            available=bool(payload.get("available")),
-            mode="full",
-            checks=payload.get("checks") if isinstance(payload.get("checks"), dict) else {},
-            console_errors=[str(item) for item in payload.get("console_errors", [])],
-            failed_requests=[str(item) for item in payload.get("failed_requests", [])],
-            hard_blockers=_unique(hard_blockers),
-            lighthouse={str(key): float(value) for key, value in lighthouse.items() if isinstance(value, int | float)},
-            mobile_thumbnail_data_url=mobile_thumbnail_data_url,
-            screenshot_hash=str(payload.get("screenshot_hash") or "") or None,
-            thumbnail_data_url=thumbnail_data_url,
-            warnings=_unique(warnings),
-        )
+            os.unlink(config_path)
+        except Exception:
+            pass
 
 
 def _unavailable_browser_report(

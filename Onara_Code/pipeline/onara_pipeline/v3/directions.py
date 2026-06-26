@@ -97,11 +97,61 @@ Rules:
     return _fallback_directions(spec)
 
 
+def _score_direction(direction: DesignDirection) -> float:
+    score = 100.0
+    layout_lower = direction.layout.lower()
+    composition_lower = direction.hero_composition.lower()
+    recipe_lower = direction.recipe.lower()
+
+    if "center" in layout_lower or "center" in composition_lower:
+        score -= 40.0
+    if "brochure" in layout_lower or "brochure" in composition_lower or "brochure" in recipe_lower:
+        score -= 50.0
+    if "simple" in layout_lower or "simple" in composition_lower or "simple" in recipe_lower:
+        score -= 20.0
+    if "generic" in layout_lower or "generic" in composition_lower or "generic" in recipe_lower:
+        score -= 50.0
+    if "standard" in layout_lower or "standard" in composition_lower or "standard" in recipe_lower:
+        score -= 30.0
+
+    if "editorial" in layout_lower or "editorial" in composition_lower:
+        score += 15.0
+    if "split" in layout_lower or "split" in composition_lower:
+        score += 10.0
+    if "asymmetric" in composition_lower or "asymmetrical" in composition_lower:
+        score += 10.0
+    if "grid" in layout_lower or "grid" in composition_lower:
+        score += 5.0
+
+    if len(direction.proof_strategy) < 15:
+        score -= 15.0
+    if len(direction.image_strategy) < 15:
+        score -= 15.0
+
+    return score
+
+
 def select_directions(directions: list[DesignDirection]) -> tuple[DesignDirection, DesignDirection]:
     valid = _distinct_directions(directions)
-    if len(valid) < 2:
-        valid = _fallback_directions(None)
-    return valid[0], valid[1]
+    scored = [(_score_direction(d), d) for d in valid]
+    
+    # Sort distinct directions by score descending
+    scored.sort(key=lambda item: item[0], reverse=True)
+    
+    # Reject weak directions (score < 50.0)
+    strong = [d for score, d in scored if score >= 50.0]
+    
+    if len(strong) < 2:
+        fallbacks = _fallback_directions(None)
+        combined = list(strong)
+        for fb in fallbacks:
+            if len(combined) >= 2:
+                break
+            if all(item.layout != fb.layout for item in combined):
+                combined.append(fb)
+        strong = combined
+
+    return strong[0], strong[1]
 
 
 def _distinct_directions(directions: list[DesignDirection]) -> list[DesignDirection]:

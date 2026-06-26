@@ -206,16 +206,7 @@ def _replace_component(document: str, component_id: str, replacement: str) -> st
     if pattern.search(document):
         return pattern.sub(lambda _: replacement, document, count=1)
 
-    footer_index = document.lower().rfind("</footer>")
-    if footer_index >= 0 and component_id != "site_footer":
-        return document[:footer_index] + replacement + "\n" + document[footer_index:]
-    return re.sub(
-        r"</body>",
-        lambda _: f"{replacement}\n</body>",
-        document,
-        count=1,
-        flags=re.IGNORECASE,
-    )
+    raise ValueError(f"Placeholder for component {component_id} not found in document")
 
 
 def _append_css(document: str, css: str) -> str:

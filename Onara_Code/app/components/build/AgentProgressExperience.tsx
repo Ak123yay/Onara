@@ -290,6 +290,7 @@ export function AgentProgressExperience() {
     let closedByComplete = false;
     let disposed = false;
     let pollingFailures = 0;
+    let sseErrorCount = 0;
 
     function applyStep(stepIndex: number, status: AgentStatus, message?: string, nextProgress?: number) {
       if (disposed) {
@@ -426,7 +427,7 @@ export function AgentProgressExperience() {
             setCurrentMessage("Connection lost. Refresh to reconnect to the build stream.");
           }
         });
-      }, 900);
+      }, 4000);
       void pollStatus().catch(() => {
         if (disposed) {
           return;
@@ -455,10 +456,12 @@ export function AgentProgressExperience() {
 
     eventSource.addEventListener("open", () => {
       setConnectionMode("sse");
+      sseErrorCount = 0;
     });
 
     eventSource.addEventListener("heartbeat", () => {
       setConnectionMode("sse");
+      sseErrorCount = 0;
     });
 
     eventSource.addEventListener("queued", (event) => {
@@ -576,8 +579,11 @@ export function AgentProgressExperience() {
         return;
       }
 
-      eventSource.close();
-      startPolling();
+      sseErrorCount += 1;
+      if (sseErrorCount >= 3) {
+        eventSource.close();
+        startPolling();
+      }
     });
 
     return () => {

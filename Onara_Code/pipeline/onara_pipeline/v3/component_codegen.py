@@ -18,6 +18,7 @@ from onara_pipeline.ai_client.model_picker import ModelRoute
 from onara_pipeline.config import Settings
 from onara_pipeline.job_queue import PipelineJob
 from onara_pipeline.rag import build_pattern_store
+from onara_pipeline.agents.onara_theme import ONARA_THEME_CONTRACT
 from onara_pipeline.v2.codegen import _route_after_model
 from onara_pipeline.v3.assembler import fallback_component
 from onara_pipeline.v3.contracts import ComponentArtifact, DesignDirection
@@ -149,6 +150,10 @@ async def _generate_component(
                 ),
                 timeout=settings.pipeline_v3_component_timeout,
             )
+            if str(response.finish_reason or "").lower() in {"length", "max_tokens"}:
+                raise ValueError(
+                    f"{response.model} stopped at its output limit before completing component {component.id}"
+                )
             last_model = response.model
             last_provider = response.provider
             html, css = _extract_component(response.content, component.id)
@@ -206,6 +211,8 @@ def _component_prompt(
 ) -> str:
     return f"""Write only the `{component.id}` component for candidate {direction.name}.
 
+{ONARA_THEME_CONTRACT}
+
 Verified business facts:
 {json.dumps(job.business_data, ensure_ascii=True, default=str)}
 
@@ -240,6 +247,8 @@ Output exactly:
 
 Rules:
 - Preserve verified facts and approved content. Do not invent claims, reviews, licenses, awards, guarantees, or years.
+- Anti-brochure constraints: avoid generic centered layouts, oversized rounded pills, and plain templates.
+- Use Fraunces for display serif typography, Inter for UI body copy, and JetBrains Mono for eyebrows/metadata.
 - Return one root only and exactly one data-component attribute.
 - Use semantic HTML and visible labels.
 - Use no script, iframe, event handler, inline style, or external form action.

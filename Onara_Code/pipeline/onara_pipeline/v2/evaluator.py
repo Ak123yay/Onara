@@ -10,7 +10,7 @@ from onara_pipeline.agents.json_utils import parse_json_model
 from onara_pipeline.ai_client import AIClient, AIClientError, AIMessage, AIRequest
 from onara_pipeline.ai_client.model_picker import ModelRoute
 from onara_pipeline.config import Settings
-from onara_pipeline.v2.browser_quality import audit_candidate_html
+from onara_pipeline.v2.browser_quality import audit_candidate_html, audit_candidates_html
 from onara_pipeline.v2.contracts import CandidateArtifact, GenerationSpec, VisualReview
 from onara_pipeline.v2.repair import deterministic_release_hardening
 
@@ -23,50 +23,37 @@ async def evaluate_candidates(
     ai_client: AIClient,
     settings: Settings,
     spec: GenerationSpec,
+    remaining_budget: float | None = None,
 ) -> list[CandidateArtifact]:
-    await asyncio.gather(
-        *[
-            _evaluate_candidate(candidate, ai_client=ai_client, settings=settings, spec=spec)
-            for candidate in candidates
+    for candidate in candidates:
+        candidate.html = deterministic_release_hardening(candidate.html)
+
+    html_keys = [(c.html, c.key) for c in candidates]
+    reports = await audit_candidates_html(html_keys, settings=settings, remaining_budget=remaining_budget)
+
+    for candidate, report in zip(candidates, reports):
+        candidate.browser = report
+        candidate.hard_blockers = list(report.hard_blockers)
+        accessibility_context = [
+            (
+                f"Accessibility repair detail: {issue.get('id', 'unknown')} - "
+                f"{issue.get('help', 'accessibility issue')} at "
+                f"{', '.join(str(selector) for selector in issue.get('selectors', [])[:4])}"
+            )
+            for issue in report.accessibility_issues
         ]
-    )
+        candidate.warnings = list(
+            dict.fromkeys([*candidate.warnings, *report.warnings, *accessibility_context])
+        )
+        candidate.deterministic_score = deterministic_score(report)
+
+    async def _eval_visual(c: CandidateArtifact):
+        c.visual_score = await visual_score(c, ai_client=ai_client, spec=spec)
+        c.final_score = round(c.deterministic_score + c.visual_score, 2)
+
+    await asyncio.gather(*[_eval_visual(c) for c in candidates])
     _penalize_near_duplicates(candidates)
     return candidates
-
-
-async def _evaluate_candidate(
-    candidate: CandidateArtifact,
-    *,
-    ai_client: AIClient,
-    settings: Settings,
-    spec: GenerationSpec,
-) -> None:
-    candidate.html = deterministic_release_hardening(candidate.html)
-    browser = await audit_candidate_html(
-        candidate.html,
-        candidate_key=candidate.key,
-        settings=settings,
-    )
-    candidate.browser = browser
-    candidate.hard_blockers = list(browser.hard_blockers)
-    accessibility_context = [
-        (
-            f"Accessibility repair detail: {issue.get('id', 'unknown')} - "
-            f"{issue.get('help', 'accessibility issue')} at "
-            f"{', '.join(str(selector) for selector in issue.get('selectors', [])[:4])}"
-        )
-        for issue in browser.accessibility_issues
-    ]
-    candidate.warnings = list(
-        dict.fromkeys([*candidate.warnings, *browser.warnings, *accessibility_context])
-    )
-    candidate.deterministic_score = deterministic_score(browser)
-    candidate.visual_score = await visual_score(
-        candidate,
-        ai_client=ai_client,
-        spec=spec,
-    )
-    candidate.final_score = round(candidate.deterministic_score + candidate.visual_score, 2)
 
 
 def deterministic_score(browser) -> float:
@@ -141,8 +128,8 @@ async def visual_score(
     )
     valid = [review for review in reviews if isinstance(review, VisualReview)]
     if not valid or all(review.total == 0 and review.warnings for review in valid):
-        candidate.warnings.append("Visual reviewer unavailable; neutral score used")
-        return 15
+        candidate.warnings.append("Visual reviewer unavailable; low score used")
+        return 5.0
     totals = sorted(review.total for review in valid)
     if len(totals) == 2 and abs(totals[0] - totals[1]) > 10:
         candidate.warnings.append("Visual reviewers disagreed; conservative score used")
